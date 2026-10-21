@@ -26,8 +26,7 @@ const messages = {
         'onboarding.title': 'فضای کاری سئو را آماده کنیم',
         'onboarding.description':
             'در مرحله بعد فضای کاری، پروژه و تنظیمات اولیه شما ساخته می‌شود.',
-        'onboarding.pending':
-            'راه‌اندازی فضای کاری در مرحله بعدی تکمیل می‌شود.',
+        'onboarding.pending': 'راه‌اندازی فضای کاری در مرحله بعدی تکمیل می‌شود.',
     },
     en: {
         'app.name': 'SEO OS',
