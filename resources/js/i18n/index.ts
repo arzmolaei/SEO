@@ -20,12 +20,14 @@ const messages = {
         'auth.signup': 'ساخت حساب',
         'auth.register': 'ایجاد حساب',
         'auth.registerTitle': 'شروع کار با SEO OS',
-        'auth.registerDescription': 'حساب اولیه را برای مدیریت پروژه‌های سئو بسازید.',
+        'auth.registerDescription':
+            'حساب اولیه را برای مدیریت پروژه‌های سئو بسازید.',
         'auth.haveAccount': 'از قبل حساب دارید؟',
         'onboarding.title': 'فضای کاری سئو را آماده کنیم',
         'onboarding.description':
             'در مرحله بعد فضای کاری، پروژه و تنظیمات اولیه شما ساخته می‌شود.',
-        'onboarding.pending': 'راه‌اندازی فضای کاری در مرحله بعدی تکمیل می‌شود.',
+        'onboarding.pending':
+            'راه‌اندازی فضای کاری در مرحله بعدی تکمیل می‌شود.',
     },
     en: {
         'app.name': 'SEO OS',
@@ -41,7 +43,7 @@ const messages = {
         'auth.login': 'Log in',
         'auth.loginTitle': 'Log in to SEO OS',
         'auth.loginDescription': 'Sign in to continue to your SEO workspace.',
-        'auth.noAccount': "Don't have an account?",
+        'auth.noAccount': 'Don\'t have an account?',
         'auth.signup': 'Create account',
         'auth.register': 'Create account',
         'auth.registerTitle': 'Get started with SEO OS',
@@ -51,7 +53,8 @@ const messages = {
         'onboarding.title': 'Set up your SEO workspace',
         'onboarding.description':
             'Next we will create your workspace, first project, and core defaults.',
-        'onboarding.pending': 'Workspace setup will be completed in the next step.',
+        'onboarding.pending':
+            'Workspace setup will be completed in the next step.',
     },
 } as const;
 
