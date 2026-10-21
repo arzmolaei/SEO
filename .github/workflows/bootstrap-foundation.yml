@@ -1,0 +1,93 @@
+name: Bootstrap Foundation
+
+on:
+  push:
+    branches:
+      - feature/foundation-keyword-core
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: ${{ !contains(github.event.head_commit.message, '[skip bootstrap]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stop when scaffold already exists
+        id: scaffold
+        shell: bash
+        run: |
+          if [ -f artisan ]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up PHP
+        if: steps.scaffold.outputs.needed == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Set up Node.js
+        if: steps.scaffold.outputs.needed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: /tmp/seo-os/package-lock.json
+        continue-on-error: true
+
+      - name: Create official Laravel React starter
+        if: steps.scaffold.outputs.needed == 'true'
+        shell: bash
+        run: |
+          composer create-project laravel/react-starter-kit /tmp/seo-os --prefer-dist --no-interaction
+          rsync -a --exclude='.git' /tmp/seo-os/ ./
+          node <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          p.scripts.typecheck = p.scripts['types:check'] || 'tsc --noEmit';
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 4) + '\n');
+          NODE
+          cat > README.md <<'EOF'
+          # SEO OS
+
+          A self-hostable SEO operations workspace for freelancers and small SEO teams.
+
+          Product architecture and implementation plans live in `docs/superpowers/`.
+          EOF
+
+      - name: Install frontend dependencies
+        if: steps.scaffold.outputs.needed == 'true'
+        run: npm ci
+
+      - name: Verify generated backend
+        if: steps.scaffold.outputs.needed == 'true'
+        run: php artisan test
+
+      - name: Verify TypeScript
+        if: steps.scaffold.outputs.needed == 'true'
+        run: npm run typecheck
+
+      - name: Verify production build
+        if: steps.scaffold.outputs.needed == 'true'
+        run: npm run build
+
+      - name: Commit verified scaffold
+        if: steps.scaffold.outputs.needed == 'true'
+        shell: bash
+        run: |
+          git config user.name "seo-os-bootstrap[bot]"
+          git config user.email "seo-os-bootstrap@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: scaffold Laravel React foundation [skip bootstrap]"
+          git push origin HEAD:feature/foundation-keyword-core
