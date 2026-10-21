@@ -43,7 +43,7 @@ const messages = {
         'auth.login': 'Log in',
         'auth.loginTitle': 'Log in to SEO OS',
         'auth.loginDescription': 'Sign in to continue to your SEO workspace.',
-        'auth.noAccount': 'Don\'t have an account?',
+        'auth.noAccount': "Don't have an account?",
         'auth.signup': 'Create account',
         'auth.register': 'Create account',
         'auth.registerTitle': 'Get started with SEO OS',
