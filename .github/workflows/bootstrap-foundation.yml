@@ -126,6 +126,7 @@ jobs:
         run: |
           rsync -a \
             --exclude='.git' \
+            --exclude='.github' \
             --exclude='.env' \
             --exclude='vendor' \
             --exclude='node_modules' \
