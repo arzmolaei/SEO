@@ -12,6 +12,9 @@ final class LocaleContext
 
     public const LTR = 'ltr';
 
+    /**
+     * @return 'fa'|'en'
+     */
     public static function locale(?string $locale): string
     {
         if ($locale === null || trim($locale) === '') {
@@ -25,6 +28,9 @@ final class LocaleContext
             : self::PERSIAN;
     }
 
+    /**
+     * @return 'rtl'|'ltr'
+     */
     public static function direction(?string $locale): string
     {
         return self::locale($locale) === self::PERSIAN
