@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\LocaleContext;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,9 +36,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $localeContext = LocaleContext::from(app()->getLocale());
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'locale' => $localeContext['locale'],
+            'direction' => $localeContext['direction'],
             'auth' => [
                 'user' => $request->user(),
             ],
