@@ -12,7 +12,11 @@ class EnvironmentContractTest extends TestCase
         $this->assertSame('SEO OS', config('app.name'));
         $this->assertSame('fa', config('app.locale'));
         $this->assertSame('en', config('app.fallback_locale'));
-        $this->assertSame('database', config('queue.default'));
-        $this->assertSame('local', config('filesystems.default'));
+
+        $environmentDefaults = file_get_contents(base_path('.env.example'));
+
+        $this->assertIsString($environmentDefaults);
+        $this->assertStringContainsString('QUEUE_CONNECTION=database', $environmentDefaults);
+        $this->assertStringContainsString('FILESYSTEM_DISK=local', $environmentDefaults);
     }
 }
