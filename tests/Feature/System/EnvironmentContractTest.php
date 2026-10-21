@@ -1,12 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Config;
+namespace Tests\Feature\System;
 
-it('uses SEO OS self-hosted runtime defaults', function () {
-    expect(PHP_VERSION_ID)->toBeGreaterThanOrEqual(80300)
-        ->and(Config::get('app.name'))->toBe('SEO OS')
-        ->and(Config::get('app.locale'))->toBe('fa')
-        ->and(Config::get('app.fallback_locale'))->toBe('en')
-        ->and(Config::get('queue.default'))->toBe('database')
-        ->and(Config::get('filesystems.default'))->toBe('local');
-});
+use Tests\TestCase;
+
+class EnvironmentContractTest extends TestCase
+{
+    public function test_it_uses_seo_os_self_hosted_runtime_defaults(): void
+    {
+        $this->assertGreaterThanOrEqual(80300, PHP_VERSION_ID);
+        $this->assertSame('SEO OS', config('app.name'));
+        $this->assertSame('fa', config('app.locale'));
+        $this->assertSame('en', config('app.fallback_locale'));
+        $this->assertSame('database', config('queue.default'));
+        $this->assertSame('local', config('filesystems.default'));
+    }
+}
