@@ -8,11 +8,13 @@ The first SEO OS vertical slice is complete on `feature/foundation-keyword-core`
 
 Final reviewed implementation baseline before this documentation update:
 
-- Commit: `05738fd3bafe0c7dacbdb05f1917f89ac9cd6a09`
-- CI run: `39771206949`
+- Commit: `2ac554b608fe0e6c6d34f92b746538172ce594e2`
+- CI run: `39772007410`
 - Main verification job: passed
 - PHP 8.4 compatibility: passed
 - PHP 8.5 compatibility: passed
+- Runtime npm audit: passed
+- Runtime Composer audit: passed
 
 ## Verified user workflow
 
@@ -42,7 +44,7 @@ The permanent CI pipeline verifies:
 - PHP compatibility suites on PHP 8.4 and PHP 8.5.
 - Runtime npm dependency audit with high-severity gating.
 - Runtime Composer dependency audit.
-- Production release-package contract.
+- Production release-package contract and builder tests.
 
 The reviewed baseline passed all of these gates, including the end-to-end acceptance workflow.
 
@@ -51,6 +53,8 @@ The reviewed baseline passed all of these gates, including the end-to-end accept
 The completed branch was compared against `main` and reviewed with extra attention to authorization boundaries, project-scoped queries, transactional bulk changes, safe undo behavior, installer/release safety, and secret leakage.
 
 One important release-package hardening issue was found and fixed during review: private key files nested below `storage/` could previously evade a top-level-only key check. The release contract now recursively scans `storage` and rejects `.key` files at any depth, reported as `storage/**/*.key`. A dedicated RED/GREEN regression test verifies nested private-key rejection.
+
+Release packaging was also completed with an allowlist-first builder. The builder copies only required runtime files/directories into a clean destination, creates empty writable runtime directories, rejects symlinked release inputs, deliberately excludes proprietary private font assets and development/runtime state, and validates the result against `ReleasePackageContract` before considering the package valid.
 
 No additional Critical or Important findings remained after the focused review and the final reviewed CI baseline above.
 
@@ -64,6 +68,7 @@ The slice keeps the intended self-host characteristics:
 - Vazirmatn is bundled as an OFL-licensed local runtime font.
 - IRANSansX FaNum is the default interface font and Yekan Bakh is selectable, but their proprietary binaries are intentionally excluded from the public repository. Licensed ZIPs can be installed locally with `scripts/fonts/install-private-fonts.php`; the private font directory is ignored by Git.
 - Installer/System Health foundations check runtime requirements and application state without making shell access a core product requirement.
+- The release builder produces a clean runtime tree instead of copying the development tree and trying to delete unsafe files afterward.
 
 ## Data and safety guarantees in this slice
 
@@ -79,6 +84,7 @@ The slice keeps the intended self-host characteristics:
 - Bulk changes are transactional, attributable, audited, and reversible where safe.
 - Undo refuses to overwrite a keyword that changed after the original ChangeSet.
 - Release packages reject development/secret artifacts such as `.env`, `node_modules`, test sources and private key files anywhere below `storage/`.
+- Release-package construction is allowlisted and rejects symlinked source entries.
 
 ## UI foundation completed
 
