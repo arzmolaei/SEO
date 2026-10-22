@@ -40,9 +40,8 @@ RED contracts remain under `docs/superpowers/specs/` and
   - 204 tests / 1166 assertions at boundary; MariaDB mapping coverage.
   - CI `39804656866` on `d19e4ab390668ed606b8414c069e1a197a4e768e`.
 - Task 9 — Mapping conflict review: **verified**
-  - Original pending RED source was restored and corrected to current provenance
-    schema; final contract includes unrelated shared-page overload, competing pages
-    requiring same known intent + shared meaningful topic, real latest-volume
+  - Final contract covers unrelated shared-page overload, competing pages only
+    with same known intent plus shared meaningful topic, real latest-volume
     high-demand unmapped evidence, changed-evidence reopen/supersede, stale
     acknowledgement refusal, invalid-target warning, HTTP resolution and foreign
     project rejection.
@@ -50,55 +49,55 @@ RED contracts remain under `docs/superpowers/specs/` and
     never silently remaps and keeps browser evidence compact.
   - Mapping-conflict ReviewItems retain resolved decisions for identical evidence,
     reopen only when fingerprints change and audit resolution/supersession.
-  - Verified implementation boundary `bd38cc696de7eaca60776c52abd62c4e32929fe1`;
+  - Verified boundary `bd38cc696de7eaca60776c52abd62c4e32929fe1`;
     CI `39810763754`, success; 212 tests / 1187 assertions.
 - Task 10 — Priority scoring + Ready lifecycle: **verified**
-  - `ClusterPriorityScore` is deterministic/explainable. It uses only latest local
-    volume, latest local difficulty, optional manual business relevance (1–5),
-    mapping completeness and review completeness. Missing metrics remain null and
-    add no invented priority; component evidence and data completeness are exposed.
-  - Clusters have separate `planning|ready` lifecycle. Ready requires an active,
-    reviewed cluster, an explicit mapping (page target or Ignore), and no pending
-    primary-keyword review.
-  - Real remaps, membership/cluster mutations and new/reopened pending reviews
-    invalidate stale Ready decisions back to Planning. Cluster mutation snapshots
-    include lifecycle/business relevance so Undo remains revision-safe.
-  - RED evidence included missing priority object/lifecycle behavior and a later
-    regression proving new mapping conflicts must invalidate an existing Ready
-    decision. CI/static-analysis failures were diagnosed rather than weakening
-    gates.
-  - Final verified implementation `f51f5d76aca3331153383726bbc76eebffab6846`;
-    CI `39813493267`, success; **226 tests / 1229 assertions**. PHP 8.4/8.5,
-    frontend check/TypeScript/build, Pint, PHPStan, runtime audits and release
-    smoke all passed.
-- Task 11 — Connected Keyword Intelligence workspace + acceptance: **active**
-  - The existing `intelligence` server prop is connected to the Keywords page
-    instead of remaining dead UI. The workspace exposes Grid, Intent, Clusters and
-    Mapping entry points while preserving the existing server-paginated Grid.
-  - Manual cluster merge/move/split controls call only the existing project-scoped,
-    service-backed HTTP boundaries and respect cluster locks. Mapping, priority,
-    conflict refresh, Review Queue and Ready operations remain service-owned.
-  - Acceptance requires explicit `intelligence.project_id` so the client does not
-    infer project identity from URL shape. RED was observed on CI `39826284166`:
-    only the new property assertion failed while 236 tests passed. Minimal GREEN
-    was then verified by full permanent CI `39826787331`.
-  - Whole-branch review found and fixed a Review Queue contract mismatch where
-    `mapping_conflict` was not represented in the frontend type/label surface.
-    Mapping warnings are now explicitly labelled in Persian/English while retaining
-    accept/skip-only semantics.
-  - Manual cluster editing now exposes deterministic no-result states and clears a
-    stale source-primary replacement if that keyword is subsequently selected into
-    a split. The patch was formatted and type-checked with generated Wayfinder
-    routes before commit.
-  - Authorization, idempotency, locked/manual override preservation and silent
-    remapping boundaries have been re-reviewed across controller/service edges.
-    A fresh permanent full CI on this post-review candidate is now required before
-    Task 11 can be marked verified and PR #2 can merge.
+  - `ClusterPriorityScore` is deterministic/explainable and uses only latest local
+    volume/difficulty, optional manual business relevance, mapping completeness and
+    review completeness. Missing metrics remain null and add no invented priority.
+  - Ready requires an active reviewed cluster, explicit mapping (page or Ignore),
+    and no pending primary-keyword review. Real remaps, cluster mutations and
+    new/reopened reviews invalidate stale Ready back to Planning.
+  - Final boundary `f51f5d76aca3331153383726bbc76eebffab6846`;
+    CI `39813493267`, success; 226 tests / 1229 assertions.
+- Task 11 — Connected Keyword Intelligence workspace + acceptance: **verified**
+  - The server-provided intelligence workspace is connected to the existing
+    high-performance Keywords page with Grid, Intent, Clusters and Mapping entry
+    points; the server-paginated Grid remains intact.
+  - Manual cluster merge/move/split controls call only project-scoped,
+    service-backed HTTP boundaries, respect cluster locks and require explicit
+    primary replacement when needed.
+  - Mapping/page targeting, conflict refresh/review, priority and Ready stay owned
+    by existing transactional services; the browser never silently remaps.
+  - Acceptance requires explicit `intelligence.project_id`; RED was observed on CI
+    `39826284166` where only the new property assertion failed while 236 tests
+    passed. The URL-inference bug was then removed by the minimal backend/type/UI
+    contract.
+  - Whole-branch review found and fixed the Review Queue `mapping_conflict`
+    frontend contract/label mismatch and hardened manual-editor empty/stale
+    replacement states.
+  - Review focus rechecked authorization/project isolation, deterministic
+    idempotency, locked/manual override preservation, revision-safe Undo/Ready
+    invalidation and the no-silent-remap rule. No open PR review threads remain.
+  - Post-review implementation boundary: `216a4d2448defdd2f481dcf0beb55dbeeb112f10`.
+    Permanent CI `39828064083`: **success**. Full backend suite:
+    **237 tests / 1317 assertions**. PHP 8.4/8.5 compatibility, frontend formatter,
+    TypeScript, production build, Pint, PHPStan, runtime npm/Composer audits,
+    runtime-only Composer install and clean release-tree smoke all passed.
+
+## Slice status
+
+Keyword Intelligence Tasks 1–11 are complete at the implementation boundary above.
+PR #2 is the single integration PR into `main`. The remaining integration gate is
+a fresh permanent CI on the final documentation-complete branch head; merge only
+that exact green head. After integration, move to the first usable self-host
+release gate in `docs/DELIVERY_PLAN.md`; do not start crawler/SERP/AI/vector work
+before the operational release prerequisites are deliberately planned.
 
 ## Execution rules
 
 Continue RED → correct RED → minimal GREEN → refactor → meaningful focused
-verification → permanent final-head CI → semantic commit/push. Do not advance a
-task while its current implementation boundary is unverified. Human overrides,
+verification → permanent final-head CI → semantic commit/push. Human overrides,
 locks, original keyword/provenance data and later mapping decisions must never be
-silently overwritten. No crawler/SERP/AI/vector dependency belongs in Task 11.
+silently overwritten. CI evidence belongs to the exact head it verified; never
+infer success from an older or cancelled run.
