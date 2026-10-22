@@ -3,13 +3,13 @@
 
 declare(strict_types=1);
 
-if (! class_exists(ZipArchive::class)) {
-    fwrite(STDERR, "PHP Zip extension is required.\n");
+if ($argc !== 3) {
+    fwrite(STDERR, "Usage: php scripts/fonts/install-private-fonts.php <iransans-zip> <yekan-bakh-zip>\n");
     exit(1);
 }
 
-if ($argc !== 3) {
-    fwrite(STDERR, "Usage: php scripts/fonts/install-private-fonts.php <iransans-zip> <yekan-bakh-zip>\n");
+if (! class_exists(ZipArchive::class) && ! commandExists('unzip')) {
+    fwrite(STDERR, "Either PHP ZipArchive or the unzip command is required.\n");
     exit(1);
 }
 
@@ -66,6 +66,20 @@ function installFontPackage(string $zipPath, string $targetDirectory, array $req
         throw new RuntimeException("Unable to create directory: {$targetDirectory}");
     }
 
+    if (class_exists(ZipArchive::class)) {
+        installWithZipArchive($zipPath, $targetDirectory, $requiredFiles);
+
+        return;
+    }
+
+    installWithUnzipCommand($zipPath, $targetDirectory, $requiredFiles);
+}
+
+/**
+ * @param list<string> $requiredFiles
+ */
+function installWithZipArchive(string $zipPath, string $targetDirectory, array $requiredFiles): void
+{
     $zip = new ZipArchive;
 
     if ($zip->open($zipPath) !== true) {
@@ -74,7 +88,7 @@ function installFontPackage(string $zipPath, string $targetDirectory, array $req
 
     try {
         foreach ($requiredFiles as $filename) {
-            $entry = findEntryByBasename($zip, $filename);
+            $entry = findZipArchiveEntry($zip, $filename);
 
             if ($entry === null) {
                 throw new RuntimeException("Required font file missing from ZIP: {$filename}");
@@ -103,7 +117,43 @@ function installFontPackage(string $zipPath, string $targetDirectory, array $req
     }
 }
 
-function findEntryByBasename(ZipArchive $zip, string $filename): ?string
+/**
+ * @param list<string> $requiredFiles
+ */
+function installWithUnzipCommand(string $zipPath, string $targetDirectory, array $requiredFiles): void
+{
+    $entries = [];
+    $exitCode = 0;
+    exec('unzip -Z1 '.escapeshellarg($zipPath), $entries, $exitCode);
+
+    if ($exitCode !== 0) {
+        throw new RuntimeException("Unable to inspect ZIP: {$zipPath}");
+    }
+
+    foreach ($requiredFiles as $filename) {
+        $entry = findEntryByBasename($entries, $filename);
+
+        if ($entry === null) {
+            throw new RuntimeException("Required font file missing from ZIP: {$filename}");
+        }
+
+        $target = $targetDirectory.'/'.$filename;
+        $command = sprintf(
+            'unzip -p %s %s > %s',
+            escapeshellarg($zipPath),
+            escapeshellarg($entry),
+            escapeshellarg($target),
+        );
+
+        exec($command, $output, $exitCode);
+
+        if ($exitCode !== 0 || ! is_file($target) || filesize($target) === 0) {
+            throw new RuntimeException("Unable to extract font file: {$filename}");
+        }
+    }
+}
+
+function findZipArchiveEntry(ZipArchive $zip, string $filename): ?string
 {
     for ($index = 0; $index < $zip->numFiles; $index++) {
         $entry = $zip->getNameIndex($index);
@@ -114,4 +164,27 @@ function findEntryByBasename(ZipArchive $zip, string $filename): ?string
     }
 
     return null;
+}
+
+/**
+ * @param list<string> $entries
+ */
+function findEntryByBasename(array $entries, string $filename): ?string
+{
+    foreach ($entries as $entry) {
+        if (basename($entry) === $filename) {
+            return $entry;
+        }
+    }
+
+    return null;
+}
+
+function commandExists(string $command): bool
+{
+    $output = [];
+    $exitCode = 0;
+    exec('command -v '.escapeshellarg($command), $output, $exitCode);
+
+    return $exitCode === 0;
 }
