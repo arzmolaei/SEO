@@ -23,6 +23,37 @@ class QueryKeywordGrid
      */
     public function handle(Project $project, KeywordGridQuery $filters): LengthAwarePaginator
     {
+        $projection = $this->projectKeywords($project, $filters);
+        $query = DB::query()->fromSub($projection, 'keyword_grid');
+
+        if ($filters->volume !== null) {
+            match ($filters->volumeOperator) {
+                'eq' => $query->where('keyword_grid.latest_volume', '=', $filters->volume),
+                'gt' => $query->where('keyword_grid.latest_volume', '>', $filters->volume),
+                'gte' => $query->where('keyword_grid.latest_volume', '>=', $filters->volume),
+                'lt' => $query->where('keyword_grid.latest_volume', '<', $filters->volume),
+                'lte' => $query->where('keyword_grid.latest_volume', '<=', $filters->volume),
+                default => null,
+            };
+        }
+
+        $this->applySort($query, $filters);
+
+        /** @var LengthAwarePaginator<int, stdClass> $paginator */
+        $paginator = $query->paginate($filters->perPage)->withQueryString();
+
+        return $paginator->through(fn (stdClass $row): array => [
+            'id' => (int) $row->id,
+            'display_text' => (string) $row->display_text,
+            'normalized_text' => (string) $row->normalized_text,
+            'latest_volume' => $this->formatVolume($row->latest_volume ?? null),
+            'latest_volume_source' => isset($row->latest_volume_source) ? (string) $row->latest_volume_source : null,
+            'created_at' => isset($row->created_at) ? (string) $row->created_at : null,
+        ]);
+    }
+
+    private function projectKeywords(Project $project, KeywordGridQuery $filters): Builder
+    {
         $latestVolume = $this->latestVolumeSubquery($filters->source);
         $latestVolumeSource = $this->latestVolumeSourceSubquery($filters->source);
 
@@ -56,35 +87,30 @@ class QueryKeywordGrid
             });
         }
 
-        $volumeOperator = $filters->sqlVolumeOperator();
+        return $query;
+    }
 
-        if ($volumeOperator !== null && $filters->volume !== null) {
-            $query->whereRaw(
-                '('.$latestVolume->toSql().") {$volumeOperator} ?",
-                [...$latestVolume->getBindings(), $filters->volume],
-            );
+    private function applySort(Builder $query, KeywordGridQuery $filters): void
+    {
+        if ($filters->sort === 'volume') {
+            if ($filters->direction === 'desc') {
+                $query->orderByDesc('keyword_grid.latest_volume');
+            } else {
+                $query->orderBy('keyword_grid.latest_volume');
+            }
+        } elseif ($filters->sort === 'created_at') {
+            if ($filters->direction === 'desc') {
+                $query->orderByDesc('keyword_grid.created_at');
+            } else {
+                $query->orderBy('keyword_grid.created_at');
+            }
+        } elseif ($filters->direction === 'desc') {
+            $query->orderByDesc('keyword_grid.normalized_text');
+        } else {
+            $query->orderBy('keyword_grid.normalized_text');
         }
 
-        match ($filters->sort) {
-            'volume' => $query->orderByRaw(
-                '('.$latestVolume->toSql().") {$filters->direction}",
-                $latestVolume->getBindings(),
-            )->orderBy('keywords.id'),
-            'created_at' => $query->orderBy('keywords.created_at', $filters->direction)->orderBy('keywords.id'),
-            default => $query->orderBy('keywords.normalized_text', $filters->direction)->orderBy('keywords.id'),
-        };
-
-        /** @var LengthAwarePaginator<int, stdClass> $paginator */
-        $paginator = $query->paginate($filters->perPage)->withQueryString();
-
-        return $paginator->through(fn (stdClass $row): array => [
-            'id' => (int) $row->id,
-            'display_text' => (string) $row->display_text,
-            'normalized_text' => (string) $row->normalized_text,
-            'latest_volume' => $this->formatVolume($row->latest_volume ?? null),
-            'latest_volume_source' => isset($row->latest_volume_source) ? (string) $row->latest_volume_source : null,
-            'created_at' => isset($row->created_at) ? (string) $row->created_at : null,
-        ]);
+        $query->orderBy('keyword_grid.id');
     }
 
     private function latestVolumeSubquery(?string $source): Builder
