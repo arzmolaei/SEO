@@ -51,7 +51,12 @@ class InstallationState
             return;
         }
 
-        $allowedMetadata = ['installer_schema_version', 'product_version', 'installation_id'];
+        $allowedMetadata = [
+            'installer_schema_version',
+            'product_version',
+            'installation_id',
+            'database_fingerprint',
+        ];
 
         foreach (array_keys($metadata) as $key) {
             if (! in_array($key, $allowedMetadata, true)) {
