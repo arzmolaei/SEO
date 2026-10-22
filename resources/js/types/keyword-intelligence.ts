@@ -62,6 +62,7 @@ export type IntelligencePaginator<T> = {
 };
 
 export type KeywordIntelligenceWorkspace = {
+    project_id: number;
     can_manage: boolean;
     summary: {
         active_clusters: number;
