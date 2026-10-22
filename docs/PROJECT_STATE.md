@@ -2,116 +2,153 @@
 
 Last checkpoint: 2026-10-22
 
-This file is the durable source of truth for continuing SEO OS across ChatGPT/Codex/agent sessions. **Do not reconstruct project state from chat history when this file and Git disagree. Git + CI win.**
+This file is the durable source of truth for continuing SEO OS across agent
+sessions. **Do not reconstruct project state from chat history when this file and
+Git disagree. Git + CI win.**
 
 ## Stable baseline
 
 - Repository: `arzmolaei/SEO`
 - Stable branch: `main`
-- Foundation vertical slice was merged through PR #1 (`Feature/foundation keyword core`).
-- Pre-checkpoint merge baseline: `171ca8b953130559c06be2a56cbd002fa98fe76c`.
-- The old working branch `feature/foundation-keyword-core` was compared with `main` after the merge and had no file-tree differences. Do not use it as the starting point for the next subsystem.
-- The latest verification observed on that old branch before this handoff was CI run `39782868570` on commit `42ce87681fe7d475d97d6d0454e9e4b237e1d8cd`, conclusion: success.
+- Foundation + Keyword Core was reviewed and merged through PR #1.
+- Active subsystem branch: `feature/keyword-intelligence`.
+- Active integration PR: #2 into `main`.
+- Never develop directly on `main`, reset the active branch, force-push over
+  unexpected movement, or create a duplicate subsystem PR.
 
-Always re-read the current `main` head and its CI before doing new implementation work; the hashes above are evidence/history, not permission to assume the repository has not moved.
+Always fetch the current branch/main heads and inspect current CI before new code.
+Recorded hashes are evidence, not permission to assume Git has not moved.
 
 ## Completed vertical slice: Foundation + Keyword Core
 
-This slice is complete and reviewed. Do **not** reimplement it in a new session.
+This slice is complete and reviewed. Do **not** reimplement it.
 
-Implemented and verified:
-
-1. Laravel 13 + Inertia 3 + React + TypeScript foundation.
-2. Persian-first i18n with typed RTL/LTR application direction contract.
-3. Auth/onboarding baseline using Laravel/Fortify primitives.
-4. Workspace + Membership domain with role boundaries and last-owner invariant.
-5. Project domain with hard workspace/project isolation against guessed identifiers.
-6. Project shell / Command Center foundation with Guided/Expert mode state.
-7. Persian keyword normalization preserving original source text.
-8. Keyword import staging with mapping diagnostics, provenance, duplicate warnings and authorization.
-9. Streaming CSV ingestion supporting UTF-8 BOM, UTF-16LE/BE, large-file lazy reading, checkpoints and idempotent retry.
-10. Canonical project-scoped keyword identity, independent source provenance and metric history.
-11. Keyword Grid with server-side search/filter/sort/pagination, status/source/volume filters, safe query allowlists, column visibility, keyboard navigation, loading/error/retry states.
-12. Saved Keyword Views with validated/versioned project/user-scoped state.
-13. Transactional bulk keyword status changes with ChangeSet/Activity audit records and safe undo.
-14. Installer/System Health foundations and self-host runtime checks.
-15. Release-package contract + allowlist-first production release tree builder + runtime smoke verification.
-16. Whole-slice acceptance flow and whole-branch review.
-
-See `docs/release-readiness/foundation-keyword-core.md` for the detailed evidence and guarantees.
+Implemented and verified foundations include Laravel 13 + Inertia/React/TypeScript,
+Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation,
+Project shell, Persian keyword normalization preserving original source text,
+streaming/resumable keyword import, canonical keyword/provenance/metric history,
+server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo,
+installer/System Health foundations, allowlist-first runtime release packaging and
+connected foundation acceptance. See
+`docs/release-readiness/foundation-keyword-core.md` for detailed evidence.
 
 ## Fonts / self-host rule
 
-- Default interface font: **IRANSansX FaNum**.
-- Selectable alternatives: **Yekan Bakh** and **Vazirmatn**.
-- Vazirmatn is bundled locally from its OFL-licensed source for release builds.
-- IRANSansX/Yekan Bakh proprietary binaries are **not** committed to the public repository. Licensed ZIPs are installed locally into the ignored private font directory using the repository font installer.
+- Default interface font: IRANSansX FaNum.
+- Selectable alternatives: Yekan Bakh and Vazirmatn.
+- Vazirmatn is bundled locally from its OFL source for release builds.
+- Proprietary IRANSansX/Yekan Bakh binaries are never committed publicly; licensed
+  files are installed into the ignored private-font directory.
 - Core runtime must not depend on an international font/CDN request.
 
 ## Active implementation — resume here
 
-Continue existing `feature/keyword-intelligence`; do not create or reset it.
-Tasks 1–8 are verified (latest boundary `d19e4ab`, CI `39804656866`).
-Task 9 is started but NOT implemented: bounded design and six observed RED contracts only.
-The user requested a handoff to another AI; resume from `docs/HANDOFF.md`.
-Source of current execution evidence: `docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
-The branch includes the newer `main` handoff instructions through merge `114277a`.
-After Task 9 final-head CI passes, execute Task 10, then Task 11 in order.
-Do not stop for routine confirmation. Preserve unfinished state explicitly if
-an external interruption/tool limit occurs. Full install/backup/restore/update
-acceptance remains future delivery work, not completed by the current slice.
+Continue existing `feature/keyword-intelligence`; do not create/reset it.
 
-## Keyword Intelligence subsystem boundary
+Keyword Intelligence Tasks **1–10 are verified**. The latest verified
+implementation boundary before this documentation update is:
 
-The next slice is **Keyword Intelligence: Intent + Clustering + Mapping**.
+- implementation SHA: `f51f5d76aca3331153383726bbc76eebffab6846`
+- permanent PR CI: `39813493267` — success
+- full backend suite: 226 tests / 1229 assertions
+- PHP 8.4 + 8.5 compatibility: success
+- frontend formatter/check, TypeScript and production build: success
+- Pint + PHPStan: success
+- runtime npm/Composer security audits: success
+- runtime-only production release-tree smoke: success
 
-Intended sequence:
+Task 9 mapping conflicts and Task 10 priority/Ready lifecycle are therefore not
+pending work anymore. `docs/HANDOFF.md` and
+`docs/superpowers/progress/2026-10-22-keyword-intelligence.md` contain the current
+boundary details.
 
-`Review Queue -> Intent -> Cluster -> Primary/Secondary -> Existing/Planned Page -> Mapping Conflicts -> Priority`
+**Task 11 — connected Keyword Intelligence workspace + vertical-slice acceptance —
+is the exact next implementation task.** Do not start crawler/SERP/AI work first.
+Do not merge PR #2 before Task 11 acceptance, whole-branch review and fresh
+final-head CI are all green.
 
-Do not jump to the crawler first. The crawler/Site Intelligence slice follows after keyword-to-page relationships are stable, so crawl data can attach to meaningful SEO entities rather than becoming an isolated audit report.
+## Verified Keyword Intelligence behavior through Task 10
 
-### Next-slice design constraints
+The verified subsystem now contains:
 
-- Deterministic/rule-based intelligence must work without external AI.
-- AI, SERP APIs and external services remain optional enhancement integrations.
-- Use confidence-driven behavior: high-confidence automation, medium-confidence suggestion, low-confidence review.
-- Every automated/suggested classification must be explainable and reversible where practical.
-- Review Queue should concentrate ambiguous work rather than forcing users to inspect the full dataset.
-- Cluster merge/split/move operations must preserve history and avoid destructive silent rewrites.
-- Mapping must support existing pages and planned pages and expose cannibalization/mapping conflicts.
-- Preserve the existing project-scoping and authorization invariants at HTTP and domain-service boundaries.
+1. attributed intent assignment and immutable override history;
+2. deterministic/explainable Persian rule-based intent classification;
+3. project-scoped Intent Review Queue with stale-evidence protection;
+4. cluster domain/membership and primary-member invariants;
+5. deterministic lexical candidate generation/application with bounded grouping;
+6. merge/split/move/lock plus revision-safe attributed Undo;
+7. existing/planned Page entities and stable page promotion;
+8. one current cluster target with mapping history/revision protection;
+9. deterministic mapping-conflict review: competing pages, overloaded targets,
+   real-evidence high-demand unmapped clusters and invalid targets, without silent
+   remapping;
+10. explainable local priority scoring and a guarded `planning|ready` lifecycle.
 
-## Mandatory continuation protocol for any new agent/session
+Priority uses only real available local evidence: latest volume, latest difficulty,
+optional manually supplied business relevance, mapping completeness and review
+completeness. Missing metrics remain missing. Ready requires completed cluster
+review, an explicit mapping (including explicit Ignore) and no pending review for
+the primary keyword. Material remaps, cluster mutations or new/reopened pending
+reviews invalidate stale Ready decisions back to Planning.
 
-Before changing code:
+## Keyword Intelligence Task 11 boundary
+
+Task 11 must connect the verified services into a usable project workflow:
+
+`Canonical Keyword -> Intent/Review -> Cluster -> Manual Cluster Edits -> Existing/Planned Page -> Mapping -> Conflict Review -> Priority -> Ready`
+
+Requirements:
+
+- Start with a genuine RED backend acceptance contract.
+- Keep the existing server-side high-performance Keyword Grid; do not replace it
+  with an unbounded browser dataset.
+- Add project-scoped HTTP/application boundaries that call the existing services;
+  do not mutate cluster/mapping/page state directly from controllers/raw ORM paths.
+- Expose Intent, Clusters/Mapping and Review Queue entry points with Persian-first
+  RTL, keyboard accessibility and explicit loading/empty/error states.
+- Preserve locked/manual decisions, project isolation, idempotency and revision
+  protection.
+- Run full PHP/PHPStan/Pint/frontend/build/runtime/audit/release gates on final
+  head, then whole-branch review before merge.
+
+## Mandatory continuation protocol
+
+Before changing code in a new agent/session:
 
 1. Read `AGENTS.md`.
-2. Read this file completely.
-3. Read `docs/release-readiness/foundation-keyword-core.md`.
-4. Read the architecture/spec and the relevant implementation plan under `docs/superpowers/`.
-5. Fetch the current `main` head from GitHub and inspect current CI status.
-6. Confirm the working tree/ref you intend to use is based on current `main`.
-7. Resume the explicitly named active branch above. Only create a new branch from current main when starting a genuinely new subsystem.
-8. Do not copy/rebuild Foundation + Keyword Core just because the new session lacks chat context.
-9. Use TDD for each bounded behavior: RED -> minimal GREEN -> verification -> commit.
-10. Keep permanent CI gates intact. Diagnostic CI edits must be temporary and removed before the feature is considered verified.
-11. Never force-push over unexpected branch movement. Re-read the branch head and reconcile.
-12. Update this checkpoint when a substantial subsystem reaches a reviewed, fully green boundary.
+2. Read this file and `docs/HANDOFF.md` completely.
+3. Read Foundation release readiness, the master spec, active plan and progress.
+4. Fetch current `main` and active branch heads plus current CI.
+5. Resume the explicitly named active branch; create a new branch only for a
+   genuinely new subsystem after the current PR is integrated.
+6. Use TDD for bounded behavior: RED -> correct GREEN -> refactor -> verification.
+7. Keep permanent CI gates intact; diagnostic changes must never survive as a
+   weakened permanent pipeline.
+8. Update durable state at verified subsystem boundaries.
+9. Do not stop for routine user confirmation; continue autonomously task-by-task.
 
 ## Definition of trustworthy progress
 
-A feature is not considered complete merely because code exists. Completion requires the applicable combination of:
+Code existence is not completion. Applicable formatter/lint, TypeScript, production
+frontend build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits,
+authorization/isolation coverage, connected acceptance and release/runtime smoke
+must be green. CI must correspond to the current final head; older/cancelled runs
+are not proof.
 
-- formatter/lint green;
-- TypeScript green;
-- production frontend build green;
-- Pint green;
-- PHPStan/Larastan green;
-- backend tests green;
-- runtime npm/Composer audits green;
-- authorization/isolation coverage where relevant;
-- acceptance coverage for connected workflows;
-- release/runtime smoke checks where packaging or deployment is affected.
+The actual current runtime floor is **PHP 8.4.1+**. Older PHP 8.3 references are
+stale and must be reconciled during release documentation rather than by blindly
+downgrading Laravel.
 
-If a session ends because of chat length, tool limits, interruption, or model switch, stop at the last verified commit and update this file when possible. The next session must continue from repository evidence, not from guesses about what the previous assistant was thinking.
+## Beyond the current slice
+
+Full self-host release acceptance remains future work after Keyword Intelligence:
+fresh install, real normal-use flow, Persian export, backup/restore, versioned
+update, interruption/recovery/rollback, queue/scheduler operational visibility.
+After the stable keyword-to-page relationship exists, continue master-plan work
+with Site Intelligence/crawler, technical issues/history, content/tasks/internal
+linking and performance/opportunity/recommendation systems. Do not claim any of
+those later systems delivered before their own verified acceptance gates.
+
+If execution is externally interrupted, preserve the latest verified SHA/CI and
+exact first unfinished behavior in Git. The next session resumes from repository
+evidence, not guesses.
