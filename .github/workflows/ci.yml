@@ -56,8 +56,12 @@ jobs:
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
-      - name: Check frontend
-        run: npm run check
+      - name: Diagnose font formatting
+        shell: bash
+        run: |
+          npm run check:fix
+          git diff -- resources/css/fonts.css resources/js/components/font-picker.tsx resources/js/hooks/use-font-preference.ts resources/js/pages/settings/appearance.tsx
+          exit 1
 
       - name: Check TypeScript
         run: npm run types:check
