@@ -52,6 +52,13 @@ jobs:
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
+      - name: Diagnose project shell formatting
+        shell: bash
+        run: |
+          npm run check -- --fix || true
+          git diff -- resources/js/components/project-workspace-shell.tsx
+          git checkout -- .
+
       - name: Check frontend
         run: npm run check
 
