@@ -13,7 +13,9 @@ const listeners = new Set<() => void>();
 let currentFont: AppFont = DEFAULT_APP_FONT;
 
 const isAppFont = (value: string | null): value is AppFont => {
-    return value === 'iransansx' || value === 'yekan-bakh' || value === 'vazirmatn';
+    return (
+        value === 'iransansx' || value === 'yekan-bakh' || value === 'vazirmatn'
+    );
 };
 
 const setCookie = (name: string, value: string, days = 365): void => {
