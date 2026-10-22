@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Installer\CreateInitialOwner;
 use App\Support\Installer\DatabaseVerificationResult;
 use App\Support\Installer\DatabaseVerifier;
 use App\Support\Installer\EnvironmentWriter;
@@ -14,6 +15,7 @@ use App\Support\Installer\InstallerPreflight;
 use App\Support\Installer\InstallerStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
@@ -29,6 +31,7 @@ class InstallerController extends Controller
         private readonly EnvironmentWriter $environmentWriter,
         private readonly DatabaseVerifier $databaseVerifier,
         private readonly InstallerMigrationRunner $migrationRunner,
+        private readonly CreateInitialOwner $initialOwner,
         private readonly InstallerJournal $journal,
         private readonly InstallerMutex $mutex,
     ) {}
@@ -55,6 +58,7 @@ class InstallerController extends Controller
                     InstallerPhase::Environment => ['refresh_preflight', 'save_environment'],
                     InstallerPhase::Database => ['save_environment', 'verify_database'],
                     InstallerPhase::Migrations => ['run_migrations'],
+                    InstallerPhase::Owner => ['create_owner'],
                     default => [],
                 },
             ],
@@ -210,6 +214,58 @@ class InstallerController extends Controller
 
         if ($error !== null) {
             return redirect('/install')->withErrors(['migrations' => $error]);
+        }
+
+        return redirect('/install');
+    }
+
+    public function createOwner(Request $request): RedirectResponse
+    {
+        try {
+            $error = $this->mutex->run(function () use ($request): ?string {
+                $phase = $this->status->snapshot()['phase'];
+                $journal = $this->journal->read();
+                $recordedOwnerId = $journal['owner_user_id'] ?? null;
+                $recordedRetry = $phase === InstallerPhase::Operations && is_int($recordedOwnerId);
+
+                if ($phase !== InstallerPhase::Owner && ! $recordedRetry) {
+                    return 'Initial owner creation is not available in the current installer phase.';
+                }
+
+                try {
+                    $owner = $this->initialOwner->create($request->only([
+                        'name',
+                        'email',
+                        'workspace_name',
+                        'password',
+                        'password_confirmation',
+                    ]));
+                } catch (RuntimeException) {
+                    return 'Existing users or ownership data do not match this installer request.';
+                }
+
+                if ($recordedRetry && $recordedOwnerId !== $owner->id) {
+                    return 'Existing ownership data do not match the recorded installer owner.';
+                }
+
+                $next = $journal;
+                $next['phase'] = InstallerPhase::Operations->value;
+                $next['owner_user_id'] = $owner->id;
+                $next['owner_created_at'] = isset($journal['owner_created_at']) && is_string($journal['owner_created_at'])
+                    ? $journal['owner_created_at']
+                    : now()->toIso8601String();
+                $this->journal->replace($next);
+
+                return null;
+            });
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            $error = 'Initial owner account could not be created safely.';
+        }
+
+        if ($error !== null) {
+            return redirect('/install')->withErrors(['owner' => $error]);
         }
 
         return redirect('/install');
