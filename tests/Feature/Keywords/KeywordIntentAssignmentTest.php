@@ -4,7 +4,6 @@ namespace Tests\Feature\Keywords;
 
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordIntent;
-use App\Models\ActivityEvent;
 use App\Models\Keyword;
 use App\Models\Project;
 use App\Models\User;
