@@ -49,6 +49,10 @@ class StageKeywordImport
                 $keyword = is_scalar($keywordValue) ? trim((string) $keywordValue) : null;
                 $rowErrors = $hasKeywordMapping ? [] : ['keyword_mapping_missing'];
 
+                if ($hasKeywordMapping && ($keyword === null || $keyword === '')) {
+                    $rowErrors[] = 'keyword_required';
+                }
+
                 if ($volumeColumn !== '') {
                     $volumeValue = $row[$volumeColumn] ?? null;
 
