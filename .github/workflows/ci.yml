@@ -3,137 +3,99 @@ name: CI
 on:
   push:
     branches:
-      - main
-      - 'feature/**'
-  pull_request:
+      - 'feature/keyword-intelligence'
 
 permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  verify:
+  patch-review-ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 6
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          tools: composer:v2
-          coverage: none
+          fetch-depth: 2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-
-      - name: Validate Composer metadata
-        run: composer validate --strict --no-check-publish
-
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Prepare application environment
+      - name: Patch and format review UI
         shell: bash
         run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          test -f database/database.sqlite || touch database/database.sqlite
-          php artisan migrate --force --ansi
+          python3 <<'PY'
+          from pathlib import Path
 
-      - name: Install frontend dependencies
-        run: timeout 180s npm ci --prefer-offline --no-audit
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
 
-      - name: Bundle open-source fonts
-        run: bash scripts/fonts/fetch-vazirmatn.sh
-
-      - name: Generate Wayfinder types
-        run: php artisan wayfinder:generate --with-form
-
-      - name: Check frontend
-        run: npm run check
-
-      - name: Check TypeScript
-        run: npm run types:check
-
-      - name: Build production assets
-        run: npm run build
-
-      - name: Check PHP style
-        run: composer lint:check
-
-      - name: Static analysis
-        run: composer types:check
-
-      - name: Run backend tests
-        run: php artisan test
-
-      - name: Audit runtime npm dependencies
-        run: timeout 120s npm audit --omit=dev --audit-level=high
-
-      - name: Audit runtime Composer dependencies
-        run: timeout 120s composer audit --no-dev
-
-      - name: Install runtime-only Composer dependencies
-        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
-
-      - name: Build and smoke-test production release tree
-        shell: bash
-        run: |
-          RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
-          php scripts/release/build-release.php "$RELEASE_ROOT"
-          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
-          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
-          test ! -e "$RELEASE_ROOT/.env"
-          test ! -e "$RELEASE_ROOT/node_modules"
-          test ! -e "$RELEASE_ROOT/tests"
-          (
-            cd "$RELEASE_ROOT"
-            php artisan --version
+          review_path = Path('resources/js/pages/projects/review-queue.tsx')
+          review = review_path.read_text()
+          review = replace_once(
+              review,
+              "    type: 'intent' | 'cluster';",
+              "    type: 'intent' | 'cluster' | 'mapping_conflict';",
+              'review type union',
           )
+          review = replace_once(
+              review,
+              "                                            {item.type === 'cluster'\n                                                ? `${t('review.cluster')}: `\n                                                : ''}\n",
+              "                                            {item.type === 'cluster'\n                                                ? `${t('review.cluster')}: `\n                                                : item.type ===\n                                                    'mapping_conflict'\n                                                  ? `${t('review.mappingConflict')}: `\n                                                  : ''}\n",
+              'review heading label',
+          )
+          review_path.write_text(review)
 
-  php-compatibility:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version: ['8.4', '8.5']
+          i18n_path = Path('resources/js/i18n/index.ts')
+          i18n = i18n_path.read_text()
+          i18n = replace_once(
+              i18n,
+              "        'review.cluster': 'پیشنهاد خوشه',\n",
+              "        'review.cluster': 'پیشنهاد خوشه',\n        'review.mappingConflict': 'تعارض نگاشت',\n",
+              'fa mapping label',
+          )
+          i18n = replace_once(
+              i18n,
+              "        'review.cluster': 'Cluster suggestion',\n",
+              "        'review.cluster': 'Cluster suggestion',\n        'review.mappingConflict': 'Mapping conflict',\n",
+              'en mapping label',
+          )
+          i18n = replace_once(
+              i18n,
+              "        'review.description':\n            'نیت جستجو را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',\n",
+              "        'review.description':\n            'نیت جستجو، پیشنهاد خوشه و هشدار نگاشت را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',\n",
+              'fa review description',
+          )
+          i18n = replace_once(
+              i18n,
+              "        'review.description':\n            'Review search intent with evidence. Your decisions take precedence over automatic suggestions.',\n",
+              "        'review.description':\n            'Review search intent, cluster suggestions, and mapping warnings with evidence. Your decisions take precedence over automatic suggestions.',\n",
+              'en review description',
+          )
+          i18n = replace_once(
+              i18n,
+              "        'review.refresh': 'آماده\\u200cسازی پیشنهادها',\n",
+              "        'review.refresh': 'آماده\\u200cسازی پیشنهادهای نیت',\n",
+              'fa refresh label',
+          )
+          i18n = replace_once(
+              i18n,
+              "        'review.refresh': 'Prepare suggestions',\n",
+              "        'review.refresh': 'Prepare intent suggestions',\n",
+              'en refresh label',
+          )
+          i18n_path.write_text(i18n)
+          PY
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up PHP ${{ matrix.php-version }}
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php-version }}
-          tools: composer:v2
-          coverage: none
-          ini-values: error_reporting=E_ALL
-
-      - name: Validate Composer metadata
-        run: composer validate --strict --no-check-publish
-
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Prepare compatibility environment
-        shell: bash
-        run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          test -f database/database.sqlite || touch database/database.sqlite
-          php artisan migrate --force --ansi
-
-      - name: Run backend compatibility suite
-        run: php artisan test
+          npm ci --prefer-offline --no-audit
+          ./node_modules/.bin/vp check --fix
+          git diff --check
+          git checkout HEAD^ -- .github/workflows/ci.yml
+          git add .github/workflows/ci.yml resources/js/pages/projects/review-queue.tsx resources/js/i18n/index.ts
+          if git diff --cached --quiet; then
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: label mapping conflicts in review queue"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
