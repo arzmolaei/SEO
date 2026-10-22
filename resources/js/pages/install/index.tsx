@@ -93,7 +93,6 @@ export default function Installer({
 
         router.reload({
             only: ['installer', 'preflight'],
-            preserveScroll: true,
             onStart: () => setIsRefreshing(true),
             onFinish: () => setIsRefreshing(false),
         });
