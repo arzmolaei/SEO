@@ -128,7 +128,7 @@ class QueryKeywordIntelligenceWorkspace
     }
 
     /**
-     * @param list<int> $keywordIds
+     * @param  list<int>  $keywordIds
      * @return array<int,array<string,KeywordMetric>>
      */
     private function latestMetrics(array $keywordIds): array

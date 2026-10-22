@@ -19,7 +19,7 @@ class UpdateKeywordClusterPlanning
     public function __construct(private ProjectPolicy $policy) {}
 
     /**
-     * @param array{review_state?: ClusterReviewState, business_relevance?: int|null} $changes
+     * @param  array{review_state?: ClusterReviewState, business_relevance?: int|null}  $changes
      */
     public function handle(User $actor, Project $project, KeywordCluster $cluster, array $changes): ?ChangeSet
     {
