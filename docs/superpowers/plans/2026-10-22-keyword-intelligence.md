@@ -113,11 +113,11 @@
 
 **Produces:** deterministic, explainable first-stage clustering without AI/SERP dependency.
 
-- [ ] RED tests for shared-token/normalized Persian phrase grouping, stop-word-safe behavior, unrelated keyword separation and deterministic output.
-- [ ] RED apply tests that locked clusters/manual moves are preserved and rerun is idempotent.
-- [ ] Implement candidate generation with explicit evidence/score, then transactional apply service.
-- [ ] Queue medium/low-confidence cluster decisions as review items.
-- [ ] Full CI GREEN and commit `feat: add deterministic clustering engine`.
+- [x] RED tests for shared-token/normalized Persian phrase grouping, stop-word-safe behavior, unrelated keyword separation and deterministic output.
+- [x] RED apply tests that locked clusters/manual moves are preserved and rerun is idempotent.
+- [x] Implement candidate generation with explicit evidence/score, then transactional apply service.
+- [x] Queue medium/low-confidence cluster decisions as review items.
+- [x] Full CI GREEN and commit `feat: add deterministic clustering engine`.
 
 ### Task 6 — Cluster operations: merge, split, move, lock
 
