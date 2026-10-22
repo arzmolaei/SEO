@@ -2,6 +2,10 @@
 
 namespace App\Support;
 
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+
 final class ReleasePackageContract
 {
     /** @var list<string> */
@@ -53,8 +57,8 @@ final class ReleasePackageContract
             }
         }
 
-        if (glob($root.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'*.key') !== []) {
-            $forbidden[] = 'storage/*.key';
+        if ($this->containsPrivateKey($root.DIRECTORY_SEPARATOR.'storage')) {
+            $forbidden[] = 'storage/**/*.key';
         }
 
         return [
@@ -62,5 +66,24 @@ final class ReleasePackageContract
             'missing' => $missing,
             'forbidden' => $forbidden,
         ];
+    }
+
+    private function containsPrivateKey(string $storagePath): bool
+    {
+        if (! is_dir($storagePath)) {
+            return false;
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($storagePath, FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isFile() && strtolower($item->getExtension()) === 'key') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
