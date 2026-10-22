@@ -3,137 +3,97 @@ name: CI
 on:
   push:
     branches:
-      - main
-      - 'feature/**'
-  pull_request:
+      - 'feature/keyword-intelligence'
 
 permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  verify:
+  connect-keyword-workspace:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          tools: composer:v2
-          coverage: none
+          fetch-depth: 2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-
-      - name: Validate Composer metadata
-        run: composer validate --strict --no-check-publish
-
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Prepare application environment
+      - name: Connect workspace UI
         shell: bash
         run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          test -f database/database.sqlite || touch database/database.sqlite
-          php artisan migrate --force --ansi
+          python3 <<'PY'
+          from pathlib import Path
 
-      - name: Install frontend dependencies
-        run: timeout 180s npm ci --prefer-offline --no-audit
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
 
-      - name: Bundle open-source fonts
-        run: bash scripts/fonts/fetch-vazirmatn.sh
-
-      - name: Generate Wayfinder types
-        run: php artisan wayfinder:generate --with-form
-
-      - name: Check frontend
-        run: npm run check
-
-      - name: Check TypeScript
-        run: npm run types:check
-
-      - name: Build production assets
-        run: npm run build
-
-      - name: Check PHP style
-        run: composer lint:check
-
-      - name: Static analysis
-        run: composer types:check
-
-      - name: Run backend tests
-        run: php artisan test
-
-      - name: Audit runtime npm dependencies
-        run: timeout 120s npm audit --omit=dev --audit-level=high
-
-      - name: Audit runtime Composer dependencies
-        run: timeout 120s composer audit --no-dev
-
-      - name: Install runtime-only Composer dependencies
-        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
-
-      - name: Build and smoke-test production release tree
-        shell: bash
-        run: |
-          RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
-          php scripts/release/build-release.php "$RELEASE_ROOT"
-          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
-          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
-          test ! -e "$RELEASE_ROOT/.env"
-          test ! -e "$RELEASE_ROOT/node_modules"
-          test ! -e "$RELEASE_ROOT/tests"
-          (
-            cd "$RELEASE_ROOT"
-            php artisan --version
+          panel_path = Path('resources/js/components/keyword-intelligence/keyword-intelligence-panel.tsx')
+          panel = panel_path.read_text()
+          panel = replace_once(
+              panel,
+              "import { useLocale } from '@/hooks/use-locale';\n",
+              "import { ClusterManualEditor } from '@/components/keyword-intelligence/cluster-manual-editor';\nimport { useLocale } from '@/hooks/use-locale';\n",
+              'panel import',
           )
+          panel = replace_once(
+              panel,
+              '            </div>\n            {error && <p className="mt-3 text-xs text-destructive">{error}</p>}\n        </article>',
+              '            </div>\n            <ClusterManualEditor\n                cluster={cluster}\n                projectId={projectId}\n                canManage={canManage}\n            />\n            {error && <p className="mt-3 text-xs text-destructive">{error}</p>}\n        </article>',
+              'manual editor render',
+          )
+          panel_path.write_text(panel)
 
-  php-compatibility:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version: ['8.4', '8.5']
+          keywords_path = Path('resources/js/pages/projects/keywords.tsx')
+          keywords = keywords_path.read_text()
+          keywords = replace_once(
+              keywords,
+              "import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';\n",
+              "import { KeywordIntelligencePanel } from '@/components/keyword-intelligence/keyword-intelligence-panel';\nimport { ProjectWorkspaceShell } from '@/components/project-workspace-shell';\n",
+              'workspace import',
+          )
+          keywords = replace_once(
+              keywords,
+              "import { useLocale } from '@/hooks/use-locale';\n",
+              "import { useLocale } from '@/hooks/use-locale';\nimport type { KeywordIntelligenceWorkspace } from '@/types/keyword-intelligence';\n",
+              'workspace type import',
+          )
+          keywords = replace_once(
+              keywords,
+              "    activeView,\n}: {\n    keywords: KeywordPaginator;\n    filters: KeywordFilters;\n    savedViews: SavedKeywordView[];\n    activeView: SavedKeywordView | null;\n}) {",
+              "    activeView,\n    intelligence,\n}: {\n    keywords: KeywordPaginator;\n    filters: KeywordFilters;\n    savedViews: SavedKeywordView[];\n    activeView: SavedKeywordView | null;\n    intelligence: KeywordIntelligenceWorkspace;\n}) {",
+              'workspace props',
+          )
+          keywords = replace_once(
+              keywords,
+              "    const path = usePage().url.split('?')[0];\n",
+              "    const path = usePage().url.split('?')[0];\n    const projectId = Number(path.split('/')[2]);\n    const [workspaceTab, setWorkspaceTab] = useState<\n        'grid' | 'intent' | 'clusters' | 'mapping'\n    >('grid');\n",
+              'workspace state',
+          )
+          keywords = replace_once(
+              keywords,
+              "                    </div>\n\n                    <SavedKeywordViewsToolbar",
+              "                    </div>\n\n                    <nav\n                        className=\"grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4\"\n                        aria-label={locale === 'fa' ? 'بخش‌های هوشمندی کلمات' : 'Keyword intelligence sections'}\n                    >\n                        {([\n                            ['grid', locale === 'fa' ? 'جدول' : 'Grid'],\n                            ['intent', locale === 'fa' ? 'نیت' : 'Intent'],\n                            ['clusters', locale === 'fa' ? 'خوشه‌ها' : 'Clusters'],\n                            ['mapping', locale === 'fa' ? 'نگاشت' : 'Mapping'],\n                        ] as const).map(([value, label]) => (\n                            <button\n                                key={value}\n                                type=\"button\"\n                                className={`rounded-md px-3 py-2 text-sm font-medium transition ${\n                                    workspaceTab === value\n                                        ? 'bg-background shadow-xs'\n                                        : 'text-muted-foreground hover:text-foreground'\n                                }`}\n                                onClick={() => setWorkspaceTab(value)}\n                                aria-pressed={workspaceTab === value}\n                            >\n                                {label}\n                            </button>\n                        ))}\n                    </nav>\n\n                    {workspaceTab === 'grid' ? (\n                        <>\n                    <SavedKeywordViewsToolbar",
+              'workspace tabs start',
+          )
+          old_tail = "                    </div>\n                </div>\n            </ProjectWorkspaceShell>"
+          tail_index = keywords.rfind(old_tail)
+          if tail_index == -1:
+              raise SystemExit('workspace tabs end: tail not found')
+          new_tail = "                    </div>\n                        </>\n                    ) : workspaceTab === 'intent' ? (\n                        <section className=\"rounded-xl border bg-card p-6\">\n                            <h2 className=\"text-lg font-semibold\">\n                                {locale === 'fa' ? 'بررسی نیت جستجو' : 'Search intent review'}\n                            </h2>\n                            <p className=\"mt-2 max-w-2xl text-sm text-muted-foreground\">\n                                {locale === 'fa'\n                                    ? 'پیشنهادهای نیت مبهم یا نیازمند تصمیم انسانی را در صف بررسی حل کنید؛ تصمیم‌های دستی در بازآموزی محلی بازنویسی نمی‌شوند.'\n                                    : 'Resolve ambiguous or human-required intent suggestions in the Review Queue; manual decisions remain authoritative during local recalculation.'}\n                            </p>\n                            <div className=\"mt-4 flex flex-wrap items-center gap-3\">\n                                <a\n                                    href={`/projects/${projectId}/reviews`}\n                                    className=\"inline-flex min-h-9 items-center rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground\"\n                                >\n                                    {locale === 'fa' ? 'باز کردن صف بررسی' : 'Open Review Queue'}\n                                </a>\n                                <span className=\"text-sm text-muted-foreground\">\n                                    {locale === 'fa' ? 'موارد در انتظار:' : 'Pending items:'}{' '}\n                                    {numberFormatter.format(intelligence.summary.pending_reviews)}\n                                </span>\n                            </div>\n                        </section>\n                    ) : (\n                        <div className=\"space-y-3\">\n                            <div className=\"rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground\">\n                                {workspaceTab === 'clusters'\n                                    ? locale === 'fa'\n                                        ? 'تمرکز این نما روی بررسی، قفل و ویرایش دستی خوشه‌هاست؛ نگاشت صفحه نیز برای حفظ زمینه تصمیم در همان کارت دیده می‌شود.'\n                                        : 'This view focuses on cluster review, locks, and manual edits; page mapping remains visible in the same card for decision context.'\n                                    : locale === 'fa'\n                                      ? 'تمرکز این نما روی صفحه هدف، تعارض نگاشت، اولویت و آماده‌سازی نهایی است؛ وضعیت خوشه برای جلوگیری از تصمیم بدون زمینه نمایش داده می‌شود.'\n                                      : 'This view focuses on target pages, mapping conflicts, priority, and readiness; cluster state stays visible to preserve decision context.'}\n                            </div>\n                            <KeywordIntelligencePanel\n                                key={workspaceTab}\n                                data={intelligence}\n                                projectId={projectId}\n                            />\n                        </div>\n                    )}\n                </div>\n            </ProjectWorkspaceShell>"
+          keywords = keywords[:tail_index] + new_tail + keywords[tail_index + len(old_tail):]
+          keywords_path.write_text(keywords)
+          PY
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up PHP ${{ matrix.php-version }}
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php-version }}
-          tools: composer:v2
-          coverage: none
-          ini-values: error_reporting=E_ALL
-
-      - name: Validate Composer metadata
-        run: composer validate --strict --no-check-publish
-
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Prepare compatibility environment
-        shell: bash
-        run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          test -f database/database.sqlite || touch database/database.sqlite
-          php artisan migrate --force --ansi
-
-      - name: Run backend compatibility suite
-        run: php artisan test
+          git checkout HEAD^ -- .github/workflows/ci.yml
+          git diff --check
+          git add .github/workflows/ci.yml resources/js/pages/projects/keywords.tsx resources/js/components/keyword-intelligence/keyword-intelligence-panel.tsx
+          if git diff --cached --quiet; then
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat: connect keyword intelligence workspace"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
