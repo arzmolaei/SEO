@@ -5,8 +5,8 @@ namespace App\Domain\Keywords;
 final readonly class KeywordIntentClassification
 {
     /**
-     * @param list<string> $matchedRuleIds
-     * @param list<string> $evidence
+     * @param  list<string>  $matchedRuleIds
+     * @param  list<string>  $evidence
      */
     public function __construct(
         public string $originalText,
@@ -15,8 +15,7 @@ final readonly class KeywordIntentClassification
         public IntentConfidence $confidence,
         public array $matchedRuleIds,
         public array $evidence,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{

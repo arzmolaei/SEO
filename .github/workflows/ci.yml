@@ -30,12 +30,110 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Diagnose intent PHP style
+      - name: Prepare application environment
         shell: bash
         run: |
-          vendor/bin/pint app/Domain/Keywords/IntentRule.php app/Domain/Keywords/KeywordIntentClassification.php
-          git diff -- app/Domain/Keywords/IntentRule.php app/Domain/Keywords/KeywordIntentClassification.php
-          exit 1
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+
+      - name: Install frontend dependencies
+        run: timeout 180s npm ci --prefer-offline --no-audit
+
+      - name: Bundle open-source fonts
+        run: bash scripts/fonts/fetch-vazirmatn.sh
+
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
+
+      - name: Check frontend
+        run: npm run check
+
+      - name: Check TypeScript
+        run: npm run types:check
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Check PHP style
+        run: composer lint:check
+
+      - name: Static analysis
+        run: composer types:check
+
+      - name: Run backend tests
+        run: php artisan test
+
+      - name: Audit runtime npm dependencies
+        run: timeout 120s npm audit --omit=dev --audit-level=high
+
+      - name: Audit runtime Composer dependencies
+        run: timeout 120s composer audit --no-dev
+
+      - name: Install runtime-only Composer dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
+
+      - name: Build and smoke-test production release tree
+        shell: bash
+        run: |
+          RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
+          php scripts/release/build-release.php "$RELEASE_ROOT"
+          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
+          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
+          test ! -e "$RELEASE_ROOT/.env"
+          test ! -e "$RELEASE_ROOT/node_modules"
+          test ! -e "$RELEASE_ROOT/tests"
+          (
+            cd "$RELEASE_ROOT"
+            php artisan --version
+          )
+
+  php-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+          ini-values: error_reporting=E_ALL
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare compatibility environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+
+      - name: Run backend compatibility suite
+        run: php artisan test

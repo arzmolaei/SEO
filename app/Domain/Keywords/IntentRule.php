@@ -7,7 +7,7 @@ use LogicException;
 final readonly class IntentRule
 {
     /**
-     * @param list<string> $phrases
+     * @param  list<string>  $phrases
      */
     public function __construct(
         public string $id,
@@ -15,8 +15,7 @@ final readonly class IntentRule
         public IntentConfidence $confidence,
         public array $phrases,
         public string $evidence,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $definition */
     public static function fromArray(string $id, array $definition): self
