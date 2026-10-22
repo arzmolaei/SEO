@@ -2,78 +2,114 @@
 
 Checkpoint: 2026-10-22. Repository evidence and current CI always override stale
 chat context. This handoff records the current verified implementation boundary;
-it does not mean the full product is complete.
+it does not mean the full self-host lifecycle is complete.
 
 ## Start here
 
 Read `AGENTS.md`, `docs/PROJECT_STATE.md`, the release-readiness reports,
-`docs/DELIVERY_PLAN.md`, the master product spec and the completed Keyword
-Intelligence progress file. Fetch origin and inspect actual branch/main heads and
-latest CI before changing code.
+`docs/DELIVERY_PLAN.md`, the master product spec and the active subsystem
+spec/plan. Fetch origin and inspect actual `main`, active branch heads and latest CI
+before changing code.
 
 - Repository: `arzmolaei/SEO`.
-- Foundation + Keyword Core: completed, reviewed and merged through PR #1.
-- Keyword Intelligence Tasks **1–11 are implemented and post-review verified**.
-- Post-review implementation boundary:
-  `216a4d2448defdd2f481dcf0beb55dbeeb112f10`.
-- Permanent implementation CI: `39828064083`, success on that exact head.
-- Full backend suite there: **237 tests / 1317 assertions**.
-- PHP 8.4/8.5 compatibility, frontend formatter/TypeScript/build, Pint, PHPStan,
-  runtime npm/Composer audits, runtime-only install and release-tree smoke passed.
-- PR #2 is the single Keyword Intelligence integration PR into `main`. Do not
-  create a duplicate. A fresh permanent CI on the final documentation-complete PR
-  head is the remaining integration gate before merge.
+- Foundation + Keyword Core: completed and merged through PR #1.
+- Keyword Intelligence Tasks 1–11: completed and merged through PR #2.
+- Current stable `main` after Keyword Intelligence:
+  `95bb5a014834590c30ff2562615b050b71c997f0`.
+- Self-host Installer Tasks 1–8: implementation, connected acceptance and review
+  completed on `feature/self-host-installer` through PR #4.
+- Installer implementation evidence before final documentation:
+  `75772ff85cc1eda7da8330af43dc7d89161c8954`, CI `39859189369`, success.
+- PR #4 still requires a fresh permanent CI success on the final
+  documentation-complete head before merge.
 
-If this handoff is read from `main` after PR #2 integration, treat Keyword
-Intelligence as integrated and start the next bounded release-gate work from the
-updated `main`; do not resurrect Tasks 1–11.
+Do not create a duplicate installer PR or restart completed installer tasks.
 
-## Completed Keyword Intelligence slice
+## Completed self-host Installer boundary
 
-### Intent and Review Queue
+The installer is now a browser-driven, resumable and offline-capable host bootstrap,
+not the old health-check-plus-lock placeholder.
 
-Intent assignments keep immutable attributable history. The deterministic Persian
-rule engine is explainable and conservative around ambiguity. Review items are
-project-scoped, stale-safe and idempotent; explicit human decisions outrank
-automatic suggestions. The connected Review Queue handles intent, cluster and
-mapping-conflict items with Persian-first RTL/keyboard behavior.
+### Preflight and environment
 
-### Clustering and manual operations
+- Preflight is database-independent and checks the actual host/runtime floor.
+- Runtime floor is PHP 8.4.1+.
+- Required local extensions, writable paths, disk, assets, APP_KEY and runtime files
+  are checked before DB setup.
+- A missing APP_KEY gets a protected installer runtime key.
+- Browser-managed environment persistence writes production settings atomically and
+  carries that key into durable `.env`.
+- Unknown environment values are preserved; DB passwords are never returned to the
+  browser or installer journal.
 
-Lexical clustering is bounded and deterministic, without AI/SERP dependency.
-Locked/manual state survives recalculation. Merge/split/move/lock operations are
-service-owned, transactional, project-authorized, audited and revision-safe for
-Undo. The connected UI uses only those HTTP/application boundaries and requires
-explicit primary replacement when a mutation would otherwise invalidate a cluster.
+### Database and migrations
 
-### Pages, mapping and conflict review
+- Initial production DB support is MySQL/MariaDB.
+- Database verification performs a real capability probe and returns stable,
+  sanitized error codes rather than raw credential-bearing exceptions.
+- Verified identity is represented by a non-secret fingerprint.
+- Migrations use Laravel services in-process, not a shell command.
+- Pending state is derived from the real migration repository; interruption and
+  retry run only remaining work.
 
-Existing/planned Page entities and stable planned→existing promotion are in place.
-Cluster mapping retains history/revisions and rejects cross-project targets.
-Conflict detection is deterministic and evidence-based: warnings never silently
-change targets. Resolved evidence stays closed until material evidence changes;
-stale acknowledgements fail.
+### First owner and authentication
 
-### Priority and Ready
+- Installer creates exactly one initial owner, workspace and owner membership.
+- The owner is verified and onboarded during bootstrap so successful finalization
+  enters the real dashboard rather than a placeholder onboarding page.
+- Lost-response identical retries are idempotent; changed duplicate identity is
+  rejected safely.
+- Installer password rules are strong but local/offline-safe.
+- Public registration is disabled by default for installed self-host deployments.
 
-Priority uses only known local signals and exposes evidence/data completeness.
-Missing metrics remain missing. Ready requires current review completion plus an
-explicit target (including explicit Ignore). Material remaps, cluster mutations or
-new/reopened required reviews invalidate stale Ready back to Planning.
+### Queue and scheduler activation
 
-### Connected acceptance and final review
+- Scheduler health uses an observed local heartbeat.
+- Queue health uses a real database queue probe job.
+- Persian UI shows exact shared-host scheduler and bounded queue worker cron
+  commands.
+- Missing external execution evidence is a warning that requires explicit operator
+  acknowledgement; a demonstrable failure is blocking and cannot be acknowledged
+  away.
+- The installer no longer claims queue/scheduler health from configuration alone.
 
-The existing server-side Keyword Grid remains intact and is connected to Intent,
-Clusters and Mapping entry points. `intelligence.project_id` is explicit rather
-than inferred from URL structure. Manual cluster search/edit controls have explicit
-busy/error/no-result states. Whole-branch review fixed the frontend
-`mapping_conflict` contract/label mismatch and rechecked authorization,
-idempotency, lock/manual override preservation, stale decisions, revision-safe
-Undo and silent-remap risks. No open PR review threads remained at the post-review
-boundary.
+### Finalization and lock
 
-Detailed evidence: `docs/release-readiness/keyword-intelligence.md` and
-`docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
+- Finalization revalidates current preflight, persistent APP_KEY, database identity,
+  migrations, owner membership and operational evidence.
+- `.installed` is written last and contains only versioned non-secret metadata.
+- Failed lock write leaves the installer recoverable and does not authenticate the
+  owner.
+- Successful finalization uses a persistent database session, logs the owner in,
+  clears transient installer state and redirects to the dashboard.
+- After the install lock exists, every installer route is inaccessible.
+
+### Connected release acceptance
+
+Permanent CI run `39859189369` on
+`75772ff85cc1eda7da8330af43dc7d89161c8954` passed:
+
+- MariaDB 10.11 connected installer acceptance;
+- PHP 8.4 and 8.5 compatibility;
+- frontend formatter/lint, TypeScript and production build;
+- Pint and PHPStan/Larastan;
+- normal backend suite: **310 passed, 1 connected-only skip, 1853 assertions**;
+- runtime npm and Composer audits;
+- runtime-only Composer install;
+- release-tree build and actual HTTP `/install` smoke with no `.env`, Node/npm,
+  tests or development Composer packages on the runtime tree.
+
+The connected flow covers clean install, refresh/retry, real DB verification,
+real migrations, owner retry after simulated response loss, operational warning
+acknowledgement, finalization, login, dashboard entry, lock metadata and installer
+lockdown.
+
+A first MariaDB diagnostic found one genuine bug: all installer POSTs shared a
+single `6/min` bucket and a legitimate install could hit HTTP 429. The final design
+uses a named limiter scoped by IP plus endpoint path; connected acceptance passed
+after that fix. The temporary diagnostic workflow was removed.
+
+Detailed evidence: `docs/release-readiness/self-host-installer.md`.
 
 ## Critical invariants that carry forward
 
@@ -82,50 +118,44 @@ Detailed evidence: `docs/release-readiness/keyword-intelligence.md` and
 - Every project resource query/mutation remains project-scoped and authorized.
 - Automation never recalculates through explicit locks/manual overrides.
 - Mapping warnings are reviewable signals, never silent target mutations.
-- Cluster/mapping/page changes retain revision/history semantics; old Undo must not
-  erase later material decisions.
-- `PromotePageTargets` uses Laravel event autodiscovery only; do not manually
-  register it and duplicate execution.
 - Ready is derived from current evidence, not a permanent badge.
+- Installer journal/lock metadata stays non-secret; secrets belong only in required
+  durable configuration such as protected `.env`.
+- Finalization never trusts a journal marker in place of current truth.
+- Queue/scheduler verification requires observed evidence; true failures block.
 - Core self-host workflows remain independent of international API/AI/SERP/CDN
   availability.
 - Commercial font binaries, `.env`, secrets and local fixtures stay ignored.
 
-## Exact next delivery phase after PR #2
+## Exact next lifecycle work after PR #4
 
-Do **not** jump directly to crawler/SERP/AI. Follow `docs/DELIVERY_PLAN.md` and
-write a bounded implementation plan for the first usable self-host release gate.
-The required operational acceptance still includes:
+After PR #4 receives final-head CI success and is merged, continue the first usable
+self-host lifecycle gate in this order:
 
-1. clean runtime-only package and supported environment checks;
-2. real fresh browser installation, first owner, installer lock and health;
-3. normal Project -> import -> keyword intelligence workflow;
-4. real Persian project export with access isolation;
-5. backup of database/uploads/settings with versioned checksum manifest;
-6. restore into a clean installation and verify auth/SEO data;
-7. safe update from preceding release with backup/migrations/health;
-8. interrupted/failed update recovery and rollback on real fixtures;
-9. queue/scheduler failure visibility and self-host instructions;
-10. no dead UI represented as delivered functionality.
+1. **Persian Export** — real project data, UTF-8/Persian correctness, bounded
+   streaming and strict access isolation.
+2. **Backup + Restore** — database, uploads and durable settings with a versioned
+   checksum manifest; clean restore must verify users, authorization and SEO data.
+3. **Update + interrupted recovery/rollback** — compatibility, mandatory backup,
+   migrations, health, failure recovery and rollback on real fixtures.
+4. **Final lifecycle acceptance** — clean package install -> real project/import/
+   intelligence workflow -> export -> backup/restore -> update/recovery ->
+   operational health.
 
-Installer/health/release _foundations_ already exist but do not satisfy these
-acceptance gates. Inspect current implementation before choosing the first bounded
-operational task; reuse foundations rather than rebuilding them.
+Do not move to Site Intelligence/crawler, technical crawling, Search Console,
+SERP, AI or vector features until that lifecycle gate is trustworthy.
 
-Only after the operational release gate is deliberately implemented/verified move
-to Site Intelligence/crawler -> technical issues/history -> content/tasks/internal
-linking -> performance/opportunities/recommendations.
+Persian Export is a genuinely new bounded subsystem. Follow the required
+architecture/design/spec review process before implementation rather than silently
+skipping those artifact gates.
 
 ## Engineering protocol
 
-Use RED → correct RED → minimal GREEN → refactor → meaningful focused verification
-→ permanent final-head CI → semantic commit/push. Diagnose failures before changing
-code. Never force-push, overwrite unexpected history, weaken gates, remove a valid
-regression test or infer success from a cancelled/older run. Continue task-by-task
-without routine user confirmation.
-
-The actual runtime floor is **PHP ^8.4.1**. Older PHP 8.3 references are stale and
-must not be advertised as verified compatibility.
+Use RED -> correct RED -> minimal GREEN -> refactor -> meaningful focused
+verification -> permanent final-head CI -> semantic commit/push. Diagnose failures
+before changing code. Never force-push, overwrite unexpected history, weaken gates,
+remove a valid regression test or infer success from a cancelled/older run. Continue
+task-by-task without routine user confirmation.
 
 If execution is externally interrupted, record the last verified SHA/CI and exact
 first unfinished behavior in Git. Resume from repository evidence instead of

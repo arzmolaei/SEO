@@ -8,29 +8,91 @@ Git disagree. Git + CI win.**
 
 ## Stable baseline
 
-- Repository: `arzmolaei/SEO`
-- Stable branch: `main`
+- Repository: `arzmolaei/SEO`.
+- Stable branch: `main`.
 - Foundation + Keyword Core was reviewed and merged through PR #1.
-- Keyword Intelligence is implemented/reviewed on
-  `feature/keyword-intelligence` and carried by integration PR #2.
+- Keyword Intelligence was reviewed and merged through PR #2.
+- Current `main` baseline after Keyword Intelligence:
+  `95bb5a014834590c30ff2562615b050b71c997f0`.
+- Active integration branch: `feature/self-host-installer` through PR #4.
 - Never develop directly on `main`, reset an active branch, force-push over
-  unexpected movement, or create a duplicate subsystem PR.
+  unexpected movement or create a duplicate subsystem PR.
 
 Always fetch current heads and exact-head CI before new code. Recorded hashes are
 evidence, not permission to assume Git has not moved.
 
-## Completed vertical slice: Foundation + Keyword Core
+## Completed product slices
 
-This slice is complete and reviewed. Do **not** reimplement it.
+### Foundation + Keyword Core
 
-Implemented and verified foundations include Laravel 13 + Inertia/React/TypeScript,
+Complete and integrated. The slice includes Laravel 13 + Inertia/React/TypeScript,
 Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation,
 Project shell, Persian keyword normalization preserving original source text,
 streaming/resumable keyword import, canonical keyword/provenance/metric history,
 server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo,
-installer/System Health foundations, allowlist-first runtime release packaging and
-connected foundation acceptance. See
-`docs/release-readiness/foundation-keyword-core.md` for detailed evidence.
+allowlist-first runtime release packaging and connected foundation acceptance.
+
+Detailed evidence: `docs/release-readiness/foundation-keyword-core.md`.
+
+### Keyword Intelligence
+
+Complete and integrated. Tasks 1–11 provide intent history, deterministic Persian
+classification, project-scoped Review Queue, relational/reversible clusters,
+manual merge/split/move/lock with safe Undo, existing/planned Pages, mapping
+history, deterministic mapping-conflict review, explainable local priority and the
+connected Grid/Intent/Clusters/Mapping workspace.
+
+Keyword Intelligence never introduced crawler, SERP, vector or AI dependencies.
+Manual decisions/locks survive recalculation and core workflows stay usable without
+international APIs.
+
+Detailed evidence: `docs/release-readiness/keyword-intelligence.md`.
+
+### Self-host Installer — implementation and acceptance complete
+
+Tasks 1–8 are implemented, connected-acceptance verified and whole-branch reviewed
+on `feature/self-host-installer`. Do not restart the installer plan from stale chat.
+
+Implementation evidence before the final documentation commits:
+
+- implementation SHA: `75772ff85cc1eda7da8330af43dc7d89161c8954`;
+- permanent CI: `39859189369` — success;
+- PHP 8.4 and PHP 8.5 compatibility: success;
+- normal backend suite: **310 passed, 1 connected-only skip, 1853 assertions**;
+- MariaDB 10.11 connected installer acceptance: success;
+- frontend formatter/lint, TypeScript and production build: success;
+- Pint and PHPStan/Larastan: success;
+- runtime npm and Composer security audits: success;
+- runtime-only Composer install: success;
+- release-tree build and real HTTP `/install` smoke: success.
+
+The installer now provides:
+
+1. DB-independent host preflight with PHP 8.4.1+ and local runtime checks;
+2. browser-managed production environment and persistent APP_KEY;
+3. real MySQL/MariaDB capability verification with sanitized failures;
+4. resumable in-process Laravel migrations without shell commands;
+5. exactly-once first owner/workspace bootstrap with local password rules;
+6. public registration disabled by default after self-host bootstrap;
+7. scheduler heartbeat, real database queue probe and shared-host cron commands;
+8. explicit acknowledgement for unobserved external execution while true failures
+   remain blocking;
+9. final revalidation of current truth rather than journal markers alone;
+10. `.installed` lock written last, owner authenticated and installer routes locked;
+11. endpoint-scoped installer throttling that does not break a normal multi-step
+    installation;
+12. a runtime-only release package whose installer boots without Node/npm/Composer
+    on the production host.
+
+The first MariaDB diagnostic exposed a shared-throttle 429 regression during normal
+installation; it was fixed with a named endpoint-scoped limiter and the permanent
+MariaDB acceptance subsequently passed.
+
+Detailed evidence: `docs/release-readiness/self-host-installer.md`.
+
+PR #4 must still receive a fresh permanent CI success on the final
+documentation-complete SHA before merge. Older green evidence does not replace that
+gate.
 
 ## Fonts / self-host rule
 
@@ -41,77 +103,25 @@ connected foundation acceptance. See
   files are installed into the ignored private-font directory.
 - Core runtime must not depend on an international font/CDN request.
 
-## Keyword Intelligence — completed implementation boundary
+## Exact next lifecycle work
 
-Keyword Intelligence Tasks **1–11 are implemented and post-review verified**.
-Do not restart Task 9, Task 10 or Task 11 from stale plans/chat.
+After PR #4 final-head CI and merge, the first usable self-host lifecycle gate
+continues in this order:
 
-Post-review implementation evidence:
+1. **Persian Export** — real project data, UTF-8/Persian correctness, streaming and
+   project/access isolation.
+2. **Backup + Restore** — database, uploads and settings with a versioned checksum
+   manifest; restore into a clean installation and verify users, authorization and
+   SEO data.
+3. **Update + interrupted recovery/rollback** — compatibility checks, mandatory
+   pre-update backup, migrations, health, interruption/failure recovery and real
+   rollback fixtures.
+4. **Final lifecycle acceptance** — clean release install -> real project/import/
+   intelligence workflow -> export -> backup/restore -> update/recovery ->
+   operational health.
 
-- implementation SHA: `216a4d2448defdd2f481dcf0beb55dbeeb112f10`
-- permanent CI: `39828064083` — success
-- full backend suite: **237 tests / 1317 assertions**
-- PHP 8.4 + 8.5 compatibility: success
-- frontend formatter/check, TypeScript and production build: success
-- Pint + PHPStan: success
-- runtime npm/Composer security audits: success
-- runtime-only Composer install and production release-tree smoke: success
-
-The connected slice now provides:
-
-1. attributed intent assignment and immutable override history;
-2. deterministic/explainable Persian rule-based intent classification;
-3. project-scoped Review Queue with stale-evidence protection;
-4. cluster domain/membership and primary-member invariants;
-5. deterministic lexical candidate generation/application with bounded grouping;
-6. merge/split/move/lock plus revision-safe attributed Undo;
-7. existing/planned Page entities and stable page promotion;
-8. one current cluster target with mapping history/revision protection;
-9. deterministic mapping-conflict review without silent remapping;
-10. explainable local priority scoring and guarded `planning|ready` lifecycle;
-11. connected Grid/Intent/Clusters/Mapping workspace and vertical acceptance.
-
-The existing server-side Keyword Grid remains performance-oriented and is not
-replaced by an unbounded client dataset. Manual cluster controls use only existing
-project-scoped service boundaries. Mapping conflicts are explicitly labelled in
-the Review Queue. The client receives explicit project identity rather than
-inferring it from URL structure.
-
-PR #2 is the single integration vehicle. Merge only after a fresh permanent CI on
-the final documentation-complete branch head. If this file is read from `main`
-after that integration, Keyword Intelligence is integrated and no longer active
-work.
-
-Detailed evidence lives in `docs/release-readiness/keyword-intelligence.md` and
-`docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
-
-## Exact next implementation phase
-
-After PR #2 integrates, create a new bounded branch/plan from updated `main` for
-the **first usable self-host release gate**. Do not start Site Intelligence/crawler,
-SERP, AI or vector work before deliberately addressing the operational gate.
-
-Required release acceptance still includes:
-
-- clean runtime-only package and supported environment checks;
-- fresh browser installation, first owner, installer lock and system health;
-- normal Project -> import -> keyword intelligence workflow;
-- real Persian project export with access isolation;
-- backup database/uploads/settings with a versioned checksum manifest;
-- restore into a clean install and verify users, authorization and SEO data;
-- safe update from a preceding release with backup/migrations/health;
-- interrupted/failed update recovery and rollback on real fixtures;
-- queue/scheduler failure visibility and self-host operational instructions;
-- no dead UI/actions represented as completed modules.
-
-Installer/System Health/release packaging foundations already exist. Inspect and
-reuse them; they do **not** by themselves satisfy backup/restore/update or fresh
-installation acceptance.
-
-Only after the operational release gate is verified continue the master product
-phases: Site Intelligence/crawler -> technical issues/history -> content/tasks/
-internal linking -> performance/opportunities/recommendations -> full operational
-release acceptance. External APIs/CMS/AI remain optional integrations.
+Do not start Site Intelligence/crawler, Search Console, SERP, AI or vector work
+before that lifecycle gate is deliberately completed.
 
 ## Mandatory continuation protocol
 
@@ -119,23 +129,25 @@ Before changing code in a new agent/session:
 
 1. Read `AGENTS.md`.
 2. Read this file and `docs/HANDOFF.md` completely.
-3. Read release readiness, `docs/DELIVERY_PLAN.md`, master spec and current active
-   plan/progress.
-4. Fetch current `main` and active branch heads plus current CI.
-5. Use a new branch only for the genuinely next subsystem after PR #2 integration.
+3. Read release readiness, `docs/DELIVERY_PLAN.md`, master spec and the current
+   active spec/plan.
+4. Fetch current `main`, active branch heads and current CI.
+5. Continue only the genuinely next subsystem; do not resurrect completed tasks.
 6. Use TDD for bounded behavior: RED -> correct GREEN -> refactor -> verification.
 7. Keep permanent CI gates intact; diagnostic workflows must not survive as a
    weakened pipeline.
 8. Update durable state at verified subsystem boundaries.
 9. Do not stop for routine user confirmation; continue autonomously task-by-task.
+10. Required architecture/spec review gates for a genuinely new subsystem still
+    apply; standing autonomy does not falsify artifact approval.
 
 ## Definition of trustworthy progress
 
 Code existence is not completion. Applicable formatter/lint, TypeScript, production
 frontend build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits,
 authorization/isolation coverage, connected acceptance and release/runtime smoke
-must be green. CI must correspond to the current final head; older/cancelled runs
-are not proof.
+must be green. CI must correspond to the current final head; older, cancelled or
+stale runs are not proof.
 
 The actual runtime floor is **PHP 8.4.1+**. Older PHP 8.3 references are stale and
 must not be advertised as verified compatibility.

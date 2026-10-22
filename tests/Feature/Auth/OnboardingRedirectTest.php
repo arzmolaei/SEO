@@ -12,6 +12,8 @@ class OnboardingRedirectTest extends TestCase
 
     public function test_new_registration_redirects_to_onboarding(): void
     {
+        config(['installer.public_registration' => true]);
+
         $response = $this->post(route('register.store'), [
             'name' => 'SEO Owner',
             'email' => 'owner@example.com',

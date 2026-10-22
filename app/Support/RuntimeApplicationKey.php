@@ -12,8 +12,8 @@ class RuntimeApplicationKey
             return;
         }
 
-        $path = storage_path('app/installer/runtime-app-key');
-        $key = is_file($path) ? trim((string) file_get_contents($path)) : '';
+        $path = $this->path();
+        $key = is_file($path) ? $this->readFallback($path) : '';
 
         if ($key === '') {
             $directory = dirname($path);
@@ -32,5 +32,57 @@ class RuntimeApplicationKey
         }
 
         config(['app.key' => $key]);
+    }
+
+    public function path(): string
+    {
+        return (string) config(
+            'installer.runtime_key_path',
+            storage_path('app/installer/runtime-app-key'),
+        );
+    }
+
+    public function persistentKeyIsCompatible(string $persistentKey): bool
+    {
+        $persistentKey = trim($persistentKey);
+        if ($persistentKey === '') {
+            return false;
+        }
+
+        $path = $this->path();
+        if (! is_file($path)) {
+            return true;
+        }
+
+        $fallback = $this->readFallback($path);
+
+        return $fallback !== '' && hash_equals($fallback, $persistentKey);
+    }
+
+    public function discardFallback(string $persistentKey): void
+    {
+        $path = $this->path();
+        if (! is_file($path)) {
+            return;
+        }
+
+        $fallback = $this->readFallback($path);
+        if ($fallback === '' || ! hash_equals($fallback, trim($persistentKey))) {
+            throw new RuntimeException('Installer runtime application key does not match the persistent key.');
+        }
+
+        if (! @unlink($path)) {
+            throw new RuntimeException('Unable to remove installer runtime application key.');
+        }
+    }
+
+    private function readFallback(string $path): string
+    {
+        $contents = @file_get_contents($path);
+        if (! is_string($contents)) {
+            return '';
+        }
+
+        return trim($contents);
     }
 }

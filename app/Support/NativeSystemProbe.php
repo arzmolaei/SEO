@@ -80,6 +80,22 @@ class NativeSystemProbe implements SystemProbe
         return is_file(public_path('build/manifest.json'));
     }
 
+    public function applicationFilesPresent(): bool
+    {
+        foreach ([
+            'artisan',
+            'bootstrap/app.php',
+            'routes/web.php',
+            'routes/console.php',
+        ] as $path) {
+            if (! is_file(base_path($path)) || ! is_readable(base_path($path))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function resolvePath(string $path): string
     {
         if ($path === '.' || $path === '') {

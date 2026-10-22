@@ -1,7 +1,7 @@
 # SEO OS delivery gates
 
-This is a delivery map, not a claim that the whole product is implemented.
-The active implementation plan/progress and current GitHub CI are authoritative.
+This is a delivery map, not a claim that the whole product is implemented. The
+active implementation plan/progress and current GitHub CI are authoritative.
 
 ## Continue autonomously
 
@@ -15,55 +15,67 @@ gates or add implementation-mirroring tests.
 ## Verified delivery slices
 
 - Foundation + Keyword Core: completed, reviewed and merged through PR #1.
-- Keyword Intelligence Tasks 1–11: implemented, reviewed and verified on branch
-  `feature/keyword-intelligence`; PR #2 is the single integration PR.
-- Post-review Keyword Intelligence boundary:
-  `216a4d2448defdd2f481dcf0beb55dbeeb112f10`, CI `39828064083`, success,
-  237 tests / 1317 assertions.
+- Keyword Intelligence Tasks 1–11: completed, reviewed and merged through PR #2.
+- Keyword Intelligence is part of `main` at merge commit
+  `95bb5a014834590c30ff2562615b050b71c997f0`.
+- Self-host Installer Tasks 1–8: implementation, connected acceptance and
+  whole-branch review completed on `feature/self-host-installer`; PR #4 is the
+  single integration PR.
+- Installer implementation evidence before final documentation:
+  `75772ff85cc1eda7da8330af43dc7d89161c8954`, permanent CI `39859189369`,
+  success across PHP 8.4/8.5, verify and MariaDB 10.11 connected acceptance.
 
-After PR #2 final-head CI and integration, do not reopen the intelligence plan.
-Create the next bounded implementation plan from updated `main` for the operational
-self-host release gate below.
+The installer slice now covers clean browser bootstrap, persistent APP_KEY and
+production `.env`, real MySQL/MariaDB verification, resumable migrations, exactly
+one first owner/workspace, queue/scheduler activation evidence, final revalidation,
+lock-last semantics, authenticated handoff and installer lockdown. The runtime-only
+release package also boots `/install` over HTTP without Node/npm/Composer on the
+host.
 
-## First usable self-host release gate — next delivery phase
+PR #4 still requires a fresh permanent CI run on the final documentation-complete
+SHA. Do not treat an older successful run as the merge gate.
 
-Before calling any release ready for normal installation/use, verify all of:
+## First usable self-host release gate — active lifecycle phase
 
-- Clean runtime-only package; supported PHP/database/extensions and local assets.
-- Fresh browser installation, first owner, installer lock and system health.
-- Project -> import -> keyword/intent/cluster -> mapping -> priority workflow.
-- Export real project data, including Persian encoding and access isolation.
-- Backup database + uploaded files + settings with a versioned checksum manifest.
-- Restore into a clean installation; verify users, authorization and SEO data.
-- Update from the preceding release: compatibility, backup, migrations, health.
-- Interrupted/failed update recovery and rollback exercised on real fixtures.
-- Queue/scheduler failure visibility and self-host operational instructions.
-- No dead UI actions represented as completed modules; unfinished modules are
-  explicitly unavailable until delivered.
+The Installer boundary is complete pending PR #4 final-head CI and merge. The
+remaining lifecycle work, in order, is:
 
-Installer/health/release _foundations_ do not satisfy backup/restore/update gates.
-Use bounded implementation plans for the remaining operational flows; inspect and
-reuse existing installer/System Health/release packaging instead of rebuilding
-them.
+1. **Persian project export** — real project data, UTF-8/Persian correctness,
+   bounded streaming behavior and strict access isolation.
+2. **Backup + Restore** — database, uploaded files and durable settings with a
+   versioned checksum manifest; restore into a clean installation and verify users,
+   authorization and SEO data.
+3. **Update + interrupted recovery/rollback** — compatibility checks, mandatory
+   pre-update backup, migrations, health validation, failed/interrupted update
+   recovery and rollback on real fixtures.
+4. **End-to-end lifecycle acceptance** — clean runtime package through install,
+   real project workflow, export, backup/restore, update/recovery and operational
+   health.
 
-A sensible bounded order is:
+Already satisfied within the Installer slice:
 
-1. fresh-install/first-owner/lock/System Health acceptance and missing installer
-   behavior;
-2. real project export with Persian encoding/access-isolation acceptance;
-3. versioned backup manifest + backup production path;
-4. clean restore + auth/SEO integrity verification;
-5. safe update path with pre-update backup/migrations/health;
-6. interruption/failure recovery and rollback fixtures;
-7. queue/scheduler operational visibility and deploy/runbook acceptance;
-8. end-to-end self-host release acceptance across a clean runtime package.
+- clean runtime-only package and supported environment preflight;
+- fresh browser installation, first owner, installer lock and authenticated entry;
+- real MariaDB 10.11 connected installation acceptance;
+- queue/scheduler evidence, shared-host commands and blocking-failure visibility;
+- installer UI/actions are connected rather than dead placeholders.
 
-Each item should have its own RED contract and verified boundary. Do not collapse
-all operational risk into one oversized implementation task.
+Still required before the first usable self-host release can be called complete:
+
+- Project -> import -> keyword/intent/cluster -> mapping -> priority workflow on a
+  clean installed release as part of final lifecycle acceptance;
+- Persian project export;
+- versioned backup and clean restore;
+- safe update plus interruption/failure recovery and rollback;
+- final clean-package lifecycle acceptance across all of the above.
+
+Do not collapse those risks into one oversized implementation task. Each bounded
+sub-project gets its own design/plan where required, RED contract, verified
+boundary, semantic commits and exact-head permanent CI.
 
 ## Subsequent full-product scope
 
-Only after the first usable self-host release gate is verified should the product
+Only after the first usable self-host lifecycle gate is verified should the product
 advance through the master spec phases:
 
 Site Intelligence/crawler -> technical issues/history -> content/tasks/internal
