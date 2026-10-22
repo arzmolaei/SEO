@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Project;
 use App\Support\LocaleContext;
+use App\Support\ProjectWorkspaceContext;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +39,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $localeContext = LocaleContext::from(app()->getLocale());
+        $routeProject = $request->route('project');
 
         return [
             ...parent::share($request),
@@ -46,6 +49,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'projectContext' => $routeProject instanceof Project
+                ? ProjectWorkspaceContext::for($routeProject)
+                : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
