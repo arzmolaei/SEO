@@ -5,6 +5,8 @@ return [
     'lock_path' => env('INSTALLER_LOCK_PATH', storage_path('app/.installed')),
     'journal_path' => env('INSTALLER_JOURNAL_PATH', storage_path('app/installer/journal.json')),
     'mutex_path' => env('INSTALLER_MUTEX_PATH', storage_path('app/installer/installer.lock')),
+    'scheduler_heartbeat_path' => env('INSTALLER_SCHEDULER_HEARTBEAT_PATH', storage_path('app/operations/scheduler-heartbeat.json')),
+    'queue_probe_path' => env('INSTALLER_QUEUE_PROBE_PATH', storage_path('app/operations/queue-probes')),
     'original_queue_connection' => env('QUEUE_CONNECTION', 'database'),
     'public_registration' => (bool) env('SELF_HOST_REGISTRATION', false),
 ];
