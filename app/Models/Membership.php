@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\WorkspaceRole;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,8 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['workspace_id', 'user_id', 'role'])]
 class Membership extends Model
 {
-    use HasFactory;
-
     /** @return BelongsTo<Workspace, $this> */
     public function workspace(): BelongsTo
     {
