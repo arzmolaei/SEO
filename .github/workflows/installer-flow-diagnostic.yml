@@ -1,0 +1,49 @@
+name: Installer flow diagnostic
+
+on:
+  push:
+    branches:
+      - feature/self-host-installer
+    paths:
+      - .github/workflows/installer-flow-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+      - name: Capture focused test and Pint output
+        shell: bash
+        run: |
+          set +e
+          php artisan test tests/Feature/System/InstallerEnvironmentFlowTest.php --testdox > installer-flow.txt 2>&1
+          echo "test_exit=$?" >> installer-flow.txt
+          ./vendor/bin/pint --test > pint.txt 2>&1
+          echo "pint_exit=$?" >> pint.txt
+          exit 0
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v5
+        with:
+          name: installer-flow-diagnostics
+          path: |
+            installer-flow.txt
+            pint.txt
+          if-no-files-found: error
