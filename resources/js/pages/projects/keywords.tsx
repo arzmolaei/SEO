@@ -113,7 +113,8 @@ export default function Keywords({
                                 </p>
                             </div>
                             <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-                                {t('keywords.total')}: {numberFormatter.format(keywords.total)}
+                                {t('keywords.total')}:{' '}
+                                {numberFormatter.format(keywords.total)}
                             </div>
                         </div>
                     </div>
@@ -126,7 +127,9 @@ export default function Keywords({
                             <span>{t('keywords.search')}</span>
                             <input
                                 value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                                 className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 type="search"
                             />
@@ -135,7 +138,9 @@ export default function Keywords({
                             <span>{t('keywords.source')}</span>
                             <input
                                 value={source}
-                                onChange={(event) => setSource(event.target.value)}
+                                onChange={(event) =>
+                                    setSource(event.target.value)
+                                }
                                 className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 placeholder={t('keywords.allSources')}
                             />
@@ -188,7 +193,9 @@ export default function Keywords({
                                         <th className="sticky start-0 z-10 bg-muted/95 px-4 py-3 text-start font-medium">
                                             <button
                                                 type="button"
-                                                onClick={() => toggleSort('keyword')}
+                                                onClick={() =>
+                                                    toggleSort('keyword')
+                                                }
                                                 className="font-medium text-foreground"
                                             >
                                                 {t('keywords.keyword')}
@@ -200,7 +207,9 @@ export default function Keywords({
                                         <th className="px-4 py-3 text-start font-medium">
                                             <button
                                                 type="button"
-                                                onClick={() => toggleSort('volume')}
+                                                onClick={() =>
+                                                    toggleSort('volume')
+                                                }
                                                 className="font-medium text-foreground"
                                             >
                                                 {t('keywords.latestVolume')}
@@ -233,7 +242,8 @@ export default function Keywords({
                                                       )}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
-                                                {keyword.latest_volume_source ?? '—'}
+                                                {keyword.latest_volume_source ??
+                                                    '—'}
                                             </td>
                                         </tr>
                                     ))}
@@ -260,8 +270,8 @@ export default function Keywords({
                                 {t('keywords.previous')}
                             </Link>
                             <span className="text-muted-foreground">
-                                {numberFormatter.format(keywords.current_page)} /{' '}
-                                {numberFormatter.format(keywords.last_page)}
+                                {numberFormatter.format(keywords.current_page)}{' '}
+                                / {numberFormatter.format(keywords.last_page)}
                             </span>
                             <Link
                                 href={keywords.next_page_url ?? '#'}
