@@ -1,0 +1,29 @@
+name: Installer phase RED
+
+on:
+  push:
+    branches:
+      - feature/self-host-installer
+    paths:
+      - .github/workflows/installer-phase-red.yml
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+      - run: php artisan test tests/Feature/System/InstallerFlowTest.php --testdox
