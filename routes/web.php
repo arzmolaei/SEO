@@ -4,6 +4,7 @@ use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectWorkspaceController;
+use App\Http\Controllers\SavedKeywordViewController;
 use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('projects/{project}/keyword-imports/stage', [KeywordImportController::class, 'store'])
         ->name('projects.keyword-imports.stage');
+    Route::post('projects/{project}/keyword-views', [SavedKeywordViewController::class, 'store'])
+        ->name('projects.keyword-views.store');
 
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
