@@ -21,9 +21,9 @@ class StageKeywordImport
     ): ImportBatch {
         return DB::transaction(function () use ($project, $source, $originalFilename, $mapping, $rows): ImportBatch {
             $keywordColumn = trim($mapping['keyword'] ?? '');
+            $volumeColumn = trim($mapping['volume'] ?? '');
             $hasKeywordMapping = $keywordColumn !== '';
             $batchErrors = $hasKeywordMapping ? [] : ['mapping.keyword_required'];
-            $rowErrorCount = $hasKeywordMapping ? 0 : count($rows);
 
             $batch = ImportBatch::query()->create([
                 'project_id' => $project->id,
@@ -32,18 +32,30 @@ class StageKeywordImport
                 'mapping' => $mapping,
                 'status' => 'staged',
                 'total_rows' => count($rows),
-                'valid_rows' => $hasKeywordMapping ? count($rows) : 0,
-                'invalid_rows' => $hasKeywordMapping ? 0 : count($rows),
+                'valid_rows' => 0,
+                'invalid_rows' => 0,
                 'warning_count' => 0,
-                'error_count' => count($batchErrors) + $rowErrorCount,
+                'error_count' => count($batchErrors),
                 'warnings' => [],
                 'errors' => $batchErrors,
             ]);
+
+            $validRows = 0;
+            $invalidRows = 0;
+            $errorCount = count($batchErrors);
 
             foreach ($rows as $index => $row) {
                 $keywordValue = $hasKeywordMapping ? ($row[$keywordColumn] ?? null) : null;
                 $keyword = is_scalar($keywordValue) ? trim((string) $keywordValue) : null;
                 $rowErrors = $hasKeywordMapping ? [] : ['keyword_mapping_missing'];
+
+                if ($volumeColumn !== '') {
+                    $volumeValue = $row[$volumeColumn] ?? null;
+
+                    if ($this->hasInvalidNumericValue($volumeValue)) {
+                        $rowErrors[] = 'volume_not_numeric';
+                    }
+                }
 
                 $mappedPayload = [];
 
@@ -51,18 +63,42 @@ class StageKeywordImport
                     $mappedPayload[$field] = $row[$column] ?? null;
                 }
 
+                $isValid = $rowErrors === [];
+                $validRows += $isValid ? 1 : 0;
+                $invalidRows += $isValid ? 0 : 1;
+                $errorCount += count($rowErrors);
+
                 $batch->rows()->create([
                     'row_number' => $index + 1,
                     'keyword_original' => $keyword,
                     'raw_payload' => $row,
                     'mapped_payload' => $mappedPayload,
-                    'is_valid' => $rowErrors === [],
+                    'is_valid' => $isValid,
                     'warnings' => [],
                     'errors' => $rowErrors,
                 ]);
             }
 
+            $batch->update([
+                'valid_rows' => $validRows,
+                'invalid_rows' => $invalidRows,
+                'error_count' => $errorCount,
+            ]);
+
             return $batch;
         });
+    }
+
+    private function hasInvalidNumericValue(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        if (! is_scalar($value)) {
+            return true;
+        }
+
+        return ! is_numeric(trim((string) $value));
     }
 }
