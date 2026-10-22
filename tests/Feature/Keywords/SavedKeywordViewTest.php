@@ -171,7 +171,7 @@ class SavedKeywordViewTest extends TestCase
             ->where('filters.source', 'semrush')
             ->where('filters.status', 'ready')
             ->where('filters.volume_operator', 'gte')
-            ->where('filters.volume', 500.0)
+            ->where('filters.volume', 500)
             ->where('filters.sort', 'volume')
             ->where('filters.direction', 'desc')
             ->where('filters.per_page', 50)
