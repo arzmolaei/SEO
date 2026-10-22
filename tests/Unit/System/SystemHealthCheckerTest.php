@@ -18,19 +18,21 @@ class SystemHealthCheckerTest extends TestCase
         $this->assertSame('pass', $report['checks']['php']['status']);
         $this->assertSame('pass', $report['checks']['extensions']['status']);
         $this->assertSame('pass', $report['checks']['storage']['status']);
+        $this->assertSame('pass', $report['checks']['database_extension']['status']);
         $this->assertSame('pass', $report['checks']['database']['status']);
         $this->assertSame('pass', $report['checks']['queue']['status']);
         $this->assertSame('pass', $report['checks']['scheduler']['status']);
         $this->assertSame('pass', $report['checks']['disk']['status']);
         $this->assertSame('pass', $report['checks']['app_key']['status']);
         $this->assertSame('pass', $report['checks']['assets']['status']);
+        $this->assertSame('pass', $report['checks']['runtime_files']['status']);
     }
 
     public function test_required_runtime_failures_make_environment_not_ready(): void
     {
         $checker = new SystemHealthChecker($this->probe([
             'phpVersion' => '8.2.28',
-            'missingExtensions' => ['mbstring'],
+            'missingExtensions' => ['mbstring', 'pdo_mysql'],
             'writable' => false,
             'databaseReachable' => false,
             'queueConnection' => '',
@@ -38,6 +40,7 @@ class SystemHealthCheckerTest extends TestCase
             'freeDiskBytes' => 32 * 1024 * 1024,
             'appKeyConfigured' => false,
             'productionAssetsPresent' => false,
+            'applicationFilesPresent' => false,
         ]));
 
         $report = $checker->check();
@@ -46,12 +49,14 @@ class SystemHealthCheckerTest extends TestCase
         $this->assertSame('fail', $report['checks']['php']['status']);
         $this->assertSame('fail', $report['checks']['extensions']['status']);
         $this->assertSame('fail', $report['checks']['storage']['status']);
+        $this->assertSame('fail', $report['checks']['database_extension']['status']);
         $this->assertSame('fail', $report['checks']['database']['status']);
         $this->assertSame('fail', $report['checks']['queue']['status']);
         $this->assertSame('fail', $report['checks']['scheduler']['status']);
         $this->assertSame('fail', $report['checks']['disk']['status']);
         $this->assertSame('fail', $report['checks']['app_key']['status']);
         $this->assertSame('fail', $report['checks']['assets']['status']);
+        $this->assertSame('fail', $report['checks']['runtime_files']['status']);
     }
 
     public function test_sync_queue_is_reported_as_warning_but_does_not_block_installation(): void
@@ -77,7 +82,8 @@ class SystemHealthCheckerTest extends TestCase
      *   schedulerSupported?: bool,
      *   freeDiskBytes?: int|null,
      *   appKeyConfigured?: bool,
-     *   productionAssetsPresent?: bool
+     *   productionAssetsPresent?: bool,
+     *   applicationFilesPresent?: bool
      * } $overrides
      */
     private function probe(array $overrides = []): SystemProbe
@@ -93,6 +99,7 @@ class SystemHealthCheckerTest extends TestCase
             'freeDiskBytes' => 1024 * 1024 * 1024,
             'appKeyConfigured' => true,
             'productionAssetsPresent' => true,
+            'applicationFilesPresent' => true,
         ], $overrides);
 
         return new class($state) implements SystemProbe
@@ -153,6 +160,11 @@ class SystemHealthCheckerTest extends TestCase
             public function productionAssetsPresent(): bool
             {
                 return (bool) $this->state['productionAssetsPresent'];
+            }
+
+            public function applicationFilesPresent(): bool
+            {
+                return (bool) $this->state['applicationFilesPresent'];
             }
         };
     }
