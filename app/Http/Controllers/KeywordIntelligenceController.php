@@ -16,10 +16,12 @@ use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\MarkKeywordClusterReady;
 use App\Services\Keywords\UpdateKeywordClusterPlanning;
 use App\Services\Pages\CreatePlannedPage;
+use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 
 class KeywordIntelligenceController extends Controller
 {
@@ -36,15 +38,20 @@ class KeywordIntelligenceController extends Controller
             'intent' => ['required', Rule::enum(KeywordIntent::class)],
         ]);
         $primary = Keyword::query()->findOrFail((int) $validated['primary_keyword_id']);
-        $memberIds = array_map('intval', $validated['member_ids']);
-        $create->handle(
-            $actor,
-            $project,
-            $validated['name'],
-            $primary,
-            $memberIds,
-            KeywordIntent::from($validated['intent']),
-        );
+        $memberIds = array_values(array_map('intval', (array) $validated['member_ids']));
+
+        try {
+            $create->handle(
+                $actor,
+                $project,
+                (string) $validated['name'],
+                $primary,
+                $memberIds,
+                KeywordIntent::from((string) $validated['intent']),
+            );
+        } catch (InvalidArgumentException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return to_route('projects.keywords.index', $project);
     }
@@ -62,12 +69,17 @@ class KeywordIntelligenceController extends Controller
         ]);
         $changes = [];
         if (array_key_exists('review_state', $validated)) {
-            $changes['review_state'] = ClusterReviewState::from($validated['review_state']);
+            $changes['review_state'] = ClusterReviewState::from((string) $validated['review_state']);
         }
         if (array_key_exists('business_relevance', $validated)) {
             $changes['business_relevance'] = $validated['business_relevance'] === null ? null : (int) $validated['business_relevance'];
         }
-        $update->handle($actor, $project, $keywordCluster, $changes);
+
+        try {
+            $update->handle($actor, $project, $keywordCluster, $changes);
+        } catch (InvalidArgumentException|DomainException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return to_route('projects.keywords.index', $project);
     }
@@ -76,7 +88,12 @@ class KeywordIntelligenceController extends Controller
     {
         $actor = $this->actor($request, $project);
         $validated = $request->validate(['title' => ['required', 'string', 'max:255']]);
-        $create->handle($actor, $project, $validated['title']);
+
+        try {
+            $create->handle($actor, $project, (string) $validated['title']);
+        } catch (InvalidArgumentException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return to_route('projects.keywords.index', $project);
     }
@@ -92,8 +109,15 @@ class KeywordIntelligenceController extends Controller
             'type' => ['required', Rule::enum(ClusterTargetType::class)],
             'page_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ]);
-        $page = isset($validated['page_id']) ? Page::query()->findOrFail((int) $validated['page_id']) : null;
-        $map->handle($actor, $project, $keywordCluster, ClusterTargetType::from($validated['type']), $page);
+        $page = array_key_exists('page_id', $validated) && $validated['page_id'] !== null
+            ? Page::query()->findOrFail((int) $validated['page_id'])
+            : null;
+
+        try {
+            $map->handle($actor, $project, $keywordCluster, ClusterTargetType::from((string) $validated['type']), $page);
+        } catch (InvalidArgumentException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return to_route('projects.keywords.index', $project);
     }
@@ -105,7 +129,12 @@ class KeywordIntelligenceController extends Controller
         MarkKeywordClusterReady $ready,
     ): RedirectResponse {
         $actor = $this->actor($request, $project);
-        $ready->handle($actor, $project, $keywordCluster);
+
+        try {
+            $ready->handle($actor, $project, $keywordCluster);
+        } catch (DomainException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return to_route('projects.keywords.index', $project);
     }

@@ -7,6 +7,7 @@ use App\Domain\Keywords\ClusterPriorityScore;
 use App\Domain\Keywords\ClusterReviewState;
 use App\Domain\Review\ReviewItemType;
 use App\Models\ClusterTarget;
+use App\Models\Keyword;
 use App\Models\KeywordCluster;
 use App\Models\KeywordMetric;
 use App\Models\KeywordSource;
@@ -15,8 +16,8 @@ use App\Models\ReviewItem;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
+use LogicException;
 
 class QueryKeywordIntelligenceWorkspace
 {
@@ -58,7 +59,11 @@ class QueryKeywordIntelligenceWorkspace
             ->mapWithKeys(fn (mixed $id): array => [(int) $id => true])
             ->all();
 
-        $clusters->setCollection($clusterModels->map(function (KeywordCluster $cluster) use ($targets, $metrics, $pending): array {
+        $clusters->through(function (KeywordCluster $cluster) use ($targets, $metrics, $pending): array {
+            $primary = $cluster->primaryKeyword;
+            if (! $primary instanceof Keyword) {
+                throw new LogicException('Active cluster primary keyword is missing.');
+            }
             $target = $targets->get($cluster->id);
             $volume = $metrics[$cluster->primary_keyword_id]['volume'] ?? null;
             $difficulty = $metrics[$cluster->primary_keyword_id]['difficulty'] ?? null;
@@ -84,10 +89,7 @@ class QueryKeywordIntelligenceWorkspace
                 'is_locked' => $cluster->is_locked,
                 'revision' => $cluster->revision,
                 'member_count' => $memberCount,
-                'primary_keyword' => [
-                    'id' => $cluster->primaryKeyword->id,
-                    'display_text' => $cluster->primaryKeyword->display_text,
-                ],
+                'primary_keyword' => ['id' => $primary->id, 'display_text' => $primary->display_text],
                 'target' => $target instanceof ClusterTarget ? [
                     'id' => $target->id,
                     'type' => $target->type->value,
@@ -102,7 +104,7 @@ class QueryKeywordIntelligenceWorkspace
                 ] : null,
                 'priority' => $priority->toArray(),
             ];
-        }));
+        });
 
         $activeClusters = KeywordCluster::query()->where('project_id', $project->id)->whereNull('archived_at');
         $activeCount = (clone $activeClusters)->count();
