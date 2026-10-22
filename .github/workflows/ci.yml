@@ -59,8 +59,12 @@ jobs:
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
-      - name: Check frontend
-        run: npm run check
+      - name: Diagnose frontend formatting
+        shell: bash
+        run: |
+          npm run check:fix
+          git diff -- resources/js/components/keyword-intelligence/keyword-intelligence-panel.tsx resources/js/components/project-workspace-shell.tsx
+          exit 1
 
       - name: Check TypeScript
         run: npm run types:check
