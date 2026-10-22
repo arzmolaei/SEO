@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Keywords;
 
+use App\Models\Project;
 use App\Models\SavedKeywordView;
 use App\Models\User;
 use App\Services\Keywords\CreateSavedKeywordView;
@@ -36,7 +37,7 @@ class SavedKeywordViewVersionSafetyTest extends TestCase
             ->assertUnprocessable();
     }
 
-    /** @return array{User, \App\Models\Project, SavedKeywordView} */
+    /** @return array{User, Project, SavedKeywordView} */
     private function savedView(): array
     {
         $owner = User::factory()->create();
