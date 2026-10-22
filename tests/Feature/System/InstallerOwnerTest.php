@@ -78,6 +78,7 @@ class InstallerOwnerTest extends TestCase
 
         $this->assertSame('owner@example.test', $owner->email);
         $this->assertNotNull($owner->email_verified_at);
+        $this->assertNotNull($owner->onboarded_at);
         $this->assertTrue(Hash::check('Strong!Password123', $owner->password));
         $this->assertSame('فضای کاری اصلی', $workspace->name);
         $this->assertSame($workspace->id, $membership->workspace_id);
