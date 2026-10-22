@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: |
           composer lint
-          git diff -- app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
+          git diff -- app/Support/SystemHealthChecker.php
 
       - name: Static analysis
         run: composer types:check
