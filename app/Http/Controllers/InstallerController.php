@@ -2,46 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\InstallationState;
-use App\Support\SystemHealthChecker;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use App\Support\Installer\InstallerPhase;
+use App\Support\Installer\InstallerPreflight;
+use App\Support\Installer\InstallerStatus;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class InstallerController extends Controller
 {
     public function __construct(
-        private SystemHealthChecker $healthChecker,
-        private InstallationState $installationState,
+        private readonly InstallerPreflight $preflight,
+        private readonly InstallerStatus $status,
     ) {}
 
     public function index(): Response
     {
+        $snapshot = $this->status->snapshot();
+        $phase = $snapshot['phase'];
+
         return Inertia::render('install/index', [
-            'report' => $this->healthChecker->check(),
-            'installed' => $this->installationState->isInstalled(),
+            'installer' => [
+                'phase' => $phase->value,
+                'installed' => $snapshot['installed'],
+                'values' => [],
+                'actions' => $phase === InstallerPhase::Preflight
+                    ? ['refresh_preflight']
+                    : [],
+            ],
+            'preflight' => $this->preflight->check(),
         ]);
-    }
-
-    public function complete(Request $request): RedirectResponse|SymfonyResponse
-    {
-        if ($this->installationState->isInstalled()) {
-            return redirect('/');
-        }
-
-        $report = $this->healthChecker->check();
-
-        if (! $report['ready']) {
-            return Inertia::render('install/index', [
-                'report' => $report,
-                'installed' => false,
-            ])->toResponse($request)->setStatusCode(422);
-        }
-
-        $this->installationState->markInstalled();
-
-        return redirect('/');
     }
 }
