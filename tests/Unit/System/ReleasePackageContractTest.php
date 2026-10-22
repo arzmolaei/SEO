@@ -93,7 +93,7 @@ class ReleasePackageContractTest extends TestCase
         $this->assertContains('node_modules', $report['forbidden']);
         $this->assertContains('tests', $report['forbidden']);
         $this->assertContains('resources/js', $report['forbidden']);
-        $this->assertContains('storage/*.key', $report['forbidden']);
+        $this->assertContains('storage/**/*.key', $report['forbidden']);
     }
 
     public function test_nested_private_key_artifacts_are_rejected(): void
