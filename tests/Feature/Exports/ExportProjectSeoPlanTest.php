@@ -71,9 +71,9 @@ class ExportProjectSeoPlanTest extends TestCase
         $lines = preg_split('/\r\n/', rtrim(substr($bytes, 3), "\r\n"));
         $this->assertIsArray($lines);
         $this->assertCount(502, $lines);
-        $first = str_getcsv($lines[1]);
-        $last = str_getcsv($lines[501]);
-        $this->assertSame('1', $first[0]);
+        $first = str_getcsv($lines[1], ',', '"', '');
+        $last = str_getcsv($lines[501], ',', '"', '');
+        $this->assertSame(ProjectSeoExportSchema::ID, $first[0]);
         $this->assertSame((string) Keyword::query()->where('project_id', $project->id)->min('id'), $first[4]);
         $this->assertSame((string) Keyword::query()->where('project_id', $project->id)->max('id'), $last[4]);
         $result->close();
@@ -109,7 +109,7 @@ class ExportProjectSeoPlanTest extends TestCase
         $result = app(ExportProjectSeoPlan::class)->handle($project);
         $bytes = $this->readResult($result);
         $line = preg_split('/\r\n/', rtrim(substr($bytes, 3), "\r\n"))[1] ?? '';
-        $parsed = str_getcsv($line);
+        $parsed = str_getcsv($line, ',', '"', '');
 
         $this->assertSame("'=SUM(1,1)", $parsed[3]);
         $this->assertSame("'+keyword", $parsed[5]);
