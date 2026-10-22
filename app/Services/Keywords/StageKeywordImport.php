@@ -37,6 +37,7 @@ class StageKeywordImport
         }
 
         $importMapping = KeywordImportMapping::fromArray($mapping);
+        $startedAt = now();
 
         return DB::transaction(function () use (
             $project,
@@ -45,6 +46,7 @@ class StageKeywordImport
             $mapping,
             $rows,
             $importMapping,
+            $startedAt,
         ): ImportBatch {
             $batchErrors = [];
 
@@ -63,12 +65,15 @@ class StageKeywordImport
                 'mapping' => $mapping,
                 'status' => 'staged',
                 'total_rows' => count($rows),
+                'processed_rows' => 0,
+                'checkpoint_row' => 0,
                 'valid_rows' => 0,
                 'invalid_rows' => 0,
                 'warning_count' => 0,
                 'error_count' => count($batchErrors),
                 'warnings' => [],
                 'errors' => $batchErrors,
+                'started_at' => $startedAt,
             ]);
 
             $validRows = 0;
@@ -101,6 +106,7 @@ class StageKeywordImport
                 $batch->rows()->create([
                     'row_number' => $index + 1,
                     'keyword_original' => $keyword,
+                    'row_fingerprint' => $fingerprint,
                     'raw_payload' => $row,
                     'mapped_payload' => $importMapping->mapRow($row),
                     'is_valid' => $isValid,
@@ -109,11 +115,16 @@ class StageKeywordImport
                 ]);
             }
 
+            $processedRows = count($rows);
+
             $batch->update([
+                'processed_rows' => $processedRows,
+                'checkpoint_row' => $processedRows,
                 'valid_rows' => $validRows,
                 'invalid_rows' => $invalidRows,
                 'warning_count' => $warningCount,
                 'error_count' => $errorCount,
+                'completed_at' => now(),
             ]);
 
             return $batch;
