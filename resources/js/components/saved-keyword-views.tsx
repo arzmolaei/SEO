@@ -206,9 +206,7 @@ export function SavedKeywordViews({
                 <button
                     type="button"
                     onClick={createView}
-                    disabled={
-                        disabled || isWorking || name.trim().length === 0
-                    }
+                    disabled={disabled || isWorking || name.trim().length === 0}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
                 >
                     <BookmarkPlus className="size-4" />
