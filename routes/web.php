@@ -26,6 +26,12 @@ Route::post('install/migrations/run', [InstallerController::class, 'runMigration
 Route::post('install/owner', [InstallerController::class, 'createOwner'])
     ->middleware('throttle:6,1')
     ->name('install.owner.store');
+Route::post('install/operations/probe', [InstallerController::class, 'dispatchQueueProbe'])
+    ->middleware('throttle:6,1')
+    ->name('install.operations.probe');
+Route::post('install/operations/continue', [InstallerController::class, 'continueOperations'])
+    ->middleware('throttle:6,1')
+    ->name('install.operations.continue');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {
