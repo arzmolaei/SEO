@@ -17,12 +17,28 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare application environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
       - name: Install frontend dependencies
         run: npm ci --prefer-offline --no-audit
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
       - name: Apply finalization UI
         run: python3 .github/installer-finalize-ui.once.py
       - name: Format finalization UI
@@ -31,7 +47,7 @@ jobs:
         shell: bash
         run: |
           npm run check
-          npm run typecheck
+          npm run types:check
       - name: Commit verified UI and remove temporary files
         shell: bash
         run: |
