@@ -44,7 +44,9 @@ class ClusterMutation
                 return null;
             }
             foreach (KeywordCluster::query()->where('project_id', $project->id)->whereIn('id', $allIds)->orderBy('id')->get() as $cluster) {
-                $cluster->update(['revision' => $cluster->revision + 1]);
+                $cluster->invalidateReadiness();
+                $cluster->revision++;
+                $cluster->save();
             }
             $after = $this->snapshot($project, $allIds);
             $set = ChangeSet::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id,
@@ -109,7 +111,7 @@ class ClusterMutation
 
         return ['cluster_ids' => $ids,
             'clusters' => array_values(KeywordCluster::query()->where('project_id', $project->id)->whereIn('id', $ids)->orderBy('id')
-                ->get(['id', 'project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'is_locked', 'origin', 'automation_key', 'revision', 'archived_at'])
+                ->get(['id', 'project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'business_relevance', 'lifecycle_state', 'is_locked', 'origin', 'automation_key', 'revision', 'archived_at'])
                 ->map(fn (KeywordCluster $c): array => $c->getAttributes())->all()),
             'members' => array_values(KeywordClusterMember::query()->where('project_id', $project->id)->whereIn('keyword_cluster_id', $ids)->orderBy('id')
                 ->get(['id', 'project_id', 'keyword_cluster_id', 'keyword_id'])->map(fn (KeywordClusterMember $m): array => $m->getAttributes())->all())];
