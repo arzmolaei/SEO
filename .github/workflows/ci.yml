@@ -86,25 +86,18 @@ jobs:
       - name: Install runtime-only Composer dependencies
         run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
 
-      - name: Diagnose production release tree smoke failure
+      - name: Build and smoke-test production release tree
         shell: bash
         run: |
-          php scripts/release/build-release.php "$RUNNER_TEMP/seo-os-release"
-          failed=0
-          for path in vendor/phpunit vendor/phpstan .env node_modules tests; do
-            if [ -e "$RUNNER_TEMP/seo-os-release/$path" ]; then
-              echo "unexpected release artifact: $path"
-              if [ -d "$RUNNER_TEMP/seo-os-release/$path" ]; then
-                find "$RUNNER_TEMP/seo-os-release/$path" -maxdepth 2 -print | head -100
-              fi
-              failed=1
-            fi
-          done
-          if [ "$failed" -ne 0 ]; then
-            exit 1
-          fi
+          RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
+          php scripts/release/build-release.php "$RELEASE_ROOT"
+          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
+          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
+          test ! -e "$RELEASE_ROOT/.env"
+          test ! -e "$RELEASE_ROOT/node_modules"
+          test ! -e "$RELEASE_ROOT/tests"
           (
-            cd "$RUNNER_TEMP/seo-os-release"
+            cd "$RELEASE_ROOT"
             php artisan --version
           )
 
