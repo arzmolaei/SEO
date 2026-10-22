@@ -3,6 +3,7 @@
 namespace Tests\Unit\Keywords;
 
 use App\Domain\Keywords\StreamingCsvReader;
+use Generator;
 use PHPUnit\Framework\TestCase;
 
 class StreamingCsvReaderTest extends TestCase
@@ -61,5 +62,51 @@ class StreamingCsvReaderTest extends TestCase
                 'Search Volume' => '800',
             ],
         ], $rows);
+    }
+
+    public function test_it_does_not_load_a_large_csv_into_memory_before_yielding_rows(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'seo-os-csv-');
+        $this->assertNotFalse($path);
+        $handle = fopen($path, 'wb');
+        $this->assertIsResource($handle);
+
+        fwrite($handle, "Keyword,Note\n");
+        $largeCell = str_repeat('x', 1024);
+
+        for ($index = 0; $index < 15000; $index++) {
+            fwrite($handle, "keyword-{$index},{$largeCell}\n");
+        }
+
+        fclose($handle);
+        unset($largeCell);
+        gc_collect_cycles();
+
+        $peakBefore = memory_get_peak_usage(true);
+        $generator = (new StreamingCsvReader)->rows($path);
+
+        $this->assertInstanceOf(Generator::class, $generator);
+
+        $count = 0;
+
+        try {
+            foreach ($generator as $row) {
+                $this->assertSame("keyword-{$count}", $row['Keyword']);
+                $count++;
+
+                if ($count === 100) {
+                    break;
+                }
+            }
+        } finally {
+            @unlink($path);
+        }
+
+        $this->assertSame(100, $count);
+        $this->assertLessThan(
+            8 * 1024 * 1024,
+            memory_get_peak_usage(true) - $peakBefore,
+            'Streaming the first rows should not allocate memory proportional to the whole CSV file.',
+        );
     }
 }
