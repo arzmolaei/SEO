@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-22-seo-os-design.md` sections 10-15.
 
+**Current evidence:** `docs/superpowers/progress/2026-10-22-keyword-intelligence.md`. Intent Review increment design: `docs/superpowers/specs/2026-10-22-intent-review-design.md`.
+
 ## Global Constraints
 
 - Core workflows must work without AI or international APIs.
@@ -43,10 +45,10 @@
 
 **Produces:** supported intents (`informational`, `commercial`, `transactional`, `navigational`, `local`, `mixed`, `unknown`), confidence, source (`rule|user|future_serp|future_ai`), current assignment and immutable override history.
 
-- [ ] RED tests for valid intent assignment, project isolation, manual override attribution, and repeated identical assignment idempotency.
-- [ ] Implement enums/schema/model/service using existing project authorization and activity/change foundations.
-- [ ] Verify manual user override wins over non-user automatic suggestions.
-- [ ] Full CI GREEN and commit `feat: add keyword intent assignments`.
+- [x] RED tests for valid intent assignment, project isolation, manual override attribution, and repeated identical assignment idempotency.
+- [x] Implement enums/schema/model/service using existing project authorization and activity/change foundations.
+- [x] Verify manual user override wins over non-user automatic suggestions.
+- [x] Full CI GREEN and commit `feat: add keyword intent assignments`.
 
 ### Task 2 — Deterministic rule-based Intent Engine
 
@@ -58,11 +60,11 @@
 
 **Produces:** explainable classification result containing intent, confidence, matched rule IDs and human-readable evidence.
 
-- [ ] RED corpus tests for Persian commercial/transactional/informational/navigational/local/mixed/unknown examples.
-- [ ] RED tests that ambiguous phrases return `mixed|unknown` with medium/low confidence rather than false certainty.
-- [ ] Implement deterministic ordered rules using normalized keyword text without mutating stored original text.
-- [ ] Verify repeated classification is identical for identical inputs.
-- [ ] Full CI GREEN and commit `feat: add rule based intent engine`.
+- [x] RED corpus tests for Persian commercial/transactional/informational/navigational/local/mixed/unknown examples.
+- [x] RED tests that ambiguous phrases return `mixed|unknown` with medium/low confidence rather than false certainty.
+- [x] Implement deterministic ordered rules using normalized keyword text without mutating stored original text.
+- [x] Verify repeated classification is identical for identical inputs.
+- [x] Full CI GREEN and commit `feat: add rule based intent engine`.
 
 ### Task 3 — Review Queue foundation for uncertain intent
 
@@ -77,11 +79,11 @@
 
 **Produces:** project-scoped review queue that upserts uncertain intent decisions and supports accept/change/skip without duplicate queue rows.
 
-- [ ] RED tests for low/medium confidence queueing, no queue for accepted high confidence, idempotent refresh, authorization and resolution attribution.
-- [ ] Implement review schema/service/controller/page.
-- [ ] Add keyboard-first row actions and empty/loading/error states.
-- [ ] Verify resolved items do not re-open unless classifier evidence/input changed.
-- [ ] Full CI GREEN and commit `feat: add intent review queue`.
+- [x] RED tests for low/medium confidence queueing, no queue for accepted high confidence, idempotent refresh, authorization and resolution attribution.
+- [x] Implement review schema/service/controller/page.
+- [x] Add keyboard-first row actions and empty/loading/error states.
+- [x] Verify resolved items do not re-open unless classifier evidence/input changed.
+- [x] Full CI GREEN and commit `feat: add intent review queue`.
 
 ### Task 4 — Cluster domain and membership model
 
