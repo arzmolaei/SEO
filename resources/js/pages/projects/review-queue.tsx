@@ -15,7 +15,7 @@ type Intent =
     | 'mixed'
     | 'unknown';
 type Review = {
-    type: 'intent' | 'cluster';
+    type: 'intent' | 'cluster' | 'mapping_conflict';
     id: number;
     fingerprint: string;
     suggestion: {
@@ -239,7 +239,10 @@ export default function ReviewQueue({
                                         <h2 className="text-lg font-semibold">
                                             {item.type === 'cluster'
                                                 ? `${t('review.cluster')}: `
-                                                : ''}
+                                                : item.type ===
+                                                    'mapping_conflict'
+                                                  ? `${t('review.mappingConflict')}: `
+                                                  : ''}
                                             {item.suggestion.original_text}
                                         </h2>
                                         <div className="flex flex-wrap gap-2 text-xs">

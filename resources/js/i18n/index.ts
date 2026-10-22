@@ -4,10 +4,11 @@ export type Direction = 'rtl' | 'ltr';
 const messages = {
     fa: {
         'review.cluster': 'پیشنهاد خوشه',
+        'review.mappingConflict': 'تعارض نگاشت',
         'project.nav.reviews': 'صف بررسی',
         'review.description':
-            'نیت جستجو را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',
-        'review.refresh': 'آماده\u200cسازی پیشنهادها',
+            'نیت جستجو، پیشنهاد خوشه و هشدار نگاشت را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',
+        'review.refresh': 'آماده\u200cسازی پیشنهادهای نیت',
         'review.reload': 'دریافت آخرین نتایج',
         'review.queued':
             'درخواست آماده\u200cسازی ثبت شد. نتایج به\u200cتدریج آماده می\u200cشوند؛ برای دیدن آن\u200cها آخرین نتایج را دریافت کنید.',
@@ -137,10 +138,11 @@ const messages = {
     },
     en: {
         'review.cluster': 'Cluster suggestion',
+        'review.mappingConflict': 'Mapping conflict',
         'project.nav.reviews': 'Review Queue',
         'review.description':
-            'Review search intent with evidence. Your decisions take precedence over automatic suggestions.',
-        'review.refresh': 'Prepare suggestions',
+            'Review search intent, cluster suggestions, and mapping warnings with evidence. Your decisions take precedence over automatic suggestions.',
+        'review.refresh': 'Prepare intent suggestions',
         'review.reload': 'Load latest results',
         'review.queued':
             'Preparation requested. Results arrive gradually; load the latest results to see them.',
