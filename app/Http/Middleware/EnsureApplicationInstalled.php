@@ -23,6 +23,10 @@ class EnsureApplicationInstalled
         $installerRequest = $request->is('install') || $request->is('install/*');
         $installed = $this->installationState->isInstalled();
 
+        if ($installed && $request->is('register') && ! config('installer.public_registration', false)) {
+            abort(404);
+        }
+
         if ($installed && $installerRequest) {
             return redirect('/');
         }
