@@ -51,7 +51,7 @@ const sectionMeta: Record<
 
 export function AppSidebar() {
     const { projectContext } = usePage().props;
-    const { t } = useLocale();
+    const { t, direction } = useLocale();
 
     const items: NavItem[] = projectContext
         ? projectContext.navigation.map((item) => ({
@@ -70,7 +70,11 @@ export function AppSidebar() {
     const homeHref = projectContext?.navigation[0]?.href ?? dashboard();
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
+        <Sidebar
+            side={direction === 'rtl' ? 'right' : 'left'}
+            collapsible="icon"
+            variant="inset"
+        >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
