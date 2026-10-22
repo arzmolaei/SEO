@@ -89,7 +89,9 @@ export default function Installer({
                                         آماده‌سازی SEO OS
                                     </h1>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                                        این مرحله بدون نیاز به Node.js، Composer یا اجرای دستور shell روی هاست، پیش‌نیازهای اجرای برنامه را بررسی می‌کند.
+                                        این مرحله بدون نیاز به Node.js، Composer
+                                        یا اجرای دستور shell روی هاست،
+                                        پیش‌نیازهای اجرای برنامه را بررسی می‌کند.
                                     </p>
                                 </div>
                             </div>
@@ -106,9 +108,13 @@ export default function Installer({
                     <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="font-semibold">بررسی سلامت سرور</h2>
+                                <h2 className="font-semibold">
+                                    بررسی سلامت سرور
+                                </h2>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    موارد ضروری باید سبز باشند. هشدارها مانع نصب نمی‌شوند، اما برای محیط production بهتر است برطرف شوند.
+                                    موارد ضروری باید سبز باشند. هشدارها مانع نصب
+                                    نمی‌شوند، اما برای محیط production بهتر است
+                                    برطرف شوند.
                                 </p>
                             </div>
                             <span
@@ -156,7 +162,9 @@ export default function Installer({
                             <div>
                                 <h2 className="font-semibold">قفل نصب</h2>
                                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                                    بعد از تکمیل، installer قفل می‌شود تا دوباره از وب قابل اجرا نباشد. برای نصب مجدد باید مدیر سرور عمداً فایل lock را حذف کند.
+                                    بعد از تکمیل، installer قفل می‌شود تا دوباره
+                                    از وب قابل اجرا نباشد. برای نصب مجدد باید
+                                    مدیر سرور عمداً فایل lock را حذف کند.
                                 </p>
                             </div>
                             <button
