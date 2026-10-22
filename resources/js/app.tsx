@@ -1,7 +1,7 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { initializeAppearance } from '@/hooks/use-appearance';
+import { initializeTheme } from '@/hooks/use-appearance';
 import { initializeFontPreference } from '@/hooks/use-font-preference';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
@@ -37,5 +37,5 @@ void createInertiaApp({
     },
 });
 
-initializeAppearance();
+initializeTheme();
 initializeFontPreference();
