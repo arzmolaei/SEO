@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Keywords;
 
+use App\Enums\KeywordStatus;
+use App\Models\Keyword;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Keywords\CommitKeywordImportBatch;
@@ -64,6 +66,28 @@ class KeywordGridTest extends TestCase
         );
     }
 
+    public function test_grid_filters_by_keyword_status(): void
+    {
+        [$owner, $project] = $this->projectWithKeywords();
+
+        Keyword::query()
+            ->where('project_id', $project->id)
+            ->where('display_text', 'طراحی سایت')
+            ->firstOrFail()
+            ->update(['status' => KeywordStatus::Ready]);
+
+        $response = $this->actingAs($owner)->get("/projects/{$project->id}/keywords?status=ready");
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('projects/keywords')
+            ->has('keywords.data', 1)
+            ->where('keywords.data.0.display_text', 'طراحی سایت')
+            ->where('keywords.data.0.status', 'ready')
+            ->where('filters.status', 'ready')
+        );
+    }
+
     public function test_grid_can_sort_by_latest_volume(): void
     {
         [$owner, $project] = $this->projectWithKeywords();
@@ -84,6 +108,15 @@ class KeywordGridTest extends TestCase
 
         $this->actingAs($owner)
             ->get("/projects/{$project->id}/keywords?volume_operator=contains&volume=100")
+            ->assertUnprocessable();
+    }
+
+    public function test_grid_rejects_unknown_keyword_statuses(): void
+    {
+        [$owner, $project] = $this->projectWithKeywords();
+
+        $this->actingAs($owner)
+            ->get("/projects/{$project->id}/keywords?status=archived")
             ->assertUnprocessable();
     }
 
