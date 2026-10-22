@@ -9,21 +9,16 @@ use Tests\TestCase;
 
 class ClassifyKeywordIntentTest extends TestCase
 {
-    /**
-     * @dataProvider clearIntentCorpus
-     */
-    public function test_it_classifies_clear_persian_intent_signals(
-        string $text,
-        KeywordIntent $expectedIntent,
-        IntentConfidence $expectedConfidence,
-        string $expectedRuleId,
-    ): void {
-        $classification = app(ClassifyKeywordIntent::class)->classify($text);
+    public function test_it_classifies_clear_persian_intent_signals(): void
+    {
+        foreach ($this->clearIntentCorpus() as $label => [$text, $expectedIntent, $expectedConfidence, $expectedRuleId]) {
+            $classification = app(ClassifyKeywordIntent::class)->classify($text);
 
-        $this->assertSame($expectedIntent, $classification->intent);
-        $this->assertSame($expectedConfidence, $classification->confidence);
-        $this->assertContains($expectedRuleId, $classification->matchedRuleIds);
-        $this->assertNotEmpty($classification->evidence);
+            $this->assertSame($expectedIntent, $classification->intent, $label);
+            $this->assertSame($expectedConfidence, $classification->confidence, $label);
+            $this->assertContains($expectedRuleId, $classification->matchedRuleIds, $label);
+            $this->assertNotEmpty($classification->evidence, $label);
+        }
     }
 
     public function test_conflicting_strong_signals_are_mixed_instead_of_false_certainty(): void
@@ -66,43 +61,41 @@ class ClassifyKeywordIntentTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, KeywordIntent, IntentConfidence, string}>
+     * @return array<string, array{string, KeywordIntent, IntentConfidence, string}>
      */
-    public static function clearIntentCorpus(): iterable
+    private function clearIntentCorpus(): array
     {
-        yield 'transactional buy' => [
-            'خرید لپ تاپ',
-            KeywordIntent::Transactional,
-            IntentConfidence::High,
-            'transactional.buy',
-        ];
-
-        yield 'commercial best' => [
-            'بهترین لپ تاپ گیمینگ',
-            KeywordIntent::Commercial,
-            IntentConfidence::High,
-            'commercial.best',
-        ];
-
-        yield 'informational tutorial' => [
-            'آموزش سئو تکنیکال',
-            KeywordIntent::Informational,
-            IntentConfidence::High,
-            'informational.tutorial',
-        ];
-
-        yield 'navigational login' => [
-            'ورود به دیجی کالا',
-            KeywordIntent::Navigational,
-            IntentConfidence::High,
-            'navigational.login',
-        ];
-
-        yield 'local near me' => [
-            'تعمیر لپ تاپ نزدیک من',
-            KeywordIntent::Local,
-            IntentConfidence::High,
-            'local.near_me',
+        return [
+            'transactional buy' => [
+                'خرید لپ تاپ',
+                KeywordIntent::Transactional,
+                IntentConfidence::High,
+                'transactional.buy',
+            ],
+            'commercial best' => [
+                'بهترین لپ تاپ گیمینگ',
+                KeywordIntent::Commercial,
+                IntentConfidence::High,
+                'commercial.best',
+            ],
+            'informational tutorial' => [
+                'آموزش سئو تکنیکال',
+                KeywordIntent::Informational,
+                IntentConfidence::High,
+                'informational.tutorial',
+            ],
+            'navigational login' => [
+                'ورود به دیجی کالا',
+                KeywordIntent::Navigational,
+                IntentConfidence::High,
+                'navigational.login',
+            ],
+            'local near me' => [
+                'تعمیر لپ تاپ نزدیک من',
+                KeywordIntent::Local,
+                IntentConfidence::High,
+                'local.near_me',
+            ],
         ];
     }
 }
