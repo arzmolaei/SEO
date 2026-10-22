@@ -71,7 +71,7 @@ jobs:
         run: php artisan test
 
       - name: Audit runtime npm dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: timeout 120s npm audit --omit=dev --audit-level=high
 
       - name: Audit runtime Composer dependencies
-        run: composer audit --no-dev
+        run: timeout 120s composer audit --no-dev
