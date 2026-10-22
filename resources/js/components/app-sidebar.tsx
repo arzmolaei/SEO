@@ -37,6 +37,7 @@ const sectionMeta: Record<
 > = {
     overview: { label: 'project.nav.overview', icon: LayoutDashboard },
     keywords: { label: 'project.nav.keywords', icon: Tags },
+    reviews: { label: 'project.nav.reviews', icon: ListTodo },
     pages: { label: 'project.nav.pages', icon: Files },
     'site-audit': { label: 'project.nav.siteAudit', icon: ShieldCheck },
     content: { label: 'project.nav.content', icon: FilePenLine },

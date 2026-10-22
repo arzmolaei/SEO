@@ -214,9 +214,22 @@ class IntentReviewQueueTest extends TestCase
         $this->assertDatabaseCount('review_items', 100);
         Queue::assertPushed(RefreshProjectIntentReviews::class, function ($job): bool {
             app()->call([$job, 'handle']);
+
             return true;
         });
         $this->assertDatabaseCount('review_items', 101);
+    }
+
+    public function test_refresh_removes_a_pending_suggestion_superseded_by_manual_intent(): void
+    {
+        [$owner, $project, $keyword] = $this->keyword('لپ تاپ');
+        $item = app(UpsertIntentReviewItems::class)->handle($owner, $project, $keyword);
+        app(AssignKeywordIntent::class)->handle($owner, $project, $keyword, KeywordIntent::Local, IntentConfidence::High, 'user');
+        app(UpsertIntentReviewItems::class)->handle($owner, $project, $keyword);
+        $this->assertSame('resolved', $item->fresh()->status);
+        $this->assertSame('superseded', $item->fresh()->resolution);
+        $this->assertDatabaseCount('keyword_intent_assignments', 1);
+        $this->assertDatabaseHas('activity_events', ['event' => 'review.intent.superseded', 'actor_id' => $owner->id]);
     }
 
     /** @return array{User, Project, Keyword} */

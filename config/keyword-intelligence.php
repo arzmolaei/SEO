@@ -2,6 +2,7 @@
 
 return [
     'intent' => [
+        'auto_apply_high_confidence' => false,
         'rules' => [
             'transactional.buy' => [
                 'intent' => 'transactional',

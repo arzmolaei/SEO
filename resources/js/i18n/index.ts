@@ -3,6 +3,42 @@ export type Direction = 'rtl' | 'ltr';
 
 const messages = {
     fa: {
+        'project.nav.reviews': 'صف بررسی',
+        'review.description':
+            'نیت جستجو را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',
+        'review.refresh': 'آماده\u200cسازی پیشنهادها',
+        'review.reload': 'دریافت آخرین نتایج',
+        'review.queued':
+            'درخواست آماده\u200cسازی ثبت شد. نتایج به\u200cتدریج آماده می\u200cشوند؛ برای دیدن آن\u200cها آخرین نتایج را دریافت کنید.',
+        'review.empty': 'موردی برای بررسی ندارید',
+        'review.emptyDescription':
+            'برای بررسی نیت کلمات پروژه، آماده\u200cسازی پیشنهادها را اجرا کنید.',
+        'review.accept': 'پذیرش پیشنهاد',
+        'review.change': 'ثبت نیت انتخابی',
+        'review.skip': 'فعلاً رد شود',
+        'review.intent': 'نیت جستجو',
+        'review.evidence': 'دلیل پیشنهاد',
+        'review.noEvidence':
+            'سیگنال قطعی پیدا نشد؛ نیت را دستی انتخاب کنید یا فعلاً رد کنید.',
+        'review.confidence': 'اطمینان',
+        'review.high': 'زیاد',
+        'review.medium': 'متوسط',
+        'review.low': 'کم',
+        'review.informational': 'اطلاعاتی',
+        'review.commercial': 'بررسی تجاری',
+        'review.transactional': 'تراکنشی',
+        'review.navigational': 'ناوبری',
+        'review.local': 'محلی',
+        'review.mixed': 'ترکیبی',
+        'review.unknown': 'نامشخص',
+        'review.keyboard':
+            'روی ردیف: ↑ و ↓ جابه\u200cجایی، Enter پذیرش، S رد موقت. Tab برای اصلاح نیت.',
+        'review.error':
+            'عملیات انجام نشد. آخرین نتایج را بگیرید و دوباره تلاش کنید.',
+        'review.stale':
+            'داده یا تصمیم این مورد تغییر کرده است. آخرین نتایج را بگیرید؛ سپس صف را دوباره آماده کنید.',
+        'review.readOnly': 'دسترسی شما فقط برای مشاهده است.',
+        'review.pending': 'در حال پردازش…',
         'app.name': 'SEO OS',
         'common.continue': 'ادامه',
         'common.cancel': 'انصراف',
@@ -99,6 +135,42 @@ const messages = {
             'عملیات نمای ذخیره‌شده انجام نشد. دوباره تلاش کنید.',
     },
     en: {
+        'project.nav.reviews': 'Review Queue',
+        'review.description':
+            'Review search intent with evidence. Your decisions take precedence over automatic suggestions.',
+        'review.refresh': 'Prepare suggestions',
+        'review.reload': 'Load latest results',
+        'review.queued':
+            'Preparation requested. Results arrive gradually; load the latest results to see them.',
+        'review.empty': 'Nothing to review',
+        'review.emptyDescription':
+            'Prepare suggestions to review intent for this project’s keywords.',
+        'review.accept': 'Accept suggestion',
+        'review.change': 'Save selected intent',
+        'review.skip': 'Skip for now',
+        'review.intent': 'Search intent',
+        'review.evidence': 'Evidence',
+        'review.noEvidence':
+            'No clear signal found. Choose an intent manually or skip for now.',
+        'review.confidence': 'Confidence',
+        'review.high': 'High',
+        'review.medium': 'Medium',
+        'review.low': 'Low',
+        'review.informational': 'Informational',
+        'review.commercial': 'Commercial',
+        'review.transactional': 'Transactional',
+        'review.navigational': 'Navigational',
+        'review.local': 'Local',
+        'review.mixed': 'Mixed',
+        'review.unknown': 'Unknown',
+        'review.keyboard':
+            'On a row: ↑/↓ to navigate, Enter to accept, S to skip. Tab to edit intent.',
+        'review.error':
+            'The action failed. Load the latest results and try again.',
+        'review.stale':
+            'This item’s data or decision changed. Load the latest results, then prepare the queue again.',
+        'review.readOnly': 'You have view-only access.',
+        'review.pending': 'Processing…',
         'app.name': 'SEO OS',
         'common.continue': 'Continue',
         'common.cancel': 'Cancel',

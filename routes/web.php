@@ -7,6 +7,7 @@ use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectWorkspaceController;
+use App\Http\Controllers\ReviewQueueController;
 use App\Http\Controllers\SavedKeywordViewController;
 use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('projects/{project}/keyword-change-sets/{changeSet}/undo', [KeywordChangeSetController::class, 'undo'])
         ->name('projects.keyword-change-sets.undo');
 
+    Route::get('projects/{project}/reviews', [ReviewQueueController::class, 'index'])->name('projects.reviews.index');
+    Route::post('projects/{project}/reviews/refresh', [ReviewQueueController::class, 'refresh'])->middleware('throttle:6,1')->name('projects.reviews.refresh');
+    Route::post('projects/{project}/reviews/{reviewItem}/resolve', [ReviewQueueController::class, 'resolve'])->name('projects.reviews.resolve');
+
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
     Route::get('projects/{project}/keywords', [KeywordGridController::class, 'index'])
@@ -52,7 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
         ->whereIn('section', array_values(array_filter(
             ProjectWorkspaceContext::SECTIONS,
-            fn (string $section): bool => ! in_array($section, ['overview', 'keywords'], true),
+            fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews'], true),
         )))
         ->name('projects.section');
 });

@@ -46,6 +46,8 @@ class AssignKeywordIntent
         }
 
         return DB::transaction(function () use ($actor, $project, $keyword, $intent, $confidence, $source, $evidence): KeywordIntentAssignment {
+            Keyword::query()->where('project_id', $project->id)->lockForUpdate()->findOrFail($keyword->id);
+
             $current = KeywordIntentAssignment::query()
                 ->where('project_id', $project->id)
                 ->where('keyword_id', $keyword->id)
