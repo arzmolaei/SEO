@@ -3,84 +3,86 @@
 Branch: `feature/keyword-intelligence`
 Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
 
+Repository evidence and current CI are authoritative. Historical task designs and
+RED contracts remain under `docs/superpowers/specs/` and
+`docs/superpowers/contracts/`.
+
 ## Task status
 
 - Task 1 — Intent domain and override history: **verified**
-  - Manual assignments are immutable history entries.
-  - Manual current intent wins over later automatic suggestions.
-  - Cross-project assignment is rejected.
-  - Intent changes create a ChangeSet and attributed ActivityEvent.
-  - Full CI passed on run `39784623206`.
-- Task 2 — Deterministic Persian rule-based intent engine: **verified**
-  - Rule configuration is explainable and deterministic.
-  - Original text is preserved while normalized text is used for matching.
-  - Conflicting intent signals become Mixed/Medium rather than false certainty.
-  - No-signal phrases remain Unknown/Low.
-  - Full permanent CI passed on run `39786352782`.
+  - Immutable assignment history, manual override precedence, project isolation,
+    ChangeSet/Activity attribution. CI `39784623206`.
+- Task 2 — Deterministic Persian intent engine: **verified**
+  - Explainable deterministic rules; ambiguous input stays Mixed/Unknown rather
+    than false certainty. CI `39786352782`.
 - Task 3 — Intent Review Queue: **verified**
-  - Bounded design: `docs/superpowers/specs/2026-10-22-intent-review-design.md`.
-  - RED contracts: `770cdb5`, `3950795`; implementation: `7e871e0`.
-  - Browser-discovered RTL sidebar obstruction fixed in `a859100`.
-  - Full CI on `a85910065ec85b94d86ae301767e9405be1da0a3`: run `39788659107`, success.
-  - 148 backend tests / 968 assertions; static analysis, style, TypeScript, frontend checks/build and runtime audits passed.
-  - Independent review: no Critical/Important findings. Deferred minor: actions/reload on page 2+ return to page 1.
-  - Runtime-only release tree built and booted locally (`Laravel Framework 13.38.0`), and passed CI release smoke.
-  - Persian browser workflow: queue request -> actual database worker -> suggestions -> keyboard accept -> inline change -> keyboard skip -> retry without reopening. No page errors or mobile overflow.
+  - Idempotent/stale-safe decisions, project authorization, keyboard Persian RTL
+    workflow. CI `39788659107` on `a85910065ec85b94d86ae301767e9405be1da0a3`.
 - Task 4 — Cluster domain/membership: **verified**
-  - Design: `docs/superpowers/specs/2026-10-22-cluster-domain-design.md`.
-  - Observed 12 RED tests in `d55fa32`; GREEN implementation `e720c0a`.
-  - Full CI: run `39790364710` on `e720c0a6bf21ea3e9acbf95b4ace02651ae92e43`, success.
-  - Full local suite: 160 tests / 1007 assertions; PHPStan/Pint/frontend lint/TypeScript passed.
-  - The 12 cluster tests passed on actual MariaDB 10.11, including composite foreign keys and primary deletion restrictions.
-  - A MariaDB transaction probe confirmed project deletion cascades correctly with populated clusters; the probe was rolled back.
-  - Independent task review: no actionable findings in the supported creation boundary.
-  - Creation is transactional/audited, requires the primary as an explicit member, rejects cross-project/duplicate membership and never silently moves a keyword.
-  - Decision: one current cluster membership per canonical keyword. Eloquent guards protect primary replacement/removal; future mutation services must acquire locks and never bypass those guards with bulk/raw writes.
-  - This task provides domain/application foundations; clustering algorithms and UI are not yet delivered.
+  - Project-scoped membership and primary invariant, transactional/audited create,
+    lock persistence. MariaDB 10.11 coverage. CI `39790364710` on
+    `e720c0a6bf21ea3e9acbf95b4ace02651ae92e43`.
 - Task 5 — Lexical candidate generation/application: **verified**
-  - RED contract commit `3f33506`; additional real REDs covered HTTP visibility, browser payload bounds and accurate shared-anchor evidence.
-  - 177 full-suite tests / 1072 assertions passed; PHPStan, Pint, TypeScript, frontend build/check and runtime audits passed locally.
-  - 21 related feature tests passed on MariaDB 10.11.
-  - Real Chromium: cluster evidence visible, intent-only edit absent, keyboard accept resolves; no JS page errors.
-  - 10k unrelated corpus completed in roughly 0.08 seconds; no all-pairs comparisons.
-  - Independent review found no security/transaction blockers. Evidence-label issue was regraded for the explainability contract and fixed RED/GREEN.
-  - Project-first serialization intentionally trades per-project mutation concurrency for race safety. Full snapshots remain server-side.
-  - Auto-apply is opt-in and only High; uncertainty is idempotent Review Queue, with same-evidence resolved decisions retained.
-  - Final-head CI `39799527623` on `9fb589035cec7c3f430e5959b1113dedfb012504`: success.
-  - Task 6 now active; separate RED/implementation boundary.
-- Task 6 — Cluster operations/Undo: **verified**
-  - Initial 8 contract tests observed RED in `e571fbb`; 3 additional RED regressions cover lock/review independence, pre-lookup authorization and empty-source reactivation.
-  - Full local suite: 188 tests / 1103 assertions; PHPStan and Pint passed. No frontend code changed in this task; permanent CI still runs its frontend/build/audit/release gates.
-  - 11 operation/Undo tests passed on actual MariaDB 10.11.
-  - Independent review found no service-path blockers; defensive unarchive-primary invariant was strengthened with a RED/GREEN test.
-  - Merge archives sources; split uses existing creation; primary movement requires explicit remaining replacement. All edits invalidate automation reuse and audit actor/before/after.
-  - Undo uses exact snapshots/revisions; intervening edits or repeated undo conflict. Restoration uses model operations atomically under project-first serialization.
-  - Future mapping services MUST increment cluster revision when targets change, preventing Undo from erasing later mapping decisions.
-  - Final-head CI `39801676900` on `9adedd5238368b8d23b13552066bbd8935974c5a`: success.
-  - Task 7 now active, with its own RED/verification boundary.
-- Task 7 — Existing/planned page foundation: **verified**
-  - Initial 7 behavior tests observed RED before implementation; additional default-type and IDN identity regressions observed RED then GREEN.
-  - Full suite: 196 tests / 1134 assertions, PHPStan and Pint green. Seven DB-sensitive page tests passed on MariaDB 10.11 (29 assertions).
-  - Independent review found transitional IDNA domain merging; fixed with non-transitional conversion and Unicode/A-label/distinct-host tests.
-  - URLs are never fetched; original input is retained, canonical identity uses a project-scoped SHA-256 index with collision comparison. Path case/query order/HTTP-vs-HTTPS are preserved.
-  - Promotion preserves page identity and rejects URL collisions atomically; registration never overwrites an existing title.
-  - Page changes have explicit page_id audit entries; keyword Undo validates keyword-only payloads and its existing suite remains green.
-  - CI caught one official Pint indentation issue in page registration; applied formatter output in `c0af6e0`, verified the exact gate, then full final-head CI `39803137862` passed.
-  - Verified head `c0af6e086069b36f015371d2df52374ddc0d2d4c`; Task 8 now active.
+  - Deterministic bounded lexical blocking, explainable evidence, opt-in only for
+    High confidence, uncertain decisions in Review Queue, no all-pairs scan.
+    Final CI `39799527623` on `9fb589035cec7c3f430e5959b1113dedfb012504`.
+- Task 6 — Cluster merge/split/move/lock + Undo: **verified**
+  - Project-first serialization, attributed history, lock/manual preservation and
+    revision-safe Undo. MariaDB coverage. CI `39801676900` on
+    `9adedd5238368b8d23b13552066bbd8935974c5a`.
+- Task 7 — Existing/planned Page foundation: **verified**
+  - Conservative URL identity, IDN-safe normalization, project isolation, stable
+    planned→existing promotion. CI `39803137862` on
+    `c0af6e086069b36f015371d2df52374ddc0d2d4c`.
 - Task 8 — Cluster target mapping: **verified**
-  - Eight real RED/GREEN contracts cover target kinds, project isolation, remap history/idempotency, promotion identity, deletion restrictions and stale Undo protection.
-  - Full suite: 204 tests / 1166 assertions; PHPStan and full Pint gate green. Eight mapping tests passed on MariaDB 10.11 (32 assertions).
-  - Synchronous promotion updates active targets atomically and invalidates archived-cluster Undo. An exactly-once regression caught duplicate listener registration; Laravel autodiscovery is now the sole registration.
-  - Mapping preserves membership, primary keyword and lock state; revisions protect later human decisions. Independent read-only review found no actionable security/data-integrity issues.
-  - No frontend code changed; permanent CI retains frontend/build/runtime-audit/release gates.
-  - Final-head CI `39804656866` on `d19e4ab390668ed606b8414c069e1a197a4e768e`: success.
-- Task 9 — Mapping conflict review: **started; NOT implemented**
-  - Bounded design: `docs/superpowers/specs/2026-10-22-mapping-conflicts-design.md`.
-  - Six behavior contracts observed RED: missing `DetectKeywordMappingConflicts`, 6 failures / 1 assertion. Production code has not been added.
-  - User requested handoff at this boundary. Exact pending test source and resumption instructions are preserved in `docs/superpowers/contracts/2026-10-22-mapping-conflicts-red.md`; restore to the active test path and reconfirm RED before implementation.
-  - No existing tests/gates were removed; the unimplemented contract is a documentation artifact, not a claim of passing Task 9.
-- Tasks 10–11: pending.
+  - Target kinds, one current mapping, project isolation, mapping history,
+    promotion identity, deletion restrictions and stale-Undo protection.
+  - 204 tests / 1166 assertions at boundary; MariaDB mapping coverage.
+  - CI `39804656866` on `d19e4ab390668ed606b8414c069e1a197a4e768e`.
+- Task 9 — Mapping conflict review: **verified**
+  - Original pending RED source was restored and corrected to current provenance
+    schema; final contract includes unrelated shared-page overload, competing pages
+    requiring same known intent + shared meaningful topic, real latest-volume
+    high-demand unmapped evidence, changed-evidence reopen/supersede, stale
+    acknowledgement refusal, invalid-target warning, HTTP resolution and foreign
+    project rejection.
+  - Detector is deterministic/bounded, groups rather than enumerating all pairs,
+    never silently remaps and keeps browser evidence compact.
+  - Mapping-conflict ReviewItems retain resolved decisions for identical evidence,
+    reopen only when fingerprints change and audit resolution/supersession.
+  - Verified implementation boundary `bd38cc696de7eaca60776c52abd62c4e32929fe1`;
+    CI `39810763754`, success; 212 tests / 1187 assertions.
+- Task 10 — Priority scoring + Ready lifecycle: **verified**
+  - `ClusterPriorityScore` is deterministic/explainable. It uses only latest local
+    volume, latest local difficulty, optional manual business relevance (1–5),
+    mapping completeness and review completeness. Missing metrics remain null and
+    add no invented priority; component evidence and data completeness are exposed.
+  - Clusters have separate `planning|ready` lifecycle. Ready requires an active,
+    reviewed cluster, an explicit mapping (page target or Ignore), and no pending
+    primary-keyword review.
+  - Real remaps, membership/cluster mutations and new/reopened pending reviews
+    invalidate stale Ready decisions back to Planning. Cluster mutation snapshots
+    include lifecycle/business relevance so Undo remains revision-safe.
+  - RED evidence included missing priority object/lifecycle behavior and a later
+    regression proving new mapping conflicts must invalidate an existing Ready
+    decision. CI/static-analysis failures were diagnosed rather than weakening
+    gates.
+  - Final verified implementation `f51f5d76aca3331153383726bbc76eebffab6846`;
+    CI `39813493267`, success; **226 tests / 1229 assertions**. PHP 8.4/8.5,
+    frontend check/TypeScript/build, Pint, PHPStan, runtime audits and release
+    smoke all passed.
+- Task 11 — Connected Keyword Intelligence workspace + acceptance: **active**
+  - First unfinished task. Start with a genuine RED acceptance contract.
+  - Connect existing Grid + Review Queue + cluster/page/mapping/priority/Ready
+    services through project-scoped HTTP/UI boundaries; do not bypass service
+    authorization/locking/history and do not replace server-side Grid scalability.
+  - Final acceptance, Persian RTL/keyboard checks, whole-branch review and fresh
+    final-head CI are required before PR #2 may merge.
 
 ## Execution rules
 
-Continue RED → GREEN → full CI verification. Do not advance a task while its current HEAD is unverified. Human/manual overrides and locks must never be silently overwritten by automation.
+Continue RED → correct RED → minimal GREEN → refactor → meaningful focused
+verification → permanent final-head CI → semantic commit/push. Do not advance a
+task while its current implementation boundary is unverified. Human overrides,
+locks, original keyword/provenance data and later mapping decisions must never be
+silently overwritten. No crawler/SERP/AI/vector dependency belongs in Task 11.
