@@ -9,9 +9,9 @@ use App\Policies\ProjectPolicy;
 use App\Services\Keywords\QueryKeywordGrid;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
-use InvalidArgumentException;
 use Inertia\Inertia;
 use Inertia\Response;
+use InvalidArgumentException;
 
 class KeywordGridController extends Controller
 {
