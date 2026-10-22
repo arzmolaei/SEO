@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BulkKeywordStatusController;
+use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\KeywordChangeSetController;
 use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
@@ -9,6 +10,9 @@ use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\SavedKeywordViewController;
 use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
+
+Route::get('install', [InstallerController::class, 'index'])->name('install.index');
+Route::post('install/complete', [InstallerController::class, 'complete'])->name('install.complete');
 
 Route::inertia('/', 'welcome')->name('home');
 
