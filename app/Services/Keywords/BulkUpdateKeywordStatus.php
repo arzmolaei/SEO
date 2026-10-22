@@ -21,6 +21,7 @@ class BulkUpdateKeywordStatus
      * @param  list<int>  $keywordIds
      *
      * @throws AuthorizationException
+     * @throws InvalidArgumentException
      */
     public function handle(User $actor, Project $project, array $keywordIds, KeywordStatus $status): ?ChangeSet
     {
@@ -46,6 +47,7 @@ class BulkUpdateKeywordStatus
                 throw new InvalidArgumentException('Every keyword must belong to the selected project.');
             }
 
+            /** @var list<array{keyword_id: int, before: string, after: string}> $changes */
             $changes = [];
 
             foreach ($keywordIds as $keywordId) {
@@ -73,9 +75,13 @@ class BulkUpdateKeywordStatus
             }
 
             foreach ($changes as $change) {
-                $keywords->get($change['keyword_id'])?->update([
-                    'status' => $status,
-                ]);
+                $keyword = $keywords->get($change['keyword_id']);
+
+                if (! $keyword instanceof Keyword) {
+                    throw new InvalidArgumentException('Every keyword must belong to the selected project.');
+                }
+
+                $keyword->update(['status' => $status]);
             }
 
             $changeSet = ChangeSet::query()->create([
