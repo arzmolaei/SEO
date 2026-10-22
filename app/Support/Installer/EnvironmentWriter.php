@@ -245,9 +245,6 @@ class EnvironmentWriter
             "database.connections.{$values['database_driver']}.database" => $values['database_name'],
             "database.connections.{$values['database_driver']}.username" => $values['database_username'],
             "database.connections.{$values['database_driver']}.password" => $databasePassword,
-            'session.driver' => 'database',
-            'cache.default' => 'database',
-            'queue.default' => 'database',
         ]);
     }
 }
