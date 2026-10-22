@@ -4,21 +4,33 @@ namespace App\Services\Keywords;
 
 use App\Models\ImportBatch;
 use App\Models\Project;
+use App\Models\User;
+use App\Policies\ProjectPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 class StageKeywordImport
 {
+    public function __construct(private ProjectPolicy $policy) {}
+
     /**
      * @param  array<string, string>  $mapping
      * @param  list<array<string, mixed>>  $rows
+     *
+     * @throws AuthorizationException
      */
     public function handle(
+        User $actor,
         Project $project,
         string $source,
         string $originalFilename,
         array $mapping,
         array $rows,
     ): ImportBatch {
+        if (! $this->policy->update($actor, $project)) {
+            throw new AuthorizationException;
+        }
+
         return DB::transaction(function () use ($project, $source, $originalFilename, $mapping, $rows): ImportBatch {
             $keywordColumn = trim($mapping['keyword'] ?? '');
             $volumeColumn = trim($mapping['volume'] ?? '');
