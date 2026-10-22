@@ -54,7 +54,7 @@ foreach ($packages as $package) {
 fwrite(STDOUT, "Private font assets installed successfully.\n");
 
 /**
- * @param list<string> $requiredFiles
+ * @param  list<string>  $requiredFiles
  */
 function installFontPackage(string $zipPath, string $targetDirectory, array $requiredFiles): void
 {
@@ -76,7 +76,7 @@ function installFontPackage(string $zipPath, string $targetDirectory, array $req
 }
 
 /**
- * @param list<string> $requiredFiles
+ * @param  list<string>  $requiredFiles
  */
 function installWithZipArchive(string $zipPath, string $targetDirectory, array $requiredFiles): void
 {
@@ -118,7 +118,7 @@ function installWithZipArchive(string $zipPath, string $targetDirectory, array $
 }
 
 /**
- * @param list<string> $requiredFiles
+ * @param  list<string>  $requiredFiles
  */
 function installWithUnzipCommand(string $zipPath, string $targetDirectory, array $requiredFiles): void
 {
@@ -167,7 +167,7 @@ function findZipArchiveEntry(ZipArchive $zip, string $filename): ?string
 }
 
 /**
- * @param list<string> $entries
+ * @param  list<string>  $entries
  */
 function findEntryByBasename(array $entries, string $filename): ?string
 {
