@@ -73,17 +73,29 @@ class StageKeywordImport
 
             $validRows = 0;
             $invalidRows = 0;
+            $warningCount = 0;
             $errorCount = count($batchErrors);
             $keywordColumn = $importMapping->keywordColumn();
+            $seenRows = [];
 
             foreach ($rows as $index => $row) {
                 $keywordValue = $keywordColumn === null ? null : ($row[$keywordColumn] ?? null);
                 $keyword = is_scalar($keywordValue) ? trim((string) $keywordValue) : null;
                 $rowErrors = $this->rowValidator->validate($importMapping, $row);
+                $rowWarnings = [];
+                $fingerprint = hash('sha256', serialize($row));
+
+                if (isset($seenRows[$fingerprint])) {
+                    $rowWarnings[] = 'duplicate_row';
+                } else {
+                    $seenRows[$fingerprint] = true;
+                }
+
                 $isValid = $rowErrors === [];
 
                 $validRows += $isValid ? 1 : 0;
                 $invalidRows += $isValid ? 0 : 1;
+                $warningCount += count($rowWarnings);
                 $errorCount += count($rowErrors);
 
                 $batch->rows()->create([
@@ -92,7 +104,7 @@ class StageKeywordImport
                     'raw_payload' => $row,
                     'mapped_payload' => $importMapping->mapRow($row),
                     'is_valid' => $isValid,
-                    'warnings' => [],
+                    'warnings' => $rowWarnings,
                     'errors' => $rowErrors,
                 ]);
             }
@@ -100,6 +112,7 @@ class StageKeywordImport
             $batch->update([
                 'valid_rows' => $validRows,
                 'invalid_rows' => $invalidRows,
+                'warning_count' => $warningCount,
                 'error_count' => $errorCount,
             ]);
 
