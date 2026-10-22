@@ -83,6 +83,23 @@ jobs:
       - name: Audit runtime Composer dependencies
         run: timeout 120s composer audit --no-dev
 
+      - name: Install runtime-only Composer dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
+
+      - name: Build and smoke-test production release tree
+        shell: bash
+        run: |
+          php scripts/release/build-release.php "$RUNNER_TEMP/seo-os-release"
+          test ! -e "$RUNNER_TEMP/seo-os-release/vendor/phpunit"
+          test ! -e "$RUNNER_TEMP/seo-os-release/vendor/phpstan"
+          test ! -e "$RUNNER_TEMP/seo-os-release/.env"
+          test ! -e "$RUNNER_TEMP/seo-os-release/node_modules"
+          test ! -e "$RUNNER_TEMP/seo-os-release/tests"
+          (
+            cd "$RUNNER_TEMP/seo-os-release"
+            php artisan --version
+          )
+
   php-compatibility:
     runs-on: ubuntu-latest
     timeout-minutes: 12
