@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Support\InstallationState;
+use App\Support\Installer\InstallerPhase;
+use App\Support\Installer\InstallerStatus;
 use App\Support\RuntimeApplicationKey;
 use Closure;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +15,7 @@ class EnsureApplicationInstalled
 {
     public function __construct(
         private InstallationState $installationState,
+        private InstallerStatus $installerStatus,
         private RuntimeApplicationKey $runtimeApplicationKey,
     ) {}
 
@@ -36,16 +39,18 @@ class EnsureApplicationInstalled
                 return redirect('/install');
             }
 
-            $this->configureInstallerRuntime();
+            $this->configureInstallerRuntime(
+                $this->installerStatus->snapshot()['phase'] === InstallerPhase::Finalize,
+            );
         }
 
         return $next($request);
     }
 
-    private function configureInstallerRuntime(): void
+    private function configureInstallerRuntime(bool $finalizing): void
     {
         config([
-            'session.driver' => 'file',
+            'session.driver' => $finalizing ? 'database' : 'file',
             'cache.default' => 'file',
             'queue.default' => 'sync',
         ]);

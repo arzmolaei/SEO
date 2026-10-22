@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Installer\FinalizeInstallation;
 use App\Support\Installer\CreateInitialOwner;
 use App\Support\Installer\DatabaseVerificationResult;
 use App\Support\Installer\DatabaseVerifier;
@@ -17,6 +18,7 @@ use App\Support\Operations\OperationalHealth;
 use App\Support\Operations\QueueProbe;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,6 +38,7 @@ class InstallerController extends Controller
         private readonly CreateInitialOwner $initialOwner,
         private readonly OperationalHealth $operationalHealth,
         private readonly QueueProbe $queueProbe,
+        private readonly FinalizeInstallation $finalizeInstallation,
         private readonly InstallerJournal $journal,
         private readonly InstallerMutex $mutex,
     ) {}
@@ -67,6 +70,7 @@ class InstallerController extends Controller
                     InstallerPhase::Migrations => ['run_migrations'],
                     InstallerPhase::Owner => ['create_owner'],
                     InstallerPhase::Operations => ['dispatch_queue_probe', 'continue_operations'],
+                    InstallerPhase::Finalize => ['finalize_installation'],
                     default => [],
                 },
             ],
@@ -372,6 +376,28 @@ class InstallerController extends Controller
         }
 
         return redirect('/install');
+    }
+
+    public function finalize(Request $request): RedirectResponse
+    {
+        if ($this->status->snapshot()['phase'] !== InstallerPhase::Finalize) {
+            return redirect('/install')->withErrors([
+                'finalize' => 'Installation is not ready for finalization.',
+            ]);
+        }
+
+        try {
+            $owner = $this->finalizeInstallation->handle();
+        } catch (Throwable) {
+            return redirect('/install')->withErrors([
+                'finalize' => 'Installation could not be finalized safely. Review the current checks and retry.',
+            ]);
+        }
+
+        Auth::login($owner);
+        $request->session()->regenerate();
+
+        return redirect('/dashboard');
     }
 
     /**

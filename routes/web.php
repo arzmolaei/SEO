@@ -32,6 +32,9 @@ Route::post('install/operations/probe', [InstallerController::class, 'dispatchQu
 Route::post('install/operations/continue', [InstallerController::class, 'continueOperations'])
     ->middleware('throttle:6,1')
     ->name('install.operations.continue');
+Route::post('install/finalize', [InstallerController::class, 'finalize'])
+    ->middleware('throttle:6,1')
+    ->name('install.finalize');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {
