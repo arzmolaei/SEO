@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectWorkspaceController;
@@ -29,10 +30,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
+    Route::get('projects/{project}/keywords', [KeywordGridController::class, 'index'])
+        ->name('projects.keywords.index');
     Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
         ->whereIn('section', array_values(array_filter(
             ProjectWorkspaceContext::SECTIONS,
-            fn (string $section): bool => $section !== 'overview',
+            fn (string $section): bool => ! in_array($section, ['overview', 'keywords'], true),
         )))
         ->name('projects.section');
 });
