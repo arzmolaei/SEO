@@ -16,6 +16,7 @@ class QueryKeywordGrid
      *     id: int,
      *     display_text: string,
      *     normalized_text: string,
+     *     status: string,
      *     latest_volume: string|null,
      *     latest_volume_source: string|null,
      *     created_at: string|null
@@ -46,6 +47,7 @@ class QueryKeywordGrid
             'id' => (int) $row->id,
             'display_text' => (string) $row->display_text,
             'normalized_text' => (string) $row->normalized_text,
+            'status' => (string) $row->status,
             'latest_volume' => $this->formatVolume($row->latest_volume ?? null),
             'latest_volume_source' => isset($row->latest_volume_source) ? (string) $row->latest_volume_source : null,
             'created_at' => isset($row->created_at) ? (string) $row->created_at : null,
@@ -62,6 +64,7 @@ class QueryKeywordGrid
                 'keywords.id',
                 'keywords.display_text',
                 'keywords.normalized_text',
+                'keywords.status',
                 'keywords.created_at',
             ])
             ->selectSub($latestVolume, 'latest_volume')
@@ -85,6 +88,10 @@ class QueryKeywordGrid
                     ->whereColumn('source_filter.keyword_id', 'keywords.id')
                     ->where('source_filter.source', $filters->source);
             });
+        }
+
+        if ($filters->status !== null) {
+            $query->where('keywords.status', $filters->status->value);
         }
 
         return $query;
