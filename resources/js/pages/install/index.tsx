@@ -568,6 +568,134 @@ function MigrationCard({
     );
 }
 
+function OwnerCard({ canCreate }: { canCreate: boolean }) {
+    return (
+        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted/30">
+                    <KeyRound className="size-5" />
+                </div>
+                <div>
+                    <h2 className="font-semibold">مرحله ۵ — مالک اولیه</h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        اولین مالک و فضای کاری اصلی فقط یک‌بار ساخته می‌شوند. این
+                        حساب برای نصب محلی تأییدشده محسوب می‌شود تا راه‌اندازی به
+                        ایمیل یا اینترنت خارجی وابسته نباشد.
+                    </p>
+                </div>
+            </div>
+
+            <Form
+                action="/install/owner"
+                method="post"
+                resetOnSuccess={['password', 'password_confirmation']}
+                disableWhileProcessing
+                className="mt-6 grid gap-5"
+            >
+                {({ processing, errors }) => (
+                    <>
+                        <InputError message={errors.owner} />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="owner_name">نام مالک</Label>
+                                <Input
+                                    id="owner_name"
+                                    name="name"
+                                    required
+                                    maxLength={255}
+                                    autoComplete="name"
+                                    placeholder="نام و نام خانوادگی"
+                                />
+                                <InputError message={errors.name} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="owner_email">ایمیل مالک</Label>
+                                <Input
+                                    id="owner_email"
+                                    name="email"
+                                    type="email"
+                                    dir="ltr"
+                                    required
+                                    maxLength={255}
+                                    autoComplete="email"
+                                    placeholder="owner@example.com"
+                                />
+                                <InputError message={errors.email} />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="workspace_name">
+                                نام فضای کاری
+                            </Label>
+                            <Input
+                                id="workspace_name"
+                                name="workspace_name"
+                                required
+                                maxLength={255}
+                                defaultValue="فضای کاری اصلی"
+                                autoComplete="organization"
+                            />
+                            <InputError message={errors.workspace_name} />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="owner_password">رمز عبور</Label>
+                                <PasswordInput
+                                    id="owner_password"
+                                    name="password"
+                                    dir="ltr"
+                                    required
+                                    autoComplete="new-password"
+                                />
+                                <InputError message={errors.password} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="owner_password_confirmation">
+                                    تکرار رمز عبور
+                                </Label>
+                                <PasswordInput
+                                    id="owner_password_confirmation"
+                                    name="password_confirmation"
+                                    dir="ltr"
+                                    required
+                                    autoComplete="new-password"
+                                />
+                                <InputError
+                                    message={errors.password_confirmation}
+                                />
+                            </div>
+                        </div>
+
+                        <p className="rounded-xl border bg-muted/20 p-4 text-xs leading-6 text-muted-foreground">
+                            رمز باید حداقل ۱۲ نویسه و شامل حروف کوچک و بزرگ، عدد
+                            و نماد باشد. این بررسی کاملاً محلی است و برای نصب به
+                            سرویس خارجی متصل نمی‌شود.
+                        </p>
+
+                        <Button
+                            type="submit"
+                            disabled={!canCreate || processing}
+                            className="w-full sm:w-fit"
+                        >
+                            {processing ? (
+                                <Spinner />
+                            ) : (
+                                <KeyRound className="size-4" />
+                            )}
+                            ساخت مالک و فضای کاری
+                        </Button>
+                    </>
+                )}
+            </Form>
+        </section>
+    );
+}
+
 export default function Installer({
     installer,
     preflight,
@@ -581,6 +709,7 @@ export default function Installer({
     const canSaveEnvironment = installer.actions.includes('save_environment');
     const canVerifyDatabase = installer.actions.includes('verify_database');
     const canRunMigrations = installer.actions.includes('run_migrations');
+    const canCreateOwner = installer.actions.includes('create_owner');
     const activePhase = phases.findIndex(
         (phase) => phase.key === installer.phase,
     );
@@ -674,9 +803,11 @@ export default function Installer({
                         />
                     ) : null}
 
-                    {['owner', 'operations', 'finalize'].includes(
-                        installer.phase,
-                    ) ? (
+                    {installer.phase === 'owner' ? (
+                        <OwnerCard canCreate={canCreateOwner} />
+                    ) : null}
+
+                    {['operations', 'finalize'].includes(installer.phase) ? (
                         <section className="rounded-2xl border border-dashed bg-card/50 p-5 sm:p-6">
                             <h2 className="font-semibold">
                                 مرحله فعلی با موفقیت باز شده است
