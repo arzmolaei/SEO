@@ -43,6 +43,7 @@ class CommitKeywordImportBatchTest extends TestCase
             'project_id' => $project->id,
             'display_text' => 'سئو سایت',
             'normalized_text' => 'سئو سایت',
+            'status' => 'review',
         ]);
 
         $this->assertDatabaseCount('keyword_sources', 2);
