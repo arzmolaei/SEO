@@ -68,12 +68,8 @@ jobs:
       - name: Build production assets
         run: npm run build
 
-      - name: Diagnose PHP style
-        shell: bash
-        run: |
-          vendor/bin/pint app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
-          git diff -- app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
-          exit 1
+      - name: Check PHP style
+        run: composer lint:check
 
       - name: Static analysis
         run: composer types:check
