@@ -8,8 +8,11 @@ class InstallerMutex
 {
     private int $depth = 0;
 
-    public function __construct(private readonly string $path)
+    private readonly string $path;
+
+    public function __construct(?string $path = null)
     {
+        $this->path = $path ?? (string) config('installer.mutex_path');
     }
 
     /**
@@ -41,6 +44,8 @@ class InstallerMutex
         if ($handle === false) {
             throw new RuntimeException('Unable to open installer mutex file.');
         }
+
+        @chmod($this->path, 0600);
 
         try {
             if (! flock($handle, LOCK_EX)) {
