@@ -89,16 +89,41 @@ jobs:
       - name: Build and smoke-test production release tree
         shell: bash
         run: |
+          set -euo pipefail
           RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
+          RELEASE_LOG="$RUNNER_TEMP/seo-os-release-server.log"
+          RELEASE_HTML="$RUNNER_TEMP/seo-os-release-install.html"
           php scripts/release/build-release.php "$RELEASE_ROOT"
           test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
           test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
           test ! -e "$RELEASE_ROOT/.env"
           test ! -e "$RELEASE_ROOT/node_modules"
           test ! -e "$RELEASE_ROOT/tests"
+          test -f "$RELEASE_ROOT/public/build/manifest.json"
+          test -f "$RELEASE_ROOT/app/Http/Controllers/InstallerController.php"
           (
             cd "$RELEASE_ROOT"
             php artisan --version
+            INSTALLER_ASSUME_INSTALLED=false APP_ENV=production \
+              php -S 127.0.0.1:8765 -t public public/index.php >"$RELEASE_LOG" 2>&1 &
+            SERVER_PID=$!
+            trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+            READY=0
+            for attempt in $(seq 1 30); do
+              if curl --fail --silent --show-error http://127.0.0.1:8765/install -o "$RELEASE_HTML"; then
+                READY=1
+                break
+              fi
+              sleep 0.25
+            done
+            if [ "$READY" -ne 1 ]; then
+              cat "$RELEASE_LOG"
+              exit 1
+            fi
+            grep -q 'id="app"' "$RELEASE_HTML"
+            kill "$SERVER_PID"
+            wait "$SERVER_PID" || true
+            trap - EXIT
           )
 
   php-compatibility:
@@ -137,3 +162,54 @@ jobs:
 
       - name: Run backend compatibility suite
         run: php artisan test
+
+  self-host-installer-mariadb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-secret
+          MARIADB_DATABASE: seo_os_installer
+          MARIADB_USER: seo_os
+          MARIADB_PASSWORD: installer-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      SELF_HOST_INSTALLER_CONNECTED: '1'
+      INSTALLER_CONNECTED_DB_HOST: 127.0.0.1
+      INSTALLER_CONNECTED_DB_PORT: '3306'
+      INSTALLER_CONNECTED_DB_DATABASE: seo_os_installer
+      INSTALLER_CONNECTED_DB_USERNAME: seo_os
+      INSTALLER_CONNECTED_DB_PASSWORD: installer-secret
+      INSTALLER_ASSUME_INSTALLED: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application key
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Run connected self-host installer acceptance
+        run: php artisan test tests/Feature/System/SelfHostInstallerAcceptanceTest.php --fail-on-skipped
