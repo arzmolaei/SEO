@@ -47,12 +47,12 @@ class ProjectShellTest extends TestCase
         $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
         $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
 
-        $response = $this->actingAs($owner)->get("/projects/{$project->id}/keywords");
+        $response = $this->actingAs($owner)->get("/projects/{$project->id}/pages");
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('projects/section')
-            ->where('section', 'keywords')
+            ->where('section', 'pages')
             ->where('projectContext.mode', 'guided')
         );
     }
