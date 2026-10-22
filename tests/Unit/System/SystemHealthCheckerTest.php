@@ -11,7 +11,10 @@ class SystemHealthCheckerTest extends TestCase
 {
     public function test_healthy_self_host_environment_is_ready_without_shell_probes(): void
     {
-        $checker = new SystemHealthChecker($this->probe());
+        $checker = new SystemHealthChecker(
+            $this->probe(),
+            $this->operationalHealth($this->operationsSnapshot()),
+        );
 
         $report = $checker->check();
 
@@ -31,18 +34,19 @@ class SystemHealthCheckerTest extends TestCase
 
     public function test_required_runtime_failures_make_environment_not_ready(): void
     {
-        $checker = new SystemHealthChecker($this->probe([
-            'phpVersion' => '8.2.28',
-            'missingExtensions' => ['mbstring', 'pdo_mysql'],
-            'writable' => false,
-            'databaseReachable' => false,
-            'queueConnection' => '',
-            'schedulerSupported' => false,
-            'freeDiskBytes' => 32 * 1024 * 1024,
-            'appKeyConfigured' => false,
-            'productionAssetsPresent' => false,
-            'applicationFilesPresent' => false,
-        ]));
+        $checker = new SystemHealthChecker(
+            $this->probe([
+                'phpVersion' => '8.2.28',
+                'missingExtensions' => ['mbstring', 'pdo_mysql'],
+                'writable' => false,
+                'databaseReachable' => false,
+                'freeDiskBytes' => 32 * 1024 * 1024,
+                'appKeyConfigured' => false,
+                'productionAssetsPresent' => false,
+                'applicationFilesPresent' => false,
+            ]),
+            $this->operationalHealth($this->operationsSnapshot('fail', 'fail')),
+        );
 
         $report = $checker->check();
 
@@ -60,28 +64,25 @@ class SystemHealthCheckerTest extends TestCase
         $this->assertSame('fail', $report['checks']['runtime_files']['status']);
     }
 
-    public function test_sync_queue_is_reported_as_warning_but_does_not_block_installation(): void
+    public function test_operational_queue_warning_does_not_block_system_health(): void
     {
-        $checker = new SystemHealthChecker($this->probe([
-            'queueConnection' => 'sync',
-        ]));
+        $checker = new SystemHealthChecker(
+            $this->probe(),
+            $this->operationalHealth($this->operationsSnapshot('verified', 'warning')),
+        );
 
         $report = $checker->check();
 
         $this->assertTrue($report['ready']);
         $this->assertSame('warning', $report['checks']['queue']['status']);
+        $this->assertSame('pass', $report['checks']['scheduler']['status']);
     }
 
     public function test_operational_warnings_replace_configuration_only_queue_and_scheduler_success(): void
     {
         $checker = new SystemHealthChecker(
             $this->probe(),
-            $this->operationalHealth([
-                'scheduler' => ['state' => 'warning', 'observed_at' => null],
-                'queue' => ['state' => 'warning', 'completed_at' => null],
-                'instructions' => ['scheduler' => 'schedule command', 'worker' => 'worker command'],
-                'blocking' => false,
-            ]),
+            $this->operationalHealth($this->operationsSnapshot('warning', 'warning')),
         );
 
         $report = $checker->check();
@@ -97,12 +98,7 @@ class SystemHealthCheckerTest extends TestCase
     {
         $checker = new SystemHealthChecker(
             $this->probe(),
-            $this->operationalHealth([
-                'scheduler' => ['state' => 'fail', 'observed_at' => null],
-                'queue' => ['state' => 'verified', 'completed_at' => '2026-10-22T20:00:00+00:00'],
-                'instructions' => ['scheduler' => 'schedule command', 'worker' => 'worker command'],
-                'blocking' => true,
-            ]),
+            $this->operationalHealth($this->operationsSnapshot('fail', 'verified')),
         );
 
         $report = $checker->check();
@@ -110,6 +106,35 @@ class SystemHealthCheckerTest extends TestCase
         $this->assertFalse($report['ready']);
         $this->assertSame('fail', $report['checks']['scheduler']['status']);
         $this->assertSame('pass', $report['checks']['queue']['status']);
+    }
+
+    /**
+     * @param  'verified'|'warning'|'fail'  $schedulerState
+     * @param  'verified'|'warning'|'fail'  $queueState
+     * @return array{
+     *   scheduler: array{state: 'verified'|'warning'|'fail', observed_at: ?string},
+     *   queue: array{state: 'verified'|'warning'|'fail', completed_at: ?string},
+     *   instructions: array{scheduler: string, worker: string},
+     *   blocking: bool
+     * }
+     */
+    private function operationsSnapshot(string $schedulerState = 'verified', string $queueState = 'verified'): array
+    {
+        return [
+            'scheduler' => [
+                'state' => $schedulerState,
+                'observed_at' => $schedulerState === 'verified' ? '2026-10-22T20:00:00+00:00' : null,
+            ],
+            'queue' => [
+                'state' => $queueState,
+                'completed_at' => $queueState === 'verified' ? '2026-10-22T20:00:00+00:00' : null,
+            ],
+            'instructions' => [
+                'scheduler' => 'schedule command',
+                'worker' => 'worker command',
+            ],
+            'blocking' => $schedulerState === 'fail' || $queueState === 'fail',
+        ];
     }
 
     /**
