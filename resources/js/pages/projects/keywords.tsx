@@ -111,7 +111,7 @@ export default function Keywords({
 }) {
     const { locale, t } = useLocale();
     const path = usePage().url.split('?')[0];
-    const projectId = Number(path.split('/')[2]);
+    const projectId = intelligence.project_id;
     const [workspaceTab, setWorkspaceTab] = useState<
         'grid' | 'intent' | 'clusters' | 'mapping'
     >('grid');
