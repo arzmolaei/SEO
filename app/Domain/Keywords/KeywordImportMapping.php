@@ -28,6 +28,21 @@ final class KeywordImportMapping
         return $this->keywordColumn() !== null;
     }
 
+    public function hasSourceColumnConflict(): bool
+    {
+        $columns = [];
+
+        foreach ($this->columns as $column) {
+            $column = trim($column);
+
+            if ($column !== '') {
+                $columns[] = $column;
+            }
+        }
+
+        return count($columns) !== count(array_unique($columns));
+    }
+
     /**
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
