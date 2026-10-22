@@ -99,9 +99,25 @@ class KeywordMappingConflictTest extends TestCase
         $this->assertStringContainsString('high_demand_unmapped', json_encode(ReviewItem::firstOrFail()->suggestion));
         $this->assertStringContainsString((string) $metric->id, json_encode(ReviewItem::firstOrFail()->suggestion));
 
+        $newRow = StagedKeywordRow::query()->create([
+            'import_batch_id' => $batch->id,
+            'row_number' => 2,
+            'keyword_original' => 'کفش ورزشی',
+            'raw_payload' => ['keyword' => 'کفش ورزشی'],
+            'mapped_payload' => ['keyword' => 'کفش ورزشی'],
+            'is_valid' => true,
+        ]);
+        $newSource = KeywordSource::query()->create([
+            'keyword_id' => $cluster->primary_keyword_id,
+            'import_batch_id' => $batch->id,
+            'staged_keyword_row_id' => $newRow->id,
+            'source' => 'manual_csv',
+            'original_text' => 'کفش ورزشی',
+            'raw_payload' => [],
+        ]);
         KeywordMetric::query()->create([
             'keyword_id' => $cluster->primary_keyword_id,
-            'keyword_source_id' => $source->id,
+            'keyword_source_id' => $newSource->id,
             'metric' => 'volume',
             'value' => 10,
             'observed_at' => now()->addDay(),
