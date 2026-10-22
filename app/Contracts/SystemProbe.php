@@ -23,4 +23,6 @@ interface SystemProbe
     public function appKeyConfigured(): bool;
 
     public function productionAssetsPresent(): bool;
+
+    public function applicationFilesPresent(): bool;
 }
