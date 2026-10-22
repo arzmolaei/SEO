@@ -25,7 +25,10 @@ class QueryKeywordIntelligenceWorkspace
 
     public function __construct(private ProjectPolicy $policy) {}
 
-    /** @param array<string,mixed> $query */
+    /**
+     * @param array<string,mixed> $query
+     * @return array<string,mixed>
+     */
     public function handle(User $actor, Project $project, array $query = []): array
     {
         if (! $this->policy->view($actor, $project)) {
@@ -44,7 +47,7 @@ class QueryKeywordIntelligenceWorkspace
 
         $clusterModels = $clusters->getCollection();
         $clusterIds = $clusterModels->modelKeys();
-        $primaryIds = $clusterModels->pluck('primary_keyword_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $primaryIds = array_values($clusterModels->pluck('primary_keyword_id')->map(fn (mixed $id): int => (int) $id)->all());
         $targets = ClusterTarget::query()
             ->where('project_id', $project->id)
             ->whereIn('keyword_cluster_id', $clusterIds)
