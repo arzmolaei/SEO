@@ -60,7 +60,10 @@ class CreateInitialOwner
             'email' => $input['email'],
             'password' => $input['password'],
         ]);
-        $user->forceFill(['email_verified_at' => now()]);
+        $user->forceFill([
+            'email_verified_at' => now(),
+            'onboarded_at' => now(),
+        ]);
         $user->save();
 
         $workspace = Workspace::query()->create([
@@ -106,6 +109,10 @@ class CreateInitialOwner
 
         if (! $matchesBootstrap) {
             throw new RuntimeException('Existing ownership data does not match this installer request.');
+        }
+
+        if ($user->onboarded_at === null) {
+            $user->forceFill(['onboarded_at' => now()])->save();
         }
 
         return $user;
