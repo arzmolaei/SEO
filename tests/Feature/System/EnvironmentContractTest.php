@@ -8,7 +8,7 @@ class EnvironmentContractTest extends TestCase
 {
     public function test_it_uses_seo_os_self_hosted_runtime_defaults(): void
     {
-        $this->assertGreaterThanOrEqual(80300, PHP_VERSION_ID);
+        $this->assertGreaterThanOrEqual(80401, PHP_VERSION_ID);
         $this->assertSame('SEO OS', config('app.name'));
         $this->assertSame('fa', config('app.locale'));
         $this->assertSame('en', config('app.fallback_locale'));
@@ -45,6 +45,6 @@ class EnvironmentContractTest extends TestCase
 
         $composer = json_decode($composerJson, true, 512, JSON_THROW_ON_ERROR);
 
-        $this->assertSame('^8.3', $composer['require']['php'] ?? null);
+        $this->assertSame('^8.4.1', $composer['require']['php'] ?? null);
     }
 }
