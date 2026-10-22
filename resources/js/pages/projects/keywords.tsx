@@ -11,6 +11,7 @@ import {
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import {
     type SavedKeywordView,
+    type SavedKeywordViewColumn,
     type SavedKeywordViewState,
     SavedKeywordViewsToolbar,
 } from '@/components/saved-keyword-views-toolbar';
@@ -73,7 +74,7 @@ const defaultColumnVisibility: Record<OptionalColumn, boolean> = {
 };
 
 const visibilityFromSavedColumns = (
-    columns: string[],
+    columns: SavedKeywordViewColumn[],
 ): Record<OptionalColumn, boolean> => ({
     normalized: columns.includes('normalized'),
     status: columns.includes('status'),
@@ -84,13 +85,13 @@ const visibilityFromSavedColumns = (
 
 const savedColumnsFromVisibility = (
     visibility: Record<OptionalColumn, boolean>,
-): string[] => [
+): SavedKeywordViewColumn[] => [
     'keyword',
-    ...(visibility.normalized ? ['normalized'] : []),
-    ...(visibility.status ? ['status'] : []),
-    ...(visibility.volume ? ['volume'] : []),
-    ...(visibility.source ? ['source'] : []),
-    ...(visibility.createdAt ? ['created_at'] : []),
+    ...(visibility.normalized ? ['normalized' as const] : []),
+    ...(visibility.status ? ['status' as const] : []),
+    ...(visibility.volume ? ['volume' as const] : []),
+    ...(visibility.source ? ['source' as const] : []),
+    ...(visibility.createdAt ? ['created_at' as const] : []),
 ];
 
 export default function Keywords({
