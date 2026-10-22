@@ -1,11 +1,16 @@
 import { useEffect, useRef } from 'react';
 import {
     type SavedKeywordView,
+    type SavedKeywordViewColumn,
     type SavedKeywordViewState,
     SavedKeywordViews,
 } from '@/components/saved-keyword-views';
 
-export type { SavedKeywordView, SavedKeywordViewState };
+export type {
+    SavedKeywordView,
+    SavedKeywordViewColumn,
+    SavedKeywordViewState,
+};
 
 type Props = {
     path: string;
@@ -13,7 +18,7 @@ type Props = {
     activeView: SavedKeywordView | null;
     currentState: SavedKeywordViewState;
     disabled?: boolean;
-    onApplyColumns: (columns: string[]) => void;
+    onApplyColumns: (columns: SavedKeywordViewColumn[]) => void;
 };
 
 export function SavedKeywordViewsToolbar({
