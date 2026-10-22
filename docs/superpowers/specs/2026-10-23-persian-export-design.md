@@ -21,6 +21,8 @@ Each row represents one canonical `Keyword` in the selected project. The row inc
 
 The export is synchronous and browser-driven. It does not require the queue or scheduler to be healthy.
 
+V1 is read-only with respect to domain data. It adds no migration, export-history table, durable export artifact, or server-side export record.
+
 ## 3. Explicit Non-Goals
 
 This subsystem does not:
@@ -73,9 +75,11 @@ The controller must authorize the concrete `Project` before any snapshot work st
 
 The existing project Keywords/Intelligence workspace exposes a real `خروجی CSV` action only when the current user is authorized to export.
 
-The route is a normal authenticated and verified GET download endpoint under the project namespace, conceptually:
+The exact V1 endpoint is:
 
 `GET /projects/{project}/exports/seo-plan.csv`
+
+It is protected by the same authenticated and verified middleware boundary as the project workspace.
 
 The action starts a normal browser download. V1 does not introduce a modal, export queue, polling UI, fake progress bar, or background job.
 
@@ -119,7 +123,7 @@ After generation, the response includes:
 - `X-SEO-Export-SHA256: <hex digest>`
 - `X-SEO-Export-Generated-At: <ISO-8601 UTC>`
 
-The SHA-256 is calculated over the CSV entity bytes that are handed to the HTTP response, including BOM, header, CRLFs, and escaped cells. Normal browser transport decoding must therefore yield a saved file with the same digest.
+The SHA-256 is calculated over the CSV entity bytes handed to the HTTP response, including BOM, header, CRLFs, and escaped cells. Normal browser transport decoding must therefore yield a saved file with the same digest.
 
 These headers are informational and testable. The CSV remains independently useful when saved without HTTP metadata.
 
@@ -267,7 +271,7 @@ The existing Keyword Intelligence workspace defines the latest metric by:
 1. greatest `observed_at`;
 2. greatest metric `id` as deterministic tie-breaker.
 
-Persian Export uses the same rule for row-level `volume` and `difficulty` and for the priority basis metrics.
+Persian Export uses the same rule for row-level `volume` and `difficulty` and for the priority-basis metrics.
 
 Metric selection is restricted to canonical keyword ids already proven to belong to the authorized project.
 
@@ -277,7 +281,7 @@ Metric selection is restricted to canonical keyword ids already proven to belong
 
 If membership points to an archived cluster, the export still represents the cluster and its `cluster_archived_at_utc`. Hiding archived membership would lose planning provenance.
 
-Archived clusters do not receive a current priority score; all priority fields for them are blank except the basis id may remain available only if needed for integrity diagnostics. V1's normal row contract keeps the whole priority group blank for archived clusters.
+For archived clusters, all columns from `priority_basis_keyword_id` through `priority_review_points` are blank. Priority is a current planning signal and is not calculated for archived clusters.
 
 ### 8.6 Mapping
 
@@ -291,7 +295,7 @@ The exporter verifies project identity for keyword, cluster, target, and page ev
 
 `keyword_pending_review_count` counts pending `ReviewItem` rows for the current row's keyword inside the selected project.
 
-`cluster_primary_pending_review_count` counts pending review rows for the active/represented cluster's primary keyword inside the selected project.
+`cluster_primary_pending_review_count` counts pending review rows for the represented cluster's primary keyword inside the selected project.
 
 `cluster_primary_pending_mapping_conflict` is `1` when the cluster primary keyword has a pending `mapping_conflict` review item in the project, otherwise `0`. When there is no cluster, these cluster-level review columns are blank.
 
@@ -318,7 +322,7 @@ The exporter does not create a second priority formula and does not persist a ne
 
 The generated file represents one database snapshot.
 
-Production MySQL/MariaDB generation uses a repeatable-read consistent transaction around every database read required for the export. The transaction starts before keyword iteration and ends immediately after the temporary export stream is complete.
+Production MySQL/MariaDB generation uses an explicit repeatable-read consistent transaction around every database read required for the export. The transaction starts before keyword iteration and ends immediately after the temporary export stream is complete.
 
 The HTTP response must not keep the database transaction open while the client downloads the file.
 
@@ -356,7 +360,9 @@ After generation, the stream is rewound for download.
 
 ## 12. Components and Boundaries
 
-### `ProjectExportController`
+V1 uses these application boundaries:
+
+### `app/Http/Controllers/ProjectSeoExportController.php`
 
 Responsibilities:
 
@@ -368,9 +374,9 @@ Responsibilities:
 
 It does not contain query-building, CSV escaping, metric selection, or priority logic.
 
-### `ExportProjectSeoPlan`
+### `app/Services/Exports/ExportProjectSeoPlan.php`
 
-Application service coordinating:
+Coordinates:
 
 - snapshot lifecycle;
 - batched keyword iteration;
@@ -379,13 +385,11 @@ Application service coordinating:
 - hash/row count;
 - result metadata.
 
-### Snapshot/query collaborator
+### `app/Services/Exports/ProjectSeoExportSnapshot.php`
 
-A focused collaborator such as `ProjectSeoExportSnapshot` loads one bounded keyword batch plus the current related data with project scoping and integrity checks.
+Loads one bounded keyword batch plus current related data with project scoping and integrity checks.
 
-The exact implementation class name may change in the implementation plan, but query responsibility remains separate from HTTP and CSV serialization.
-
-### `SpreadsheetCsvWriter`
+### `app/Support/Exports/SpreadsheetCsvWriter.php`
 
 Responsible only for:
 
@@ -393,17 +397,19 @@ Responsible only for:
 - RFC-compatible escaping;
 - CRLF;
 - scalar formatting;
-- incremental digest/row accounting where cohesive.
+- incremental digest/row accounting.
 
 It does not know Eloquent models.
 
-### `SpreadsheetText`
+### `app/Support/Exports/SpreadsheetText.php`
 
-A small deterministic serializer responsible for spreadsheet formula neutralization of ordinary string cells and for creating `exact_text_json` from unmodified row text.
+A deterministic serializer responsible for spreadsheet formula neutralization of ordinary string cells and for creating `exact_text_json` from unmodified row text.
 
-### Export result DTO
+### `app/Support/Exports/ProjectSeoExportResult.php`
 
-Carries the rewindable stream plus non-sensitive metadata: filename, MIME type, row count, schema version, digest, and generated-at timestamp.
+A small result object carrying the rewindable stream plus non-sensitive metadata: filename, MIME type, row count, schema version, digest, and generated-at timestamp.
+
+No model, migration, or persistent export table is added for V1.
 
 ## 13. Error Model
 
@@ -482,7 +488,7 @@ Implementation is test-driven.
 - latest metric uses `observed_at`, then metric id tie-break.
 - multiple source rows are summarized deterministically.
 - one keyword produces one row.
-- archived cluster membership is represented and priority is blank.
+- archived cluster membership is represented and the full priority group is blank.
 - mapping/page fields are correct.
 - row-level metrics remain distinct from priority-basis metrics for secondary members.
 - `priority_basis_keyword_id` is the primary keyword id.
@@ -508,7 +514,7 @@ Permanent CI must run a connected acceptance that:
 4. performs an authenticated export;
 5. proves project isolation;
 6. parses the downloaded CSV and verifies the intended values and 74-column contract;
-7. verifies secondary-keyword priority basis uses cluster primary metrics;
+7. verifies secondary-keyword priority basis uses cluster-primary metrics;
 8. verifies exact Persian/half-space text through `exact_text_json`;
 9. verifies formula neutralization;
 10. verifies metadata row count and SHA-256 against the downloaded bytes.
