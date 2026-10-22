@@ -26,7 +26,18 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Independent review: no Critical/Important findings. Deferred minor: actions/reload on page 2+ return to page 1.
   - Runtime-only release tree built and booted locally (`Laravel Framework 13.38.0`), and passed CI release smoke.
   - Persian browser workflow: queue request -> actual database worker -> suggestions -> keyboard accept -> inline change -> keyboard skip -> retry without reopening. No page errors or mobile overflow.
-- Tasks 4–11: pending. Next: cluster domain/membership, after preserving this verified increment.
+- Task 4 — Cluster domain/membership: **verified**
+  - Design: `docs/superpowers/specs/2026-10-22-cluster-domain-design.md`.
+  - Observed 12 RED tests in `d55fa32`; GREEN implementation `e720c0a`.
+  - Full CI: run `39790364710` on `e720c0a6bf21ea3e9acbf95b4ace02651ae92e43`, success.
+  - Full local suite: 160 tests / 1007 assertions; PHPStan/Pint/frontend lint/TypeScript passed.
+  - The 12 cluster tests passed on actual MariaDB 10.11, including composite foreign keys and primary deletion restrictions.
+  - A MariaDB transaction probe confirmed project deletion cascades correctly with populated clusters; the probe was rolled back.
+  - Independent task review: no actionable findings in the supported creation boundary.
+  - Creation is transactional/audited, requires the primary as an explicit member, rejects cross-project/duplicate membership and never silently moves a keyword.
+  - Decision: one current cluster membership per canonical keyword. Eloquent guards protect primary replacement/removal; future mutation services must acquire locks and never bypass those guards with bulk/raw writes.
+  - This task provides domain/application foundations; clustering algorithms and UI are not yet delivered.
+- Tasks 5–11: pending. Next: deterministic candidate generation and safe application, preserving manual/locked memberships.
 
 ## Execution rules
 

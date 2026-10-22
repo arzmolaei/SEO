@@ -4,13 +4,13 @@ Date: 2026-10-22
 
 ## Scope
 
-Intent domain, deterministic Persian classifier and Intent Review Queue are
-implemented and verified. The complete Intent + Clustering + Mapping subsystem
-is **not complete**; Tasks 4–11 remain pending. Foundation was already merged in
+Intent domain, deterministic Persian classifier, Intent Review Queue and cluster
+domain/membership are implemented and verified. The complete Intent + Clustering + Mapping subsystem
+is **not complete**; Tasks 5–11 remain pending. Foundation was already merged in
 PR #1. Development continues on `feature/keyword-intelligence`.
 
-Verified product head: `a85910065ec85b94d86ae301767e9405be1da0a3`.
-Permanent CI: https://github.com/arzmolaei/SEO/actions/runs/39788659107 — success.
+Verified product head: `e720c0a6bf21ea3e9acbf95b4ace02651ae92e43`.
+Permanent CI: https://github.com/arzmolaei/SEO/actions/runs/39790364710 — success.
 This documentation update follows that verified product head.
 
 ## Delivered workflow
@@ -37,7 +37,8 @@ lifecycle status or invoke the existing status-only Undo handler.
 
 ## Verification evidence
 
-- 148 PHP tests, 968 assertions passed locally on PHP 8.4.
+- 160 PHP tests, 1007 assertions passed locally on PHP 8.4.
+- All 12 new cluster tests passed on actual MariaDB 10.11.
 - CI PHP 8.4 and 8.5 compatibility suites passed.
 - Frontend formatter/linter, TypeScript, production build, Pint and PHPStan passed.
 - Runtime npm audit: zero vulnerabilities; Composer: no security advisories.
@@ -68,7 +69,13 @@ facilities. No international API, AI service or external font CDN is required.
 Resolving/reloading page 2+ currently returns to page 1. This affects review
 position, not decision integrity; preserve pagination in a later UX pass.
 
-Next task: project-scoped cluster domain/membership and primary-keyword invariant,
-then deterministic clustering and manual operations. Existing/planned pages,
+The cluster foundation now enforces project-scoped membership and the primary
+keyword invariant, persists confidence/review/lock state, and records attributable
+transactional creation history. It has no HTTP mutation endpoint yet. Future
+mutation services must use row locks and preserve primary membership; raw/bulk
+ORM writes bypass model guards and are not supported mutation paths.
+
+Next task: deterministic clustering candidate generation and safe application,
+then manual merge/split/move/lock operations. Existing/planned pages,
 mapping conflicts and prioritization follow. Do not start crawler work or merge
 this whole subsystem as complete before its remaining acceptance/review gates.

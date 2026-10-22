@@ -97,10 +97,10 @@
 
 **Produces:** project-scoped clusters with name, intent, primary keyword, confidence, review state, lock state and explicit members.
 
-- [ ] RED tests for create cluster, one membership per project keyword/cluster relation, primary keyword membership invariant, project isolation and locked-state persistence.
-- [ ] Implement schema/models/service and indexes.
-- [ ] Verify deleting/reassigning primary keyword cannot leave an invalid cluster.
-- [ ] Full CI GREEN and commit `feat: add keyword cluster domain`.
+- [x] RED tests for create cluster, one membership per project keyword/cluster relation, primary keyword membership invariant, project isolation and locked-state persistence.
+- [x] Implement schema/models/service and indexes.
+- [x] Verify deleting/reassigning primary keyword cannot leave an invalid cluster.
+- [x] Full CI GREEN and commit `feat: add keyword cluster domain`.
 
 ### Task 5 — Lexical/feature clustering engine
 
