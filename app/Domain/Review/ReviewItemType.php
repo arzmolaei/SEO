@@ -6,4 +6,5 @@ enum ReviewItemType: string
 {
     case Intent = 'intent';
     case Cluster = 'cluster';
+    case MappingConflict = 'mapping_conflict';
 }
