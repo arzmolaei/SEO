@@ -4,12 +4,25 @@ This repository is the source of truth for SEO OS.
 
 ## Read First
 
-Before changing product behavior, read:
+Before changing product behavior, read in this order:
 
-1. `docs/superpowers/specs/2026-10-22-seo-os-design.md`
-2. The active implementation plan in `docs/superpowers/plans/`
+1. `PROJECT_STATE.md`
+2. `docs/superpowers/specs/2026-10-22-seo-os-design.md`
+3. The active implementation plan in `docs/superpowers/plans/`
+4. The relevant release-readiness document in `docs/release-readiness/`, when present
 
-The product spec is authoritative when implementation details conflict.
+The repository state and product spec are authoritative when chat memory or implementation details conflict.
+
+## Continuity Protocol
+
+- Do not rely on conversation history as the primary project state. Inspect GitHub, the active branch, recent CI, `PROJECT_STATE.md`, tests, and release-readiness evidence first.
+- Do not redo completed tasks merely because a new chat/agent cannot see the old conversation.
+- Update `PROJECT_STATE.md` at meaningful milestones, especially before handing off to another chat/agent.
+- When the user says `continue`, keep progressing autonomously until the active bounded task/milestone has fresh verification, or a real external blocker requires user action, or safety rules require stopping.
+- Do not stop merely because CI is pending. Poll it to completion when tools are available.
+- A formatter, linter, type, static-analysis, test, build, audit, or CI failure is work to diagnose, not a reason to hand the task back to the user.
+- Never claim success from stale CI. Record the verified HEAD/run when closing a major milestone.
+- If context is near exhaustion, persist the exact continuation point to `PROJECT_STATE.md` before ending whenever possible.
 
 ## Working Method
 
