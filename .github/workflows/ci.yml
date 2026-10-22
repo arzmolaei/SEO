@@ -54,10 +54,7 @@ jobs:
         run: php artisan wayfinder:generate --with-form
 
       - name: Check frontend
-        run: |
-          npm run check:fix
-          git diff -- resources/js/pages/projects/keywords.tsx
-          exit 1
+        run: npm run check
 
       - name: Check TypeScript
         run: npm run types:check
