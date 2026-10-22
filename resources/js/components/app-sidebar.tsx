@@ -37,6 +37,7 @@ const sectionMeta: Record<
 > = {
     overview: { label: 'project.nav.overview', icon: LayoutDashboard },
     keywords: { label: 'project.nav.keywords', icon: Tags },
+    reviews: { label: 'project.nav.reviews', icon: ListTodo },
     pages: { label: 'project.nav.pages', icon: Files },
     'site-audit': { label: 'project.nav.siteAudit', icon: ShieldCheck },
     content: { label: 'project.nav.content', icon: FilePenLine },
@@ -50,7 +51,7 @@ const sectionMeta: Record<
 
 export function AppSidebar() {
     const { projectContext } = usePage().props;
-    const { t } = useLocale();
+    const { t, direction } = useLocale();
 
     const items: NavItem[] = projectContext
         ? projectContext.navigation.map((item) => ({
@@ -69,7 +70,11 @@ export function AppSidebar() {
     const homeHref = projectContext?.navigation[0]?.href ?? dashboard();
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
+        <Sidebar
+            side={direction === 'rtl' ? 'right' : 'left'}
+            collapsible="icon"
+            variant="inset"
+        >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>

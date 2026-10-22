@@ -12,6 +12,7 @@ class ProjectWorkspaceContext
     public const SECTIONS = [
         'overview',
         'keywords',
+        'reviews',
         'pages',
         'site-audit',
         'content',

@@ -78,3 +78,12 @@ php artisan wayfinder:generate --with-form
 ## Definition of Done
 
 Where applicable, a feature includes behavior, validation, loading/empty/error states, authorization, tests, RTL/LTR correctness, accessibility basics, performance considerations, safe migrations, logs/observability, and documentation.
+
+## Autonomous continuation contract
+
+- Continue the active task to verified completion, commit/push it, wait for final-head CI, then proceed to the next planned task without asking whether to continue.
+- The user delegates routine product/technical decisions; record material choices in the active spec/progress file. Keep each task separate and preserve all existing security/quality gates.
+- Keep `docs/PROJECT_STATE.md` and the active progress document current at verified boundaries, including exact task, commit, CI evidence, incomplete scope and next action.
+- On interruption, the next agent reads Git and these documents and resumes the first unverified task. Never redo completed tasks or call an incomplete subsystem a finished product.
+- Focus tests on user behavior, authorization, data integrity, concurrency and real acceptance risks. Do not add implementation-mirroring tests or repeat broad gates unless changes/failures justify it.
+- A usable self-host release additionally needs verified installation, normal use, export, backup/restore and update/recovery flows. Foundation or Keyword Intelligence completion does not satisfy those release requirements by itself.

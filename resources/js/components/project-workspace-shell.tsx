@@ -1,24 +1,38 @@
 import { usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
+import { KeywordIntelligencePanel } from '@/components/keyword-intelligence/keyword-intelligence-panel';
 import { useLocale } from '@/hooks/use-locale';
+import type { KeywordIntelligenceWorkspace } from '@/types/keyword-intelligence';
 
 type ProjectMode = 'guided' | 'expert';
+type KeywordSurface = 'grid' | 'intelligence';
 
 export function ProjectWorkspaceShell({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { projectContext } = usePage().props;
-    const { t } = useLocale();
+    const page = usePage();
+    const { projectContext } = page.props;
+    const intelligence = page.props.intelligence as
+        | KeywordIntelligenceWorkspace
+        | undefined;
+    const { t, locale } = useLocale();
     const [mode, setMode] = useState<ProjectMode>(
         projectContext?.mode ?? 'guided',
     );
+    const [keywordSurface, setKeywordSurface] =
+        useState<KeywordSurface>('grid');
 
     if (!projectContext) {
         return <>{children}</>;
     }
+
+    const keywordLabels =
+        locale === 'fa'
+            ? { grid: 'جدول کلمات', intelligence: 'هوشمندی و نگاشت' }
+            : { grid: 'Keyword grid', intelligence: 'Intelligence & mapping' };
 
     return (
         <div className="flex min-w-0 flex-1 flex-col">
@@ -78,7 +92,45 @@ export function ProjectWorkspaceShell({
                 </div>
             </div>
 
-            <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+            <main className="min-w-0 flex-1 p-4 md:p-6">
+                {intelligence && (
+                    <div
+                        className="mb-5 inline-flex rounded-lg border bg-muted/30 p-1"
+                        role="tablist"
+                        aria-label="Keyword workspace"
+                    >
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={keywordSurface === 'grid'}
+                            className="rounded-md px-3 py-1.5 text-sm font-medium data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                            data-active={keywordSurface === 'grid'}
+                            onClick={() => setKeywordSurface('grid')}
+                        >
+                            {keywordLabels.grid}
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={keywordSurface === 'intelligence'}
+                            className="rounded-md px-3 py-1.5 text-sm font-medium data-[active=true]:bg-background data-[active=true]:shadow-sm"
+                            data-active={keywordSurface === 'intelligence'}
+                            onClick={() => setKeywordSurface('intelligence')}
+                        >
+                            {keywordLabels.intelligence}
+                        </button>
+                    </div>
+                )}
+
+                {intelligence && keywordSurface === 'intelligence' ? (
+                    <KeywordIntelligencePanel
+                        data={intelligence}
+                        projectId={projectContext.project.id}
+                    />
+                ) : (
+                    children
+                )}
+            </main>
         </div>
     );
 }

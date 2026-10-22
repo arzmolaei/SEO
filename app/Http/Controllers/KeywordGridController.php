@@ -7,6 +7,7 @@ use App\Models\SavedKeywordView;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
 use App\Services\Keywords\QueryKeywordGrid;
+use App\Services\Keywords\QueryKeywordIntelligenceWorkspace;
 use App\Services\Keywords\ResolveKeywordGridView;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,6 +22,7 @@ class KeywordGridController extends Controller
         private ProjectPolicy $policy,
         private QueryKeywordGrid $queryKeywordGrid,
         private ResolveKeywordGridView $resolveKeywordGridView,
+        private QueryKeywordIntelligenceWorkspace $queryIntelligence,
     ) {}
 
     /** @throws AuthorizationException */
@@ -47,6 +49,7 @@ class KeywordGridController extends Controller
             'filters' => $filters->toArray(),
             'savedViews' => $savedViews->map(fn (SavedKeywordView $view): array => $this->serializeView($view))->values(),
             'activeView' => $activeView === null ? null : $this->serializeView($activeView),
+            'intelligence' => $this->queryIntelligence->handle($user, $project, $request->query()),
         ]);
     }
 
