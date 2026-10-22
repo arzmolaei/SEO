@@ -33,7 +33,9 @@ export default function Appearance() {
                 <section className="space-y-4 border-t pt-6">
                     <Heading
                         variant="small"
-                        title={isPersian ? 'فونت رابط کاربری' : 'Interface font'}
+                        title={
+                            isPersian ? 'فونت رابط کاربری' : 'Interface font'
+                        }
                         description={
                             isPersian
                                 ? 'ایران‌سنس پیش‌فرض است؛ یکان‌بخ و وزیرمتن هم برای کل رابط قابل انتخاب‌اند.'
