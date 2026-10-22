@@ -86,6 +86,17 @@ const messages = {
         'keywords.next': 'بعدی',
         'keywords.sortKeyword': 'مرتب‌سازی بر اساس کلمه',
         'keywords.sortVolume': 'مرتب‌سازی بر اساس حجم',
+        'keywords.savedViews': 'نماهای ذخیره‌شده',
+        'keywords.savedViewsDescription':
+            'فیلترها، مرتب‌سازی و ستون‌های همین جدول را برای استفاده دوباره ذخیره کنید.',
+        'keywords.noSavedView': 'یک نمای ذخیره‌شده انتخاب کنید',
+        'keywords.viewName': 'نام نما',
+        'keywords.saveView': 'ذخیره نما',
+        'keywords.updateView': 'به‌روزرسانی نمای فعال',
+        'keywords.setDefaultView': 'پیش‌فرض کردن',
+        'keywords.defaultView': 'پیش‌فرض',
+        'keywords.savedViewError':
+            'عملیات نمای ذخیره‌شده انجام نشد. دوباره تلاش کنید.',
     },
     en: {
         'app.name': 'SEO OS',
@@ -171,6 +182,17 @@ const messages = {
         'keywords.next': 'Next',
         'keywords.sortKeyword': 'Sort by keyword',
         'keywords.sortVolume': 'Sort by volume',
+        'keywords.savedViews': 'Saved views',
+        'keywords.savedViewsDescription':
+            'Save this table’s filters, sorting, and visible columns for reuse.',
+        'keywords.noSavedView': 'Choose a saved view',
+        'keywords.viewName': 'View name',
+        'keywords.saveView': 'Save view',
+        'keywords.updateView': 'Update active view',
+        'keywords.setDefaultView': 'Make default',
+        'keywords.defaultView': 'Default',
+        'keywords.savedViewError':
+            'The saved view action failed. Please try again.',
     },
 } as const;
 
