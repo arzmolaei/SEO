@@ -26,10 +26,11 @@ class ExportProjectSeoPlanTest extends TestCase
     {
         $project = $this->project('پروژه خالی');
         $generatedAt = CarbonImmutable::parse('2026-10-23T00:00:00Z');
+        $initialTransactionLevel = DB::connection()->transactionLevel();
 
         $result = app(ExportProjectSeoPlan::class)->handle($project, $generatedAt);
 
-        $this->assertSame(0, DB::connection()->transactionLevel());
+        $this->assertSame($initialTransactionLevel, DB::connection()->transactionLevel());
         $this->assertSame(ProjectSeoExportSchema::ID, $result->schemaVersion());
         $this->assertSame(0, $result->rowCount());
         $this->assertSame($generatedAt->toIso8601String(), $result->generatedAt()->toIso8601String());
@@ -58,6 +59,7 @@ class ExportProjectSeoPlanTest extends TestCase
             ];
         }
         Keyword::query()->insert($rows);
+        $initialTransactionLevel = DB::connection()->transactionLevel();
 
         $result = app(ExportProjectSeoPlan::class)->handle(
             $project,
@@ -65,7 +67,7 @@ class ExportProjectSeoPlanTest extends TestCase
         );
 
         $this->assertSame(501, $result->rowCount());
-        $this->assertSame(0, DB::connection()->transactionLevel());
+        $this->assertSame($initialTransactionLevel, DB::connection()->transactionLevel());
         $bytes = $this->readResult($result);
         $this->assertSame(hash('sha256', $bytes), $result->sha256());
         $lines = preg_split('/\r\n/', rtrim(substr($bytes, 3), "\r\n"));
@@ -140,6 +142,7 @@ class ExportProjectSeoPlanTest extends TestCase
                 'is_current' => true,
             ]);
         }
+        $initialTransactionLevel = DB::connection()->transactionLevel();
 
         try {
             app(ExportProjectSeoPlan::class)->handle($project);
@@ -148,7 +151,7 @@ class ExportProjectSeoPlanTest extends TestCase
             $this->assertSame('export_integrity_current_intent', $exception->codeName());
         }
 
-        $this->assertSame(0, DB::connection()->transactionLevel());
+        $this->assertSame($initialTransactionLevel, DB::connection()->transactionLevel());
     }
 
     private function project(string $name): Project
