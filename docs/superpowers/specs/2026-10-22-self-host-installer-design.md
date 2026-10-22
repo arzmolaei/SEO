@@ -31,7 +31,7 @@ However, it currently assumes the database and runtime configuration already exi
 7. **One installation at a time.** State-changing installer operations are serialized with a filesystem lock that does not require the database.
 8. **No silent success.** Queue/scheduler readiness is reported as verified, warning, or unresolved based on observable evidence; configuration text alone is not treated as proof that background execution is alive.
 9. **Secure-by-default self-hosting.** Public registration is disabled by default after the initial owner is created unless the administrator deliberately enables it later.
-10. **Core remains local/offline-capable.** No foreign API or internet dependency is introduced into installation.
+10. **Core remains local/offline-capable.** No foreign API or internet dependency is introduced into installation, including owner/password validation.
 
 ## Installation state machine
 
@@ -147,7 +147,11 @@ Collected fields:
 - password;
 - password confirmation.
 
-Validation reuses the application's canonical profile/password rules wherever possible. The service runs under the installer mutex and database transaction.
+Profile/email validation follows the same normalization and local structural rules as normal authentication. Password validation deliberately does **not** call the current production `Password::default()` rule while it includes `uncompromised()`, because that rule can require an external breach-check service. First installation must remain functional during national-internet restrictions or total international disconnection.
+
+The installer owner password policy is therefore fully local and deterministic: minimum 12 characters, mixed case, letters, numbers, symbols, and confirmation. A future optional breach check may run after installation when connectivity exists, but it is never a bootstrap dependency.
+
+The owner service runs under the installer mutex and a database transaction.
 
 Rules:
 
@@ -155,7 +159,7 @@ Rules:
 - the initial owner is treated as verified for local first-install bootstrap so the user is not blocked on outbound email availability;
 - if a matching installer-created owner already exists because the request completed but the response was lost, retry resolves to that same user rather than creating a duplicate;
 - if unrelated users already exist before owner creation, the installer stops and requires explicit recovery rather than guessing which account owns the installation;
-- owner creation also creates or assigns the minimum workspace/membership state required for the application's normal post-login flow, following the existing workspace domain rules;
+- owner creation also creates or assigns the minimum workspace/membership state required for the application's normal post-login flow, using the existing `WorkspaceRole::Owner` role and existing workspace/membership constraints rather than inventing a second administrator model;
 - public Fortify registration is disabled by default for installed self-host instances through an explicit application setting/environment flag, not by deleting registration code.
 
 The password is never stored in installer state or logs.
@@ -233,6 +237,7 @@ A request interruption never advances a phase solely because the request started
 - Database host/port/name/user lengths and formats are bounded before connection attempts.
 - Database exceptions are classified and sanitized before reaching Inertia props.
 - Initial owner email is normalized consistently with Fortify login behavior.
+- No installer validation rule may require outbound HTTP/DNS access to pass.
 
 ## UI and Persian-first experience
 
@@ -299,6 +304,7 @@ Required automated coverage includes:
 - runtime key is persisted and stable across simulated process restarts;
 - database verification classifies common failures without leaking password values;
 - migrations run in-process, only pending migrations execute, and retry after simulated interruption completes correctly;
+- owner password validation succeeds with all outbound network access blocked and rejects passwords that violate the local 12-character/mixed-case/letter/number/symbol policy;
 - duplicate owner submission creates one user only;
 - unexpected pre-existing users stop bootstrap;
 - registration is disabled by default after install;
@@ -322,8 +328,9 @@ This sub-project is done only when all of the following are demonstrated on the 
 6. the installer cannot be reopened after the lock is written;
 7. queue/scheduler setup and health are visible and never represented as verified without evidence;
 8. production registration is closed by default;
-9. PHP 8.4 and 8.5 CI, frontend checks, static analysis, backend suite, audits, and release smoke remain green;
-10. no Composer, Node.js, npm, SSH, foreign API, or internet access is required on the target host for the installation flow.
+9. owner creation succeeds with international network access unavailable;
+10. PHP 8.4 and 8.5 CI, frontend checks, static analysis, backend suite, audits, and release smoke remain green;
+11. no Composer, Node.js, npm, SSH, foreign API, or internet access is required on the target host for the installation flow.
 
 ## Out of scope
 
