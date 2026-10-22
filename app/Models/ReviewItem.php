@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * @property ReviewItemType $type
  * @property string $status
  * @property string $fingerprint
- * @property array{original_text?: string, normalized_text?: string, intent?: string, confidence?: string, matched_rule_ids?: list<string>, evidence: list<string>, candidate?: array<string, mixed>, warnings?: list<array<string, mixed>>} $suggestion
+ * @property array<string, mixed> $suggestion
  * @property string|null $resolution
  * @property int|null $resolved_by_id
  * @property Carbon|null $resolved_at
