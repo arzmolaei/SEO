@@ -14,7 +14,7 @@ class KeywordImportController extends Controller
 {
     public function store(Request $request, Project $project, StageKeywordImport $stageImport): JsonResponse
     {
-        Gate::authorize('update', $project);
+        Gate::authorize('stageKeywordImports', $project);
 
         $actor = $request->user();
 
