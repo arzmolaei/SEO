@@ -72,18 +72,28 @@ RED contracts remain under `docs/superpowers/specs/` and
     frontend check/TypeScript/build, Pint, PHPStan, runtime audits and release
     smoke all passed.
 - Task 11 — Connected Keyword Intelligence workspace + acceptance: **active**
-  - The existing `intelligence` server prop is now connected to the Keywords page
+  - The existing `intelligence` server prop is connected to the Keywords page
     instead of remaining dead UI. The workspace exposes Grid, Intent, Clusters and
     Mapping entry points while preserving the existing server-paginated Grid.
   - Manual cluster merge/move/split controls call only the existing project-scoped,
     service-backed HTTP boundaries and respect cluster locks. Mapping, priority,
     conflict refresh, Review Queue and Ready operations remain service-owned.
-  - Acceptance now requires explicit `intelligence.project_id` so the client does
-    not infer project identity from URL shape. RED was observed on CI `39826284166`:
-    only the new property assertion failed while 236 tests passed. The minimal
-    backend/type/UI contract is now implemented and awaiting a permanent full CI.
-  - Final acceptance, Persian RTL/keyboard/empty/error checks, whole-branch review
-    and fresh final-head CI are still required before PR #2 may merge.
+  - Acceptance requires explicit `intelligence.project_id` so the client does not
+    infer project identity from URL shape. RED was observed on CI `39826284166`:
+    only the new property assertion failed while 236 tests passed. Minimal GREEN
+    was then verified by full permanent CI `39826787331`.
+  - Whole-branch review found and fixed a Review Queue contract mismatch where
+    `mapping_conflict` was not represented in the frontend type/label surface.
+    Mapping warnings are now explicitly labelled in Persian/English while retaining
+    accept/skip-only semantics.
+  - Manual cluster editing now exposes deterministic no-result states and clears a
+    stale source-primary replacement if that keyword is subsequently selected into
+    a split. The patch was formatted and type-checked with generated Wayfinder
+    routes before commit.
+  - Authorization, idempotency, locked/manual override preservation and silent
+    remapping boundaries have been re-reviewed across controller/service edges.
+    A fresh permanent full CI on this post-review candidate is now required before
+    Task 11 can be marked verified and PR #2 can merge.
 
 ## Execution rules
 
