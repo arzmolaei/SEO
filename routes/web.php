@@ -14,6 +14,12 @@ use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
 
 Route::get('install', [InstallerController::class, 'index'])->name('install.index');
+Route::post('install/environment', [InstallerController::class, 'saveEnvironment'])
+    ->middleware('throttle:10,1')
+    ->name('install.environment.store');
+Route::post('install/database/verify', [InstallerController::class, 'verifyDatabase'])
+    ->middleware('throttle:10,1')
+    ->name('install.database.verify');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {
