@@ -12,7 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $row_number
  * @property string|null $keyword_original
  * @property string|null $row_fingerprint
+ * @property array<string, mixed> $raw_payload
+ * @property array<string, mixed>|null $mapped_payload
  * @property bool $is_valid
+ * @property list<string>|null $warnings
+ * @property list<string>|null $errors
  */
 #[Fillable([
     'import_batch_id',
