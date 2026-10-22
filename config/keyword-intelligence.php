@@ -5,6 +5,10 @@ return [
         'auto_apply_high_confidence' => false,
         'stop_words' => ['برای', 'از', 'به', 'در', 'با', 'و', 'یک', 'این', 'آن', 'خرید', 'قیمت', 'بهترین', 'آموزش', 'جدید'],
     ],
+    'mapping_conflicts' => [
+        'algorithm_version' => 'mapping-conflicts-v1',
+        'high_demand_volume' => 1000,
+    ],
     'intent' => [
         'auto_apply_high_confidence' => false,
         'rules' => [
