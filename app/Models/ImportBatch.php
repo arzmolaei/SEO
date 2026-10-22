@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $project_id
  * @property string $source
  * @property string $original_filename
+ * @property array<string, string> $mapping
  * @property string $status
  * @property int $total_rows
  * @property int $processed_rows
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $invalid_rows
  * @property int $warning_count
  * @property int $error_count
+ * @property list<string>|null $warnings
+ * @property list<string>|null $errors
  * @property string|null $failure_message
  * @property CarbonImmutable|null $started_at
  * @property CarbonImmutable|null $completed_at
