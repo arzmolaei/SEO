@@ -14,7 +14,6 @@ use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
 
 Route::get('install', [InstallerController::class, 'index'])->name('install.index');
-Route::post('install/complete', [InstallerController::class, 'complete'])->name('install.complete');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {
