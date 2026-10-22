@@ -4,7 +4,15 @@ Date: 2026-10-22
 
 ## Status
 
-The first SEO OS vertical slice is complete on `feature/foundation-keyword-core` and is ready for whole-branch review. It is a production-quality foundation slice, not the final SEO OS product release.
+The first SEO OS vertical slice is complete on `feature/foundation-keyword-core` and has completed whole-branch review. It is a production-quality foundation slice, not the final SEO OS product release.
+
+Final reviewed implementation baseline before this documentation update:
+
+- Commit: `05738fd3bafe0c7dacbdb05f1917f89ac9cd6a09`
+- CI run: `39771206949`
+- Main verification job: passed
+- PHP 8.4 compatibility: passed
+- PHP 8.5 compatibility: passed
 
 ## Verified user workflow
 
@@ -36,7 +44,15 @@ The permanent CI pipeline verifies:
 - Runtime Composer dependency audit.
 - Production release-package contract.
 
-The final acceptance run for this slice passed all of the above before this note was added.
+The reviewed baseline passed all of these gates, including the end-to-end acceptance workflow.
+
+## Whole-branch review
+
+The completed branch was compared against `main` and reviewed with extra attention to authorization boundaries, project-scoped queries, transactional bulk changes, safe undo behavior, installer/release safety, and secret leakage.
+
+One important release-package hardening issue was found and fixed during review: private key files nested below `storage/` could previously evade a top-level-only key check. The release contract now recursively scans `storage` and rejects `.key` files at any depth, reported as `storage/**/*.key`. A dedicated RED/GREEN regression test verifies nested private-key rejection.
+
+No additional Critical or Important findings remained after the focused review and the final reviewed CI baseline above.
 
 ## Self-hosting baseline
 
@@ -62,7 +78,7 @@ The slice keeps the intended self-host characteristics:
 - Saved View state is versioned, validated, user/project scoped, and rejects unknown fields/operators.
 - Bulk changes are transactional, attributable, audited, and reversible where safe.
 - Undo refuses to overwrite a keyword that changed after the original ChangeSet.
-- Release packages reject development/secret artifacts such as `.env`, `node_modules`, test sources and private key files.
+- Release packages reject development/secret artifacts such as `.env`, `node_modules`, test sources and private key files anywhere below `storage/`.
 
 ## UI foundation completed
 
@@ -100,4 +116,4 @@ Crawler/Site Intelligence should follow after that keyword-to-page relationship 
 
 ## Integration rule
 
-Do not merge this feature branch solely because individual tests are green. Perform whole-branch review first, then integrate through the normal reviewed branch workflow. The acceptance and CI evidence should remain required for any later integration.
+Do not merge this feature branch solely because individual tests are green. Integration should happen through the reviewed branch workflow after a fresh CI run on the final branch head. The acceptance and CI evidence should remain required for any later integration.
