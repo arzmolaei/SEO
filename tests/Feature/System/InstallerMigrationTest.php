@@ -6,6 +6,7 @@ use App\Support\Installer\InstallerMigrationRunner;
 use Illuminate\Database\Migrations\MigrationRepositoryInterface;
 use Illuminate\Database\Migrations\Migrator;
 use Mockery;
+use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -139,7 +140,7 @@ class InstallerMigrationTest extends TestCase
     /**
      * @param  array<string, string>  $files
      * @param  list<string>  $ran
-     * @return array{InstallerMigrationRunner, Migrator&\Mockery\MockInterface, MigrationRepositoryInterface&\Mockery\MockInterface}
+     * @return array{InstallerMigrationRunner, Migrator&MockInterface, MigrationRepositoryInterface&MockInterface}
      */
     private function runner(array $files, array $ran = [], bool $repositoryExists = true): array
     {
