@@ -44,7 +44,11 @@ jobs:
 
       - name: Diagnose PHP formatter diff
         if: github.event_name == 'push'
-        run: ./vendor/bin/pint --test --diff app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php
+        shell: bash
+        run: |
+          ./vendor/bin/pint app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php
+          git diff -- app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php
+          test -z "$(git status --short -- app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php)"
 
       - name: Prepare application environment
         shell: bash
