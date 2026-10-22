@@ -57,8 +57,12 @@ export function ProjectWorkspaceShell({
                             aria-disabled="true"
                         >
                             <Search className="size-4 shrink-0" />
-                            <span className="truncate">{t('project.search')}</span>
-                            <span className="ms-auto hidden rounded border px-1.5 py-0.5 text-[10px] sm:inline">⌘K</span>
+                            <span className="truncate">
+                                {t('project.search')}
+                            </span>
+                            <span className="ms-auto hidden rounded border px-1.5 py-0.5 text-[10px] sm:inline">
+                                ⌘K
+                            </span>
                         </button>
 
                         <div
@@ -90,7 +94,11 @@ export function ProjectWorkspaceShell({
 
             <main className="min-w-0 flex-1 p-4 md:p-6">
                 {intelligence && (
-                    <div className="mb-5 inline-flex rounded-lg border bg-muted/30 p-1" role="tablist" aria-label="Keyword workspace">
+                    <div
+                        className="mb-5 inline-flex rounded-lg border bg-muted/30 p-1"
+                        role="tablist"
+                        aria-label="Keyword workspace"
+                    >
                         <button
                             type="button"
                             role="tab"
