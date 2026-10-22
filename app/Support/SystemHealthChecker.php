@@ -6,7 +6,7 @@ use App\Contracts\SystemProbe;
 
 class SystemHealthChecker
 {
-    private const MINIMUM_PHP_VERSION = '8.3.0';
+    private const MINIMUM_PHP_VERSION = '8.4.1';
 
     private const MINIMUM_FREE_DISK_BYTES = 134217728;
 
@@ -72,7 +72,7 @@ class SystemHealthChecker
             $passes ? 'pass' : 'fail',
             true,
             $version,
-            $passes ? 'PHP runtime is supported.' : 'PHP 8.3 or newer is required.',
+            $passes ? 'PHP runtime is supported.' : 'PHP 8.4.1 or newer is required.',
         );
     }
 
