@@ -1,0 +1,56 @@
+name: Installer MariaDB diagnostic
+
+on:
+  push:
+    branches:
+      - feature/self-host-installer
+    paths:
+      - tests/Feature/System/SelfHostInstallerAcceptanceTest.php
+      - .github/workflows/installer-mariadb-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  connected-installer:
+    runs-on: ubuntu-24.04
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-secret
+          MARIADB_DATABASE: seo_os_installer
+          MARIADB_USER: seo_os
+          MARIADB_PASSWORD: installer-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      SELF_HOST_INSTALLER_CONNECTED: '1'
+      INSTALLER_CONNECTED_DB_HOST: 127.0.0.1
+      INSTALLER_CONNECTED_DB_PORT: '3306'
+      INSTALLER_CONNECTED_DB_DATABASE: seo_os_installer
+      INSTALLER_CONNECTED_DB_USERNAME: seo_os
+      INSTALLER_CONNECTED_DB_PASSWORD: installer-secret
+      INSTALLER_ASSUME_INSTALLED: 'false'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare application key
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+      - name: Run connected installer acceptance
+        run: php artisan test tests/Feature/System/SelfHostInstallerAcceptanceTest.php --fail-on-skipped
