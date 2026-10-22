@@ -7,6 +7,18 @@ use InvalidArgumentException;
 
 final readonly class KeywordGridQuery
 {
+    /** @var list<string> */
+    public const INPUT_FIELDS = [
+        'q',
+        'source',
+        'status',
+        'volume_operator',
+        'volume',
+        'sort',
+        'direction',
+        'per_page',
+    ];
+
     /** @var array<string, string> */
     private const VOLUME_OPERATORS = [
         'eq' => '=',
