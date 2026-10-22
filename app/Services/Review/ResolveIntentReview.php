@@ -63,9 +63,6 @@ class ResolveIntentReview
                 } else {
                     $selected = $intent;
                 }
-                if (! $selected instanceof KeywordIntent) {
-                    throw new InvalidArgumentException('A selected intent is required.');
-                }
                 $this->assignIntent->handle($actor, $project, $keyword, $selected, IntentConfidence::High, 'user', [
                     'review_item_id' => $review->id,
                     'fingerprint' => $review->fingerprint,
