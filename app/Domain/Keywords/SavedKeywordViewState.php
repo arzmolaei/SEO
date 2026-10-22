@@ -9,18 +9,6 @@ final readonly class SavedKeywordViewState
     public const SCHEMA_VERSION = 1;
 
     /** @var list<string> */
-    private const QUERY_FIELDS = [
-        'q',
-        'source',
-        'status',
-        'volume_operator',
-        'volume',
-        'sort',
-        'direction',
-        'per_page',
-    ];
-
-    /** @var list<string> */
     private const COLUMNS = [
         'keyword',
         'normalized',
@@ -54,7 +42,7 @@ final readonly class SavedKeywordViewState
             throw new InvalidArgumentException('Saved keyword view query must be an object.');
         }
 
-        self::assertAllowedKeys($query, self::QUERY_FIELDS, 'query');
+        self::assertAllowedKeys($query, KeywordGridQuery::INPUT_FIELDS, 'query');
         KeywordGridQuery::fromArray($query);
 
         if (! is_array($columns) || ! array_is_list($columns) || $columns === []) {
