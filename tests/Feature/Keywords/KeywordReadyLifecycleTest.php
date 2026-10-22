@@ -16,6 +16,7 @@ use App\Models\StagedKeywordRow;
 use App\Models\User;
 use App\Services\Keywords\CalculateClusterPriority;
 use App\Services\Keywords\CreateKeywordCluster;
+use App\Services\Keywords\DetectKeywordMappingConflicts;
 use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
@@ -122,6 +123,54 @@ class KeywordReadyLifecycleTest extends TestCase
         $cluster->save();
 
         $this->assertSame(ClusterLifecycleState::Ready, $cluster->fresh()->lifecycle_state);
+    }
+
+    public function test_remapping_a_ready_cluster_returns_it_to_planning(): void
+    {
+        [$actor, $project, $cluster] = $this->fixture();
+        $cluster->update(['review_state' => ClusterReviewState::Reviewed]);
+        app(MapClusterToTarget::class)->handle($actor, $project, $cluster, ClusterTargetType::Ignore);
+        $cluster->update(['lifecycle_state' => ClusterLifecycleState::Ready]);
+        $page = app(CreatePlannedPage::class)->handle($actor, $project, 'New target');
+
+        app(MapClusterToTarget::class)->handle($actor, $project, $cluster, ClusterTargetType::PlannedPage, $page);
+
+        $this->assertSame(ClusterLifecycleState::Planning, $cluster->fresh()->lifecycle_state);
+    }
+
+    public function test_new_mapping_conflict_invalidates_an_existing_ready_decision(): void
+    {
+        [$actor, $project, $cluster] = $this->fixture();
+        $cluster->update(['review_state' => ClusterReviewState::Reviewed]);
+        $page = app(CreatePlannedPage::class)->handle($actor, $project, 'Shared target');
+        app(MapClusterToTarget::class)->handle($actor, $project, $cluster, ClusterTargetType::PlannedPage, $page);
+        $cluster->update(['lifecycle_state' => ClusterLifecycleState::Ready]);
+
+        $otherKeyword = Keyword::query()->create([
+            'project_id' => $project->id,
+            'display_text' => 'لپ تاپ',
+            'normalized_text' => 'لپ تاپ',
+            'status' => 'review',
+        ]);
+        $other = app(CreateKeywordCluster::class)->handle(
+            $actor,
+            $project,
+            'لپ تاپ',
+            $otherKeyword,
+            [$otherKeyword->id],
+            KeywordIntent::Commercial,
+        );
+        app(MapClusterToTarget::class)->handle($actor, $project, $other, ClusterTargetType::PlannedPage, $page);
+
+        app(DetectKeywordMappingConflicts::class)->handle($actor, $project);
+
+        $this->assertSame(ClusterLifecycleState::Planning, $cluster->fresh()->lifecycle_state);
+        $this->assertDatabaseHas('review_items', [
+            'project_id' => $project->id,
+            'keyword_id' => $cluster->primary_keyword_id,
+            'type' => ReviewItemType::MappingConflict->value,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_business_relevance_accepts_only_manual_one_to_five_scale(): void
