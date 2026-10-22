@@ -27,7 +27,7 @@ class StageKeywordImport
         array $mapping,
         array $rows,
     ): ImportBatch {
-        if (! $this->policy->update($actor, $project)) {
+        if (! $this->policy->stageKeywordImports($actor, $project)) {
             throw new AuthorizationException;
         }
 
