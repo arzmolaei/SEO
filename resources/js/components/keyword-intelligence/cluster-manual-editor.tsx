@@ -203,14 +203,20 @@ export function ClusterManualEditor({
     const [mergeSearching, setMergeSearching] = useState(false);
 
     const [memberQuery, setMemberQuery] = useState('');
-    const [memberResults, setMemberResults] = useState<MemberSearchResult[]>([]);
+    const [memberResults, setMemberResults] = useState<MemberSearchResult[]>(
+        [],
+    );
     const [memberSearching, setMemberSearching] = useState(false);
-    const [moveMember, setMoveMember] = useState<MemberSearchResult | null>(null);
+    const [moveMember, setMoveMember] = useState<MemberSearchResult | null>(
+        null,
+    );
     const [moveReplacement, setMoveReplacement] =
         useState<MemberSearchResult | null>(null);
 
     const [targetQuery, setTargetQuery] = useState('');
-    const [targetResults, setTargetResults] = useState<ClusterSearchResult[]>([]);
+    const [targetResults, setTargetResults] = useState<ClusterSearchResult[]>(
+        [],
+    );
     const [moveTarget, setMoveTarget] = useState<ClusterSearchResult | null>(
         null,
     );
@@ -349,7 +355,7 @@ export function ClusterManualEditor({
 
     return (
         <details className="mt-4 rounded-lg border bg-muted/15 p-3">
-            <summary className="cursor-pointer select-none text-sm font-medium">
+            <summary className="cursor-pointer text-sm font-medium select-none">
                 {copy.title}
             </summary>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -374,7 +380,9 @@ export function ClusterManualEditor({
                         <input
                             className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-xs"
                             value={mergeQuery}
-                            onChange={(event) => setMergeQuery(event.target.value)}
+                            onChange={(event) =>
+                                setMergeQuery(event.target.value)
+                            }
                             placeholder={copy.searchClusters}
                             disabled={membershipDisabled || busy}
                             onKeyDown={(event) => {
@@ -398,7 +406,9 @@ export function ClusterManualEditor({
                                     setMergeSearching,
                                 )
                             }
-                            disabled={membershipDisabled || busy || mergeSearching}
+                            disabled={
+                                membershipDisabled || busy || mergeSearching
+                            }
                         >
                             <Search className="size-3.5" />
                             {mergeSearching ? copy.searching : copy.search}
@@ -449,7 +459,9 @@ export function ClusterManualEditor({
                         <input
                             className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-xs"
                             value={memberQuery}
-                            onChange={(event) => setMemberQuery(event.target.value)}
+                            onChange={(event) =>
+                                setMemberQuery(event.target.value)
+                            }
                             placeholder={copy.searchMembers}
                             disabled={membershipDisabled || busy}
                             onKeyDown={(event) => {
@@ -463,7 +475,9 @@ export function ClusterManualEditor({
                             type="button"
                             className="inline-flex h-9 items-center gap-1 rounded-md border px-2 text-xs disabled:opacity-50"
                             onClick={() => void searchMembers()}
-                            disabled={membershipDisabled || busy || memberSearching}
+                            disabled={
+                                membershipDisabled || busy || memberSearching
+                            }
                         >
                             <Search className="size-3.5" />
                             {memberSearching ? copy.searching : copy.search}
@@ -474,8 +488,15 @@ export function ClusterManualEditor({
                             {memberResults.map((member) => (
                                 <ResultButton
                                     key={member.id}
-                                    label={member.display_text ?? `#${member.keyword_id}`}
-                                    meta={member.is_primary ? copy.primary : copy.choose}
+                                    label={
+                                        member.display_text ??
+                                        `#${member.keyword_id}`
+                                    }
+                                    meta={
+                                        member.is_primary
+                                            ? copy.primary
+                                            : copy.choose
+                                    }
                                     onClick={() => {
                                         setMoveMember(member);
                                         setMoveReplacement(null);
@@ -488,7 +509,8 @@ export function ClusterManualEditor({
                         <div className="mt-2 rounded-md bg-muted/50 p-2 text-xs">
                             {copy.movingMember}:{' '}
                             <strong>
-                                {moveMember.display_text ?? `#${moveMember.keyword_id}`}
+                                {moveMember.display_text ??
+                                    `#${moveMember.keyword_id}`}
                             </strong>
                         </div>
                     )}
@@ -501,7 +523,8 @@ export function ClusterManualEditor({
                                 {memberResults
                                     .filter(
                                         (member) =>
-                                            member.keyword_id !== moveMember.keyword_id,
+                                            member.keyword_id !==
+                                            moveMember.keyword_id,
                                     )
                                     .map((member) => (
                                         <ResultButton
@@ -532,7 +555,9 @@ export function ClusterManualEditor({
                         <input
                             className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-xs"
                             value={targetQuery}
-                            onChange={(event) => setTargetQuery(event.target.value)}
+                            onChange={(event) =>
+                                setTargetQuery(event.target.value)
+                            }
                             placeholder={copy.searchClusters}
                             disabled={membershipDisabled || busy}
                             onKeyDown={(event) => {
@@ -556,7 +581,9 @@ export function ClusterManualEditor({
                                     setTargetSearching,
                                 )
                             }
-                            disabled={membershipDisabled || busy || targetSearching}
+                            disabled={
+                                membershipDisabled || busy || targetSearching
+                            }
                         >
                             <Search className="size-3.5" />
                             {targetSearching ? copy.searching : copy.search}
@@ -568,7 +595,11 @@ export function ClusterManualEditor({
                                 <ResultButton
                                     key={result.id}
                                     label={result.name}
-                                    meta={result.is_locked ? copy.locked : copy.targetCluster}
+                                    meta={
+                                        result.is_locked
+                                            ? copy.locked
+                                            : copy.targetCluster
+                                    }
                                     onClick={() => setMoveTarget(result)}
                                     disabled={result.is_locked}
                                 />
@@ -577,7 +608,8 @@ export function ClusterManualEditor({
                     )}
                     {moveTarget && (
                         <div className="mt-2 rounded-md bg-muted/50 p-2 text-xs">
-                            {copy.targetCluster}: <strong>{moveTarget.name}</strong>
+                            {copy.targetCluster}:{' '}
+                            <strong>{moveTarget.name}</strong>
                         </div>
                     )}
                     <button
@@ -610,12 +642,16 @@ export function ClusterManualEditor({
                         <input
                             className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-xs"
                             value={splitName}
-                            onChange={(event) => setSplitName(event.target.value)}
+                            onChange={(event) =>
+                                setSplitName(event.target.value)
+                            }
                             placeholder={copy.splitNamePlaceholder}
                             disabled={membershipDisabled || busy}
                         />
                     </label>
-                    <p className="mt-3 text-xs font-medium">{copy.splitMembers}</p>
+                    <p className="mt-3 text-xs font-medium">
+                        {copy.splitMembers}
+                    </p>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                         {copy.searchMembers}
                     </p>
@@ -624,7 +660,9 @@ export function ClusterManualEditor({
                             type="button"
                             className="mt-2 inline-flex h-9 items-center gap-1 rounded-md border px-2 text-xs disabled:opacity-50"
                             onClick={() => void searchMembers()}
-                            disabled={membershipDisabled || busy || memberSearching}
+                            disabled={
+                                membershipDisabled || busy || memberSearching
+                            }
                         >
                             <Search className="size-3.5" />
                             {memberSearching ? copy.searching : copy.search}
@@ -634,14 +672,17 @@ export function ClusterManualEditor({
                         <div className="mt-2 max-h-44 overflow-auto rounded-md border p-1">
                             {memberResults.map((member) => {
                                 const selected = splitMembers.some(
-                                    (item) => item.keyword_id === member.keyword_id,
+                                    (item) =>
+                                        item.keyword_id === member.keyword_id,
                                 );
                                 return (
                                     <button
                                         key={`split-${member.id}`}
                                         type="button"
                                         className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-start text-xs hover:bg-muted"
-                                        onClick={() => toggleSplitMember(member)}
+                                        onClick={() =>
+                                            toggleSplitMember(member)
+                                        }
                                     >
                                         <span className="truncate">
                                             {member.display_text ??
@@ -651,7 +692,9 @@ export function ClusterManualEditor({
                                                 : ''}
                                         </span>
                                         <span className="shrink-0 text-primary">
-                                            {selected ? copy.remove : copy.choose}
+                                            {selected
+                                                ? copy.remove
+                                                : copy.choose}
                                         </span>
                                     </button>
                                 );

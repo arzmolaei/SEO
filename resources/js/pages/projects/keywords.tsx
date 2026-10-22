@@ -384,14 +384,26 @@ export default function Keywords({
 
                     <nav
                         className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4"
-                        aria-label={locale === 'fa' ? 'بخش‌های هوشمندی کلمات' : 'Keyword intelligence sections'}
+                        aria-label={
+                            locale === 'fa'
+                                ? 'بخش‌های هوشمندی کلمات'
+                                : 'Keyword intelligence sections'
+                        }
                     >
-                        {([
-                            ['grid', locale === 'fa' ? 'جدول' : 'Grid'],
-                            ['intent', locale === 'fa' ? 'نیت' : 'Intent'],
-                            ['clusters', locale === 'fa' ? 'خوشه‌ها' : 'Clusters'],
-                            ['mapping', locale === 'fa' ? 'نگاشت' : 'Mapping'],
-                        ] as const).map(([value, label]) => (
+                        {(
+                            [
+                                ['grid', locale === 'fa' ? 'جدول' : 'Grid'],
+                                ['intent', locale === 'fa' ? 'نیت' : 'Intent'],
+                                [
+                                    'clusters',
+                                    locale === 'fa' ? 'خوشه‌ها' : 'Clusters',
+                                ],
+                                [
+                                    'mapping',
+                                    locale === 'fa' ? 'نگاشت' : 'Mapping',
+                                ],
+                            ] as const
+                        ).map(([value, label]) => (
                             <button
                                 key={value}
                                 type="button"
@@ -410,388 +422,431 @@ export default function Keywords({
 
                     {workspaceTab === 'grid' ? (
                         <>
-                    <SavedKeywordViewsToolbar
-                        path={path}
-                        savedViews={savedViews}
-                        activeView={activeView}
-                        currentState={currentViewState}
-                        disabled={isLoading}
-                        onApplyColumns={(columns) =>
-                            setVisibleColumns(
-                                visibilityFromSavedColumns(columns),
-                            )
-                        }
-                    />
-
-                    <form
-                        onSubmit={submit}
-                        className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-6"
-                    >
-                        <label className="space-y-1 text-sm xl:col-span-2">
-                            <span>{t('keywords.search')}</span>
-                            <input
-                                value={search}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                                className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                type="search"
-                            />
-                        </label>
-                        <label className="space-y-1 text-sm">
-                            <span>{t('keywords.source')}</span>
-                            <input
-                                value={source}
-                                onChange={(event) =>
-                                    setSource(event.target.value)
-                                }
-                                className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                placeholder={t('keywords.allSources')}
-                            />
-                        </label>
-                        <label className="space-y-1 text-sm">
-                            <span>{t('keywords.status')}</span>
-                            <select
-                                value={status}
-                                onChange={(event) =>
-                                    setStatus(
-                                        event.target.value as
-                                            | KeywordStatus
-                                            | '',
+                            <SavedKeywordViewsToolbar
+                                path={path}
+                                savedViews={savedViews}
+                                activeView={activeView}
+                                currentState={currentViewState}
+                                disabled={isLoading}
+                                onApplyColumns={(columns) =>
+                                    setVisibleColumns(
+                                        visibilityFromSavedColumns(columns),
                                     )
                                 }
-                                className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            />
+
+                            <form
+                                onSubmit={submit}
+                                className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-6"
                             >
-                                <option value="">
-                                    {t('keywords.allStatuses')}
-                                </option>
-                                <option value="review">
-                                    {t('keywords.statusReview')}
-                                </option>
-                                <option value="ready">
-                                    {t('keywords.statusReady')}
-                                </option>
-                            </select>
-                        </label>
-                        <label className="space-y-1 text-sm">
-                            <span>{t('keywords.operator')}</span>
-                            <select
-                                value={volumeOperator}
-                                onChange={(event) =>
-                                    setVolumeOperator(event.target.value)
-                                }
-                                className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                                <option value="">—</option>
-                                <option value="gte">≥</option>
-                                <option value="lte">≤</option>
-                                <option value="gt">&gt;</option>
-                                <option value="lt">&lt;</option>
-                                <option value="eq">=</option>
-                            </select>
-                        </label>
-                        <label className="space-y-1 text-sm">
-                            <span>{t('keywords.volume')}</span>
-                            <div className="flex gap-2">
-                                <input
-                                    value={volume}
-                                    onChange={(event) =>
-                                        setVolume(event.target.value)
-                                    }
-                                    className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    min="0"
-                                    inputMode="numeric"
-                                    type="number"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="h-9 shrink-0 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                                <label className="space-y-1 text-sm xl:col-span-2">
+                                    <span>{t('keywords.search')}</span>
+                                    <input
+                                        value={search}
+                                        onChange={(event) =>
+                                            setSearch(event.target.value)
+                                        }
+                                        className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        type="search"
+                                    />
+                                </label>
+                                <label className="space-y-1 text-sm">
+                                    <span>{t('keywords.source')}</span>
+                                    <input
+                                        value={source}
+                                        onChange={(event) =>
+                                            setSource(event.target.value)
+                                        }
+                                        className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        placeholder={t('keywords.allSources')}
+                                    />
+                                </label>
+                                <label className="space-y-1 text-sm">
+                                    <span>{t('keywords.status')}</span>
+                                    <select
+                                        value={status}
+                                        onChange={(event) =>
+                                            setStatus(
+                                                event.target.value as
+                                                    | KeywordStatus
+                                                    | '',
+                                            )
+                                        }
+                                        className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        <option value="">
+                                            {t('keywords.allStatuses')}
+                                        </option>
+                                        <option value="review">
+                                            {t('keywords.statusReview')}
+                                        </option>
+                                        <option value="ready">
+                                            {t('keywords.statusReady')}
+                                        </option>
+                                    </select>
+                                </label>
+                                <label className="space-y-1 text-sm">
+                                    <span>{t('keywords.operator')}</span>
+                                    <select
+                                        value={volumeOperator}
+                                        onChange={(event) =>
+                                            setVolumeOperator(
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="gte">≥</option>
+                                        <option value="lte">≤</option>
+                                        <option value="gt">&gt;</option>
+                                        <option value="lt">&lt;</option>
+                                        <option value="eq">=</option>
+                                    </select>
+                                </label>
+                                <label className="space-y-1 text-sm">
+                                    <span>{t('keywords.volume')}</span>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={volume}
+                                            onChange={(event) =>
+                                                setVolume(event.target.value)
+                                            }
+                                            className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            min="0"
+                                            inputMode="numeric"
+                                            type="number"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="h-9 shrink-0 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                                        >
+                                            {t('keywords.apply')}
+                                        </button>
+                                    </div>
+                                </label>
+                            </form>
+
+                            {loadError ? (
+                                <div
+                                    role="alert"
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm"
                                 >
-                                    {t('keywords.apply')}
-                                </button>
-                            </div>
-                        </label>
-                    </form>
-
-                    {loadError ? (
-                        <div
-                            role="alert"
-                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm"
-                        >
-                            <span>{t('keywords.loadError')}</span>
-                            <button
-                                type="button"
-                                onClick={() => navigate({})}
-                                className="font-medium underline underline-offset-4"
-                            >
-                                {t('keywords.retry')}
-                            </button>
-                        </div>
-                    ) : null}
-
-                    <div
-                        className="overflow-hidden rounded-lg border bg-card"
-                        aria-busy={isLoading}
-                    >
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
-                            <span className="text-xs text-muted-foreground">
-                                {t('keywords.keyboardHint')}
-                            </span>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
+                                    <span>{t('keywords.loadError')}</span>
                                     <button
                                         type="button"
-                                        className="inline-flex h-8 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted"
+                                        onClick={() => navigate({})}
+                                        className="font-medium underline underline-offset-4"
                                     >
-                                        <Columns3 className="size-4" />
-                                        {t('keywords.columns')}
+                                        {t('keywords.retry')}
                                     </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    align="end"
-                                    className="w-52"
-                                >
-                                    <DropdownMenuLabel>
-                                        {t('keywords.columns')}
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuCheckboxItem
-                                        checked={visibleColumns.normalized}
-                                        onCheckedChange={(checked) =>
-                                            toggleColumn(
-                                                'normalized',
-                                                checked === true,
-                                            )
-                                        }
-                                        onSelect={(event) =>
-                                            event.preventDefault()
-                                        }
-                                    >
-                                        {t('keywords.normalized')}
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem
-                                        checked={visibleColumns.status}
-                                        onCheckedChange={(checked) =>
-                                            toggleColumn(
-                                                'status',
-                                                checked === true,
-                                            )
-                                        }
-                                        onSelect={(event) =>
-                                            event.preventDefault()
-                                        }
-                                    >
-                                        {t('keywords.status')}
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem
-                                        checked={visibleColumns.volume}
-                                        onCheckedChange={(checked) =>
-                                            toggleColumn(
-                                                'volume',
-                                                checked === true,
-                                            )
-                                        }
-                                        onSelect={(event) =>
-                                            event.preventDefault()
-                                        }
-                                    >
-                                        {t('keywords.latestVolume')}
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem
-                                        checked={visibleColumns.source}
-                                        onCheckedChange={(checked) =>
-                                            toggleColumn(
-                                                'source',
-                                                checked === true,
-                                            )
-                                        }
-                                        onSelect={(event) =>
-                                            event.preventDefault()
-                                        }
-                                    >
-                                        {t('keywords.latestSource')}
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem
-                                        checked={visibleColumns.createdAt}
-                                        onCheckedChange={(checked) =>
-                                            toggleColumn(
-                                                'createdAt',
-                                                checked === true,
-                                            )
-                                        }
-                                        onSelect={(event) =>
-                                            event.preventDefault()
-                                        }
-                                    >
-                                        {t('keywords.createdAt')}
-                                    </DropdownMenuCheckboxItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+                                </div>
+                            ) : null}
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[720px] border-collapse text-sm">
-                                <thead className="bg-muted/50 text-start text-muted-foreground">
-                                    <tr>
-                                        <th className="sticky start-0 z-10 bg-muted/95 px-4 py-3 text-start font-medium">
+                            <div
+                                className="overflow-hidden rounded-lg border bg-card"
+                                aria-busy={isLoading}
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
+                                    <span className="text-xs text-muted-foreground">
+                                        {t('keywords.keyboardHint')}
+                                    </span>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    toggleSort('keyword')
-                                                }
-                                                className="font-medium text-foreground"
+                                                className="inline-flex h-8 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted"
                                             >
-                                                {t('keywords.keyword')}
+                                                <Columns3 className="size-4" />
+                                                {t('keywords.columns')}
                                             </button>
-                                        </th>
-                                        {visibleColumns.normalized ? (
-                                            <th className="px-4 py-3 text-start font-medium">
-                                                {t('keywords.normalized')}
-                                            </th>
-                                        ) : null}
-                                        {visibleColumns.status ? (
-                                            <th className="px-4 py-3 text-start font-medium">
-                                                {t('keywords.status')}
-                                            </th>
-                                        ) : null}
-                                        {visibleColumns.volume ? (
-                                            <th className="px-4 py-3 text-start font-medium">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        toggleSort('volume')
-                                                    }
-                                                    className="font-medium text-foreground"
-                                                >
-                                                    {t('keywords.latestVolume')}
-                                                </button>
-                                            </th>
-                                        ) : null}
-                                        {visibleColumns.source ? (
-                                            <th className="px-4 py-3 text-start font-medium">
-                                                {t('keywords.latestSource')}
-                                            </th>
-                                        ) : null}
-                                        {visibleColumns.createdAt ? (
-                                            <th className="px-4 py-3 text-start font-medium">
-                                                {t('keywords.createdAt')}
-                                            </th>
-                                        ) : null}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {keywords.data.map((keyword, index) => (
-                                        <tr
-                                            key={keyword.id}
-                                            ref={(element) => {
-                                                rowRefs.current[index] =
-                                                    element;
-                                            }}
-                                            tabIndex={
-                                                index === activeRow ? 0 : -1
-                                            }
-                                            aria-selected={index === activeRow}
-                                            onFocus={() => setActiveRow(index)}
-                                            onKeyDown={(event) =>
-                                                handleRowKeyDown(event, index)
-                                            }
-                                            className="border-t outline-none hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset aria-selected:bg-muted/20"
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                            align="end"
+                                            className="w-52"
                                         >
-                                            <td className="sticky start-0 bg-card px-4 py-3 font-medium group-focus-within:bg-muted/50">
-                                                {keyword.display_text}
-                                            </td>
-                                            {visibleColumns.normalized ? (
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {keyword.normalized_text}
-                                                </td>
-                                            ) : null}
-                                            {visibleColumns.status ? (
-                                                <td className="px-4 py-3">
-                                                    <span className="inline-flex rounded-full border bg-muted/40 px-2 py-0.5 text-xs font-medium">
-                                                        {keyword.status ===
-                                                        'ready'
-                                                            ? t(
-                                                                  'keywords.statusReady',
-                                                              )
-                                                            : t(
-                                                                  'keywords.statusReview',
-                                                              )}
-                                                    </span>
-                                                </td>
-                                            ) : null}
-                                            {visibleColumns.volume ? (
-                                                <td className="px-4 py-3 tabular-nums">
-                                                    {keyword.latest_volume ===
-                                                    null
-                                                        ? '—'
-                                                        : numberFormatter.format(
-                                                              Number(
-                                                                  keyword.latest_volume,
-                                                              ),
-                                                          )}
-                                                </td>
-                                            ) : null}
-                                            {visibleColumns.source ? (
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {keyword.latest_volume_source ??
-                                                        '—'}
-                                                </td>
-                                            ) : null}
-                                            {visibleColumns.createdAt ? (
-                                                <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                                                    {renderDate(
-                                                        keyword.created_at,
-                                                    )}
-                                                </td>
-                                            ) : null}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            <DropdownMenuLabel>
+                                                {t('keywords.columns')}
+                                            </DropdownMenuLabel>
+                                            <DropdownMenuCheckboxItem
+                                                checked={
+                                                    visibleColumns.normalized
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    toggleColumn(
+                                                        'normalized',
+                                                        checked === true,
+                                                    )
+                                                }
+                                                onSelect={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                            >
+                                                {t('keywords.normalized')}
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={visibleColumns.status}
+                                                onCheckedChange={(checked) =>
+                                                    toggleColumn(
+                                                        'status',
+                                                        checked === true,
+                                                    )
+                                                }
+                                                onSelect={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                            >
+                                                {t('keywords.status')}
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={visibleColumns.volume}
+                                                onCheckedChange={(checked) =>
+                                                    toggleColumn(
+                                                        'volume',
+                                                        checked === true,
+                                                    )
+                                                }
+                                                onSelect={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                            >
+                                                {t('keywords.latestVolume')}
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={visibleColumns.source}
+                                                onCheckedChange={(checked) =>
+                                                    toggleColumn(
+                                                        'source',
+                                                        checked === true,
+                                                    )
+                                                }
+                                                onSelect={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                            >
+                                                {t('keywords.latestSource')}
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={
+                                                    visibleColumns.createdAt
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    toggleColumn(
+                                                        'createdAt',
+                                                        checked === true,
+                                                    )
+                                                }
+                                                onSelect={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                            >
+                                                {t('keywords.createdAt')}
+                                            </DropdownMenuCheckboxItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
 
-                        {keywords.data.length === 0 ? (
-                            <div className="border-t px-4 py-10 text-center text-sm text-muted-foreground">
-                                {t('keywords.empty')}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[720px] border-collapse text-sm">
+                                        <thead className="bg-muted/50 text-start text-muted-foreground">
+                                            <tr>
+                                                <th className="sticky start-0 z-10 bg-muted/95 px-4 py-3 text-start font-medium">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            toggleSort(
+                                                                'keyword',
+                                                            )
+                                                        }
+                                                        className="font-medium text-foreground"
+                                                    >
+                                                        {t('keywords.keyword')}
+                                                    </button>
+                                                </th>
+                                                {visibleColumns.normalized ? (
+                                                    <th className="px-4 py-3 text-start font-medium">
+                                                        {t(
+                                                            'keywords.normalized',
+                                                        )}
+                                                    </th>
+                                                ) : null}
+                                                {visibleColumns.status ? (
+                                                    <th className="px-4 py-3 text-start font-medium">
+                                                        {t('keywords.status')}
+                                                    </th>
+                                                ) : null}
+                                                {visibleColumns.volume ? (
+                                                    <th className="px-4 py-3 text-start font-medium">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggleSort(
+                                                                    'volume',
+                                                                )
+                                                            }
+                                                            className="font-medium text-foreground"
+                                                        >
+                                                            {t(
+                                                                'keywords.latestVolume',
+                                                            )}
+                                                        </button>
+                                                    </th>
+                                                ) : null}
+                                                {visibleColumns.source ? (
+                                                    <th className="px-4 py-3 text-start font-medium">
+                                                        {t(
+                                                            'keywords.latestSource',
+                                                        )}
+                                                    </th>
+                                                ) : null}
+                                                {visibleColumns.createdAt ? (
+                                                    <th className="px-4 py-3 text-start font-medium">
+                                                        {t(
+                                                            'keywords.createdAt',
+                                                        )}
+                                                    </th>
+                                                ) : null}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {keywords.data.map(
+                                                (keyword, index) => (
+                                                    <tr
+                                                        key={keyword.id}
+                                                        ref={(element) => {
+                                                            rowRefs.current[
+                                                                index
+                                                            ] = element;
+                                                        }}
+                                                        tabIndex={
+                                                            index === activeRow
+                                                                ? 0
+                                                                : -1
+                                                        }
+                                                        aria-selected={
+                                                            index === activeRow
+                                                        }
+                                                        onFocus={() =>
+                                                            setActiveRow(index)
+                                                        }
+                                                        onKeyDown={(event) =>
+                                                            handleRowKeyDown(
+                                                                event,
+                                                                index,
+                                                            )
+                                                        }
+                                                        className="border-t outline-none hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset aria-selected:bg-muted/20"
+                                                    >
+                                                        <td className="sticky start-0 bg-card px-4 py-3 font-medium group-focus-within:bg-muted/50">
+                                                            {
+                                                                keyword.display_text
+                                                            }
+                                                        </td>
+                                                        {visibleColumns.normalized ? (
+                                                            <td className="px-4 py-3 text-muted-foreground">
+                                                                {
+                                                                    keyword.normalized_text
+                                                                }
+                                                            </td>
+                                                        ) : null}
+                                                        {visibleColumns.status ? (
+                                                            <td className="px-4 py-3">
+                                                                <span className="inline-flex rounded-full border bg-muted/40 px-2 py-0.5 text-xs font-medium">
+                                                                    {keyword.status ===
+                                                                    'ready'
+                                                                        ? t(
+                                                                              'keywords.statusReady',
+                                                                          )
+                                                                        : t(
+                                                                              'keywords.statusReview',
+                                                                          )}
+                                                                </span>
+                                                            </td>
+                                                        ) : null}
+                                                        {visibleColumns.volume ? (
+                                                            <td className="px-4 py-3 tabular-nums">
+                                                                {keyword.latest_volume ===
+                                                                null
+                                                                    ? '—'
+                                                                    : numberFormatter.format(
+                                                                          Number(
+                                                                              keyword.latest_volume,
+                                                                          ),
+                                                                      )}
+                                                            </td>
+                                                        ) : null}
+                                                        {visibleColumns.source ? (
+                                                            <td className="px-4 py-3 text-muted-foreground">
+                                                                {keyword.latest_volume_source ??
+                                                                    '—'}
+                                                            </td>
+                                                        ) : null}
+                                                        {visibleColumns.createdAt ? (
+                                                            <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                                                                {renderDate(
+                                                                    keyword.created_at,
+                                                                )}
+                                                            </td>
+                                                        ) : null}
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {keywords.data.length === 0 ? (
+                                    <div className="border-t px-4 py-10 text-center text-sm text-muted-foreground">
+                                        {t('keywords.empty')}
+                                    </div>
+                                ) : null}
+
+                                <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            visitPage(keywords.prev_page_url)
+                                        }
+                                        disabled={
+                                            keywords.prev_page_url === null ||
+                                            isLoading
+                                        }
+                                        className="font-medium hover:underline disabled:pointer-events-none disabled:opacity-40"
+                                    >
+                                        {t('keywords.previous')}
+                                    </button>
+                                    <span className="text-muted-foreground">
+                                        {numberFormatter.format(
+                                            keywords.current_page,
+                                        )}{' '}
+                                        /{' '}
+                                        {numberFormatter.format(
+                                            keywords.last_page,
+                                        )}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            visitPage(keywords.next_page_url)
+                                        }
+                                        disabled={
+                                            keywords.next_page_url === null ||
+                                            isLoading
+                                        }
+                                        className="font-medium hover:underline disabled:pointer-events-none disabled:opacity-40"
+                                    >
+                                        {t('keywords.next')}
+                                    </button>
+                                </div>
                             </div>
-                        ) : null}
-
-                        <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-sm">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    visitPage(keywords.prev_page_url)
-                                }
-                                disabled={
-                                    keywords.prev_page_url === null || isLoading
-                                }
-                                className="font-medium hover:underline disabled:pointer-events-none disabled:opacity-40"
-                            >
-                                {t('keywords.previous')}
-                            </button>
-                            <span className="text-muted-foreground">
-                                {numberFormatter.format(keywords.current_page)}{' '}
-                                / {numberFormatter.format(keywords.last_page)}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    visitPage(keywords.next_page_url)
-                                }
-                                disabled={
-                                    keywords.next_page_url === null || isLoading
-                                }
-                                className="font-medium hover:underline disabled:pointer-events-none disabled:opacity-40"
-                            >
-                                {t('keywords.next')}
-                            </button>
-                        </div>
-                    </div>
                         </>
                     ) : workspaceTab === 'intent' ? (
                         <section className="rounded-xl border bg-card p-6">
                             <h2 className="text-lg font-semibold">
-                                {locale === 'fa' ? 'بررسی نیت جستجو' : 'Search intent review'}
+                                {locale === 'fa'
+                                    ? 'بررسی نیت جستجو'
+                                    : 'Search intent review'}
                             </h2>
                             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                                 {locale === 'fa'
@@ -803,11 +858,17 @@ export default function Keywords({
                                     href={`/projects/${projectId}/reviews`}
                                     className="inline-flex min-h-9 items-center rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
                                 >
-                                    {locale === 'fa' ? 'باز کردن صف بررسی' : 'Open Review Queue'}
+                                    {locale === 'fa'
+                                        ? 'باز کردن صف بررسی'
+                                        : 'Open Review Queue'}
                                 </a>
                                 <span className="text-sm text-muted-foreground">
-                                    {locale === 'fa' ? 'موارد در انتظار:' : 'Pending items:'}{' '}
-                                    {numberFormatter.format(intelligence.summary.pending_reviews)}
+                                    {locale === 'fa'
+                                        ? 'موارد در انتظار:'
+                                        : 'Pending items:'}{' '}
+                                    {numberFormatter.format(
+                                        intelligence.summary.pending_reviews,
+                                    )}
                                 </span>
                             </div>
                         </section>
