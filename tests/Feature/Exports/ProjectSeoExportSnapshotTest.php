@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Exports;
 
+use App\Domain\Keywords\ClusterPriorityScore;
 use App\Domain\Keywords\ClusterReviewState;
 use App\Domain\Keywords\ClusterTargetType;
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordIntent;
-use App\Domain\Keywords\ClusterPriorityScore;
 use App\Models\Keyword;
 use App\Models\KeywordIntentAssignment;
 use App\Models\KeywordMetric;

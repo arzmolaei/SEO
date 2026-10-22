@@ -242,7 +242,7 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param list<int> $keywordIds
+     * @param  list<int>  $keywordIds
      * @return array<int,KeywordIntentAssignment>
      */
     private function currentIntents(Project $project, array $keywordIds): array
@@ -273,8 +273,8 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param list<int> $keywordIds
-     * @param array<int,KeywordSource> $sourceById
+     * @param  list<int>  $keywordIds
+     * @param  array<int,KeywordSource>  $sourceById
      * @return array<int,array<string,KeywordMetric>>
      */
     private function latestMetrics(Project $project, array $keywordIds, array $sourceById): array
@@ -318,7 +318,7 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param list<int> $clusterIds
+     * @param  list<int>  $clusterIds
      * @return array<int,ClusterTarget>
      */
     private function targets(Project $project, array $clusterIds): array
@@ -339,7 +339,7 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param array<int,ClusterTarget> $targets
+     * @param  array<int,ClusterTarget>  $targets
      * @return array<int,Page>
      */
     private function pages(Project $project, array $targets): array
@@ -364,7 +364,7 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param list<int> $keywordIds
+     * @param  list<int>  $keywordIds
      * @return array<int,array{count:int,mapping_conflict:bool}>
      */
     private function pendingReviews(Project $project, array $keywordIds): array
@@ -393,8 +393,8 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param array<string,mixed> $row
-     * @param array<int,KeywordSource> $sourceById
+     * @param  array<string,mixed>  $row
+     * @param  array<int,KeywordSource>  $sourceById
      */
     private function fillMetric(array &$row, string $prefix, ?KeywordMetric $metric, array $sourceById): void
     {
@@ -415,7 +415,7 @@ final class ProjectSeoExportSnapshot
     }
 
     /**
-     * @param array<int,KeywordSource> $sourceById
+     * @param  array<int,KeywordSource>  $sourceById
      * @return array<string,mixed>|null
      */
     private function metricEvidence(?KeywordMetric $metric, array $sourceById): ?array
