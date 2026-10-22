@@ -1,7 +1,7 @@
 # Persian Export Design
 
 Date: 2026-10-23
-Status: Proposed design after in-chat approval
+Status: Awaiting written-spec review
 Branch: `feature/persian-export`
 Base: `main@c4f03303408a676d43a3fdbf94f1f49e00affbe5`
 
@@ -17,7 +17,7 @@ The primary user outcome is simple: an authorized operator can open a project, d
 
 V1 exports the project's current keyword-planning snapshot as one UTF-8 CSV file.
 
-Each row represents one canonical `Keyword` in the selected project. The row may include current intent, current metrics, cluster membership and state, target/page mapping, review state, and the same priority calculation used by the product.
+Each row represents one canonical `Keyword` in the selected project. The row includes current keyword state plus the current intent, latest metrics, cluster membership and state, target/page mapping, review signals, and the same priority calculation used by the product where an active cluster exists.
 
 The export is synchronous and browser-driven. It does not require the queue or scheduler to be healthy.
 
@@ -51,7 +51,7 @@ Backup/Restore remains the next independent lifecycle subsystem and must not inh
 8. **No network dependency.** Export generation is fully local.
 9. **No permanent export leftovers.** Temporary storage must be self-cleaning and inaccessible from the web root.
 10. **Deterministic output.** Identical database state and export time metadata produce stable ordering and deterministic relation selection.
-11. **Fail on integrity ambiguity.** If the database contains contradictory “current” state that the domain does not permit, export returns a controlled data-integrity error rather than guessing.
+11. **Fail on integrity ambiguity.** If the database contains contradictory current state that the domain does not permit, export returns a controlled data-integrity error rather than guessing.
 
 ## 5. Authorization
 
@@ -69,21 +69,25 @@ This is intentionally stricter than `ProjectPolicy::view()`. Being allowed to vi
 
 The controller must authorize the concrete `Project` before any snapshot work starts.
 
-## 6. User Experience
+## 6. User Experience and Route
 
-The project workspace exposes a real `خروجی CSV` action only when the current user is authorized to export.
+The existing project Keywords/Intelligence workspace exposes a real `خروجی CSV` action only when the current user is authorized to export.
 
-The action starts a normal authenticated download. V1 does not introduce a modal, export queue, polling UI, fake progress bar, or background job.
+The route is a normal authenticated and verified GET download endpoint under the project namespace, conceptually:
 
-The filename is deterministic and operator-friendly:
+`GET /projects/{project}/exports/seo-plan.csv`
 
-`seo-plan-v1-<project-slug-or-id>-<UTC timestamp>.csv`
+The action starts a normal browser download. V1 does not introduce a modal, export queue, polling UI, fake progress bar, or background job.
 
-If filename-safe project-name normalization produces an empty result, the project id is used.
+The filename is:
+
+`seo-plan-v1-<ascii-safe-project-token>-<UTC timestamp>.csv`
+
+The project token is generated from an allowlist of ASCII filename characters. Path separators, control characters, and traversal syntax are never accepted from project text. If project-name normalization produces an empty token, the project id is used.
 
 For an empty project, the download still succeeds and contains the full header row with zero data rows.
 
-Generation errors return the normal project UI with a stable Persian error message. Internal exceptions are logged without exposing SQL, server paths, or sensitive context to the browser.
+Known generation errors redirect back to the project workspace with a stable Persian operator message. Internal exceptions are logged without exposing SQL, server paths, or sensitive context to the browser.
 
 ## 7. Output Contract
 
@@ -98,22 +102,24 @@ The file uses:
 - RFC-4180-compatible escaping;
 - CRLF row endings;
 - decimal point `.` independent of server locale;
-- booleans serialized as `1` or `0` where a boolean column is present;
+- booleans serialized as `1` or `0`;
 - null serialized as an empty cell;
 - timestamps serialized as ISO-8601 UTC strings.
 
-The CSV writer must be covered by byte-level tests, not only parsed-value assertions.
+The CSV writer is covered by byte-level tests, not only parsed-value assertions.
 
-### 7.2 Schema version
+### 7.2 Schema version and response metadata
 
 The schema identifier is `seo-plan/1`.
 
-The response includes non-sensitive metadata headers after generation:
+After generation, the response includes:
 
 - `X-SEO-Export-Schema: seo-plan/1`
 - `X-SEO-Export-Row-Count: <count>`
 - `X-SEO-Export-SHA256: <hex digest>`
 - `X-SEO-Export-Generated-At: <ISO-8601 UTC>`
+
+The SHA-256 is calculated over the CSV entity bytes that are handed to the HTTP response, including BOM, header, CRLFs, and escaped cells. Normal browser transport decoding must therefore yield a saved file with the same digest.
 
 These headers are informational and testable. The CSV remains independently useful when saved without HTTP metadata.
 
@@ -121,127 +127,105 @@ These headers are informational and testable. The CSV remains independently usef
 
 Rows are ordered by canonical `keywords.id` ascending.
 
-No UI sort order, pagination state, or saved view changes V1 export ordering. This avoids a hidden dependency on browser state and creates a stable contract.
+No UI sort order, pagination state, filter, or saved view changes V1 export ordering. This avoids hidden browser-state coupling and gives the schema a stable contract.
 
-### 7.4 Column groups
+### 7.4 Exact V1 header order
 
-The exact final header list is fixed by the implementation plan and tests, but V1 must contain the following semantic groups.
+Schema `seo-plan/1` uses this exact ordered header list:
 
-#### Export identity
+1. `schema_version`
+2. `exported_at_utc`
+3. `project_id`
+4. `project_name`
+5. `keyword_id`
+6. `keyword_display_text`
+7. `keyword_normalized_text`
+8. `keyword_status`
+9. `source_count`
+10. `source_names_json`
+11. `intent_assignment_id`
+12. `intent`
+13. `intent_confidence`
+14. `intent_source`
+15. `intent_updated_at_utc`
+16. `volume_value`
+17. `volume_metric_id`
+18. `volume_source_id`
+19. `volume_source`
+20. `volume_observed_at_utc`
+21. `difficulty_value`
+22. `difficulty_metric_id`
+23. `difficulty_source_id`
+24. `difficulty_source`
+25. `difficulty_observed_at_utc`
+26. `cluster_id`
+27. `cluster_name`
+28. `cluster_primary_keyword_id`
+29. `cluster_is_primary`
+30. `cluster_intent`
+31. `cluster_confidence`
+32. `cluster_review_state`
+33. `cluster_business_relevance`
+34. `cluster_lifecycle_state`
+35. `cluster_is_locked`
+36. `cluster_revision`
+37. `cluster_origin`
+38. `cluster_archived_at_utc`
+39. `target_id`
+40. `target_type`
+41. `target_revision`
+42. `page_id`
+43. `page_title`
+44. `page_kind`
+45. `page_type`
+46. `page_url`
+47. `keyword_pending_review_count`
+48. `cluster_primary_pending_review_count`
+49. `cluster_primary_pending_mapping_conflict`
+50. `priority_basis_keyword_id`
+51. `priority_volume_value`
+52. `priority_volume_metric_id`
+53. `priority_volume_source_id`
+54. `priority_volume_source`
+55. `priority_volume_observed_at_utc`
+56. `priority_difficulty_value`
+57. `priority_difficulty_metric_id`
+58. `priority_difficulty_source_id`
+59. `priority_difficulty_source`
+60. `priority_difficulty_observed_at_utc`
+61. `priority_business_relevance`
+62. `priority_has_mapping`
+63. `priority_review_complete`
+64. `priority_score`
+65. `priority_data_completeness`
+66. `priority_search_demand_available`
+67. `priority_search_demand_points`
+68. `priority_difficulty_available`
+69. `priority_difficulty_points`
+70. `priority_business_relevance_available`
+71. `priority_business_relevance_points`
+72. `priority_mapping_points`
+73. `priority_review_points`
+74. `exact_text_json`
 
-- schema version;
-- exported-at UTC;
-- project id;
-- project name;
-- keyword id.
-
-#### Keyword
-
-- display text;
-- normalized text;
-- keyword status;
-- source count;
-- sorted distinct source names.
-
-V1 does not expose `KeywordSource.raw_payload`.
-
-#### Current intent
-
-- intent;
-- confidence;
-- source;
-- assignment id;
-- assigned/updated timestamp where available.
-
-Only the current intent assignment is exported.
-
-#### Latest metrics
-
-For at least `volume` and `difficulty`:
-
-- value;
-- metric row id;
-- source id;
-- source label;
-- observed-at UTC.
-
-Metric history is not flattened into additional rows.
-
-#### Cluster
-
-Where a keyword has cluster membership:
-
-- cluster id;
-- cluster name;
-- primary-keyword id;
-- whether this keyword is primary;
-- cluster intent;
-- confidence;
-- review state;
-- business relevance;
-- lifecycle state;
-- lock state;
-- revision;
-- origin;
-- archived-at where applicable.
-
-Because `keyword_cluster_members.keyword_id` is unique, a keyword can have at most one membership row. An archived cluster is still represented as archived membership rather than silently discarded, but archived clusters do not receive a current priority score.
-
-#### Mapping and page
-
-Where the cluster has a target:
-
-- target id;
-- target type;
-- target revision;
-- page id;
-- page title;
-- page kind;
-- page type;
-- page URL.
-
-The exporter verifies that the target, cluster, page, and keyword all belong to the same project even though the database already has composite foreign-key protection. Defense in depth remains required at the read boundary.
-
-#### Review/current planning signals
-
-- pending review count for the keyword;
-- pending mapping-conflict flag for the keyword/cluster when applicable;
-- whether the cluster's review requirements are complete under the same semantics used by priority/readiness logic.
-
-#### Priority
-
-For an active cluster, the exporter uses `ClusterPriorityScore::calculate()` directly with the same current inputs used by the Keyword Intelligence workspace:
-
-- latest volume;
-- latest difficulty;
-- business relevance;
-- presence of mapping;
-- review completeness;
-- metric evidence.
-
-The CSV includes:
-
-- priority score;
-- data completeness;
-- component points/availability needed to explain the result.
-
-V1 does not create a second priority formula and does not persist a new priority value merely for export.
+Changing this list or its semantics requires a new schema version. Columns may not be silently repurposed.
 
 ### 7.5 Exact free-text preservation and spreadsheet safety
 
-CSV files opened by spreadsheet software can execute cells beginning with formula-significant characters such as `=`, `+`, `-`, or `@`. Quoting alone is not a sufficient defense.
+CSV files opened by spreadsheet software can execute cells beginning with formula-significant characters such as `=`, `+`, `-`, or `@`. Quoting alone is not sufficient defense.
 
-Human-facing free-text columns therefore pass through a dedicated spreadsheet-text serializer. If a value is formula-significant or begins with dangerous control whitespace, the human-facing cell is neutralized as text.
+Every ordinary string cell passes through a spreadsheet-safe serializer before CSV encoding. A string beginning with formula-significant syntax or selected dangerous control whitespace is neutralized as text in the human-facing cell.
 
-To preserve exact source text, every row also contains one `exact_text_json` column. It is a compact UTF-8 JSON object containing exact, unmodified values for the free-text fields included in the row, including at minimum:
+To preserve exact source text, every row also contains `exact_text_json`. It is a compact UTF-8 JSON object containing the exact, unmodified free-text values represented by the row, including:
 
-- keyword display text;
-- keyword normalized text;
-- cluster name;
-- page title;
-- page URL.
+- `project_name`
+- `keyword_display_text`
+- `keyword_normalized_text`
+- `cluster_name`
+- `page_title`
+- `page_url`
 
-The JSON object itself is serialized as a normal CSV field and begins with a JSON structural character rather than formula syntax. Consumers that require exact round-trip text can parse this column. The human-facing columns remain convenient and safe for Excel/LibreOffice.
+The JSON field begins with JSON structural syntax, not spreadsheet formula syntax. A consumer that needs exact round-trip text can parse this field. The human-facing columns remain convenient and safe for Excel/LibreOffice.
 
 This export remains a reporting/handoff format, not an import contract.
 
@@ -249,7 +233,7 @@ This export remains a reporting/handoff format, not an import contract.
 
 ### 8.1 Canonical keywords
 
-The export starts from `Keyword::where('project_id', $project->id)` and never from import staging rows.
+The export starts from project-scoped canonical `keywords`, never from import staging rows.
 
 Each canonical keyword is emitted exactly once.
 
@@ -259,96 +243,118 @@ A keyword can have multiple `KeywordSource` rows.
 
 V1 exports:
 
-- `source_count`;
-- distinct non-empty source labels sorted lexicographically and joined with a stable separator.
+- `source_count` as the number of source rows;
+- `source_names_json` as a compact JSON array of distinct non-empty source labels sorted by deterministic UTF-8 binary order.
 
-The exporter does not expose raw source payload JSON.
+The exporter does not expose `KeywordSource.raw_payload`.
 
 ### 8.3 Current intent
 
-`keyword_intent_assignments` does not currently enforce one current row with a database unique constraint.
+`keyword_intent_assignments` currently permits multiple rows marked current at the database level, although the domain expects one current assignment.
 
-Therefore the export query must enforce the domain invariant explicitly:
+The export boundary enforces that invariant:
 
-- zero `is_current = true` rows: export blank intent fields;
-- exactly one current row: export it;
-- more than one current row: fail generation with a stable data-integrity error.
+- zero `is_current = true` rows: current-intent columns are blank;
+- exactly one current row: it is exported;
+- more than one current row: generation fails with `export_integrity_current_intent`.
 
-The exporter does not choose “latest id” to hide corruption.
+The exporter does not choose the latest id to hide corruption.
 
 ### 8.4 Latest metric selection
 
-The existing Keyword Intelligence workspace defines latest metric selection by:
+The existing Keyword Intelligence workspace defines the latest metric by:
 
 1. greatest `observed_at`;
 2. greatest metric `id` as deterministic tie-breaker.
 
-Persian Export must use the same selection rule.
+Persian Export uses the same rule for row-level `volume` and `difficulty` and for the priority basis metrics.
 
-Metric selection must be limited to keywords from the authorized project. A relation reached by id is not trusted without project scope inherited from the canonical keyword batch.
+Metric selection is restricted to canonical keyword ids already proven to belong to the authorized project.
 
 ### 8.5 Cluster membership
 
 `keyword_cluster_members.keyword_id` is unique, so one keyword has at most one membership.
 
-The exporter includes membership even if the cluster is archived because hiding that fact would lose planning provenance. The row marks the archived state explicitly.
+If membership points to an archived cluster, the export still represents the cluster and its `cluster_archived_at_utc`. Hiding archived membership would lose planning provenance.
 
-Priority is blank/not-applicable for archived clusters because the main workspace only calculates priority for active clusters.
+Archived clusters do not receive a current priority score; all priority fields for them are blank except the basis id may remain available only if needed for integrity diagnostics. V1's normal row contract keeps the whole priority group blank for archived clusters.
 
 ### 8.6 Mapping
 
-`cluster_targets.keyword_cluster_id` is unique, so a cluster has at most one current target row.
+`cluster_targets.keyword_cluster_id` is unique, so a cluster has at most one target row.
 
-A target may point to an existing/planned page or represent a target type with no `page_id`, according to existing domain rules. Null page data remains null; the exporter never invents a URL or title.
+A target may point to a page or may have no `page_id` according to existing domain rules. Null page data remains null; the exporter never invents a URL or title.
 
-### 8.7 Review completeness
+The exporter verifies project identity for keyword, cluster, target, and page even where composite foreign keys already provide database protection.
 
-Priority review-complete semantics must match current production logic:
+### 8.7 Review signals
 
-- cluster review state is `reviewed`;
-- no pending `ReviewItem` exists for the cluster primary keyword under the current project.
+`keyword_pending_review_count` counts pending `ReviewItem` rows for the current row's keyword inside the selected project.
 
-The exporter may expose additional review counts for operator visibility, but the boolean passed into `ClusterPriorityScore` must match the application calculation.
+`cluster_primary_pending_review_count` counts pending review rows for the active/represented cluster's primary keyword inside the selected project.
+
+`cluster_primary_pending_mapping_conflict` is `1` when the cluster primary keyword has a pending `mapping_conflict` review item in the project, otherwise `0`. When there is no cluster, these cluster-level review columns are blank.
+
+### 8.8 Priority basis and parity
+
+The product currently calculates cluster priority from the cluster **primary keyword**, not from every member keyword.
+
+Therefore a secondary keyword row must never imply that its own row-level metrics were used for the repeated cluster score.
+
+For an active cluster:
+
+- `priority_basis_keyword_id` is the cluster primary keyword id;
+- all `priority_volume_*` and `priority_difficulty_*` columns come from that primary keyword's latest metrics;
+- `priority_business_relevance` is the cluster business relevance;
+- `priority_has_mapping` reflects whether the cluster has a target;
+- `priority_review_complete` is true only when cluster review state is `reviewed` and there is no pending review item for the cluster primary keyword;
+- `ClusterPriorityScore::calculate()` is called directly with those values and their metric evidence.
+
+The resulting priority group is repeated for each member row so spreadsheet consumers can filter/sort any keyword without joining another sheet, but `priority_basis_keyword_id` makes the basis explicit.
+
+The exporter does not create a second priority formula and does not persist a new priority value merely for export.
 
 ## 9. Snapshot Consistency
 
 The generated file represents one database snapshot.
 
-Production MySQL/MariaDB generation uses a repeatable-read consistent transaction around all database reads required for the export. The transaction starts before row iteration and closes immediately after the temporary export stream has been completed and rewound.
+Production MySQL/MariaDB generation uses a repeatable-read consistent transaction around every database read required for the export. The transaction starts before keyword iteration and ends immediately after the temporary export stream is complete.
 
 The HTTP response must not keep the database transaction open while the client downloads the file.
 
-The export service writes to a temporary rewindable stream during the database snapshot phase, then commits/ends the read transaction before returning the downloadable response.
+The export service therefore:
 
-SQLite may use the framework transaction behavior in unit/feature tests, but connected MariaDB acceptance is authoritative for production snapshot semantics.
+1. opens the consistent read snapshot;
+2. generates the complete CSV into a private rewindable temporary stream in bounded batches;
+3. ends the database snapshot;
+4. rewinds the stream;
+5. returns the download response.
+
+SQLite may use framework transaction behavior in unit/feature tests, but connected MariaDB acceptance is authoritative for production snapshot semantics.
 
 ## 10. Memory and Temporary Storage
 
-The exporter must not call `get()` on all project keywords or load the complete project graph at once.
+The exporter must not materialize all project keywords or the full related graph in memory.
 
 Keyword processing uses ascending-id batches (`chunkById` or an equivalent deterministic cursor). Related rows are loaded per batch with bounded queries.
 
-The output uses a rewindable temporary stream such as `php://temp` with a small configured memory threshold. Large output spills to PHP's private temporary file handling and is deleted automatically when the stream closes.
+The output uses a rewindable temporary stream such as `php://temp` with a small memory threshold. Large output spills to PHP's private temporary-file mechanism and is removed automatically when the stream closes.
 
-The design must not create user-addressable files under `public/` or durable export files under `storage/app/public`.
+The implementation must not create user-addressable files under `public/` or durable export artifacts under `storage/app/public`.
 
-The implementation must use `try/finally` or equivalent lifetime management so normal exceptions close the stream.
+Normal exception paths close the stream through `try/finally` or equivalent lifetime management.
 
-A test with a large synthetic project must demonstrate bounded memory behavior indirectly through batch/query behavior and stream usage; it must not rely on an unrealistically tiny fixture only.
+A large synthetic-project test must prove batch behavior and temporary-stream use. V1 acceptance targets at least 10,000 keyword rows without all-row materialization; the implementation must not encode 10,000 as a product limit.
 
 ## 11. Hashing and Row Count
 
-SHA-256 and row count are calculated while rows are written.
+SHA-256 and row count are calculated incrementally while bytes are written.
 
-The implementation must not read the completed file into one PHP string to calculate the digest.
+The implementation must not read the completed CSV into one PHP string to calculate the digest.
 
-The digest covers the exact bytes delivered to the user, including BOM, header, CRLFs, and escaped cells.
-
-After generation the stream is rewound for download.
+After generation, the stream is rewound for download.
 
 ## 12. Components and Boundaries
-
-The implementation should follow existing Laravel application boundaries and keep each unit focused.
 
 ### `ProjectExportController`
 
@@ -356,11 +362,11 @@ Responsibilities:
 
 - route-model bind project;
 - authorize `ProjectPolicy::export`;
-- invoke the export application service;
+- invoke the application service;
 - return the prepared download response;
-- translate known export exceptions into stable user-facing errors.
+- translate known export exceptions into stable UI errors.
 
-It must not contain query-building, CSV escaping, metric selection, or priority logic.
+It does not contain query-building, CSV escaping, metric selection, or priority logic.
 
 ### `ExportProjectSeoPlan`
 
@@ -371,13 +377,13 @@ Application service coordinating:
 - row assembly;
 - CSV writing;
 - hash/row count;
-- response metadata object.
+- result metadata.
 
-### `ProjectSeoExportSnapshot` / query collaborator
+### Snapshot/query collaborator
 
-Responsible for loading one bounded keyword batch plus the current related data with project scoping and integrity checks.
+A focused collaborator such as `ProjectSeoExportSnapshot` loads one bounded keyword batch plus the current related data with project scoping and integrity checks.
 
-The exact class name may change during the implementation plan, but query responsibilities must stay separate from HTTP and CSV serialization.
+The exact implementation class name may change in the implementation plan, but query responsibility remains separate from HTTP and CSV serialization.
 
 ### `SpreadsheetCsvWriter`
 
@@ -387,22 +393,21 @@ Responsible only for:
 - RFC-compatible escaping;
 - CRLF;
 - scalar formatting;
-- formula-safe presentation cells;
-- incremental digest accounting if that responsibility is most cohesive there.
+- incremental digest/row accounting where cohesive.
 
-It must not know Eloquent models.
+It does not know Eloquent models.
 
 ### `SpreadsheetText`
 
-Small deterministic value serializer responsible for formula-injection neutralization and exact-text JSON source extraction rules.
+A small deterministic serializer responsible for spreadsheet formula neutralization of ordinary string cells and for creating `exact_text_json` from unmodified row text.
 
 ### Export result DTO
 
-Carries the rewindable stream plus non-sensitive metadata such as filename, MIME type, row count, schema version, digest, and generated-at timestamp.
+Carries the rewindable stream plus non-sensitive metadata: filename, MIME type, row count, schema version, digest, and generated-at timestamp.
 
 ## 13. Error Model
 
-Expected export failures receive stable machine codes and Persian operator messages.
+Expected failures receive stable machine codes and Persian operator messages.
 
 At minimum:
 
@@ -414,31 +419,31 @@ At minimum:
 
 Authorization remains a normal 403 path.
 
-Integrity failures are not silently skipped. A file containing partial rows must never be presented as successful.
+Integrity failures are not silently skipped. A partial file is never presented as successful.
 
-If generation fails after writing has started to the private temporary stream, the stream is closed and no download begins.
+If generation fails after writing has begun to the private temporary stream, the stream is closed and no download starts.
 
-Logs may include project id, export correlation id, exception class, and safe diagnostic context. They must not include credentials, session values, `.env`, or raw import payloads.
+Logs may contain project id, export correlation id, exception class, and safe diagnostic context. They must not contain credentials, session values, `.env`, or raw import payloads.
 
 ## 14. HTTP and Caching
 
-The download response uses an explicit CSV content type and attachment disposition.
+The response uses an explicit CSV content type and attachment disposition.
 
-The response is private and non-cacheable by shared intermediaries. Recommended headers include:
+The response is private and non-cacheable by shared intermediaries:
 
 - `Cache-Control: private, no-store`
 - `Pragma: no-cache`
 - `X-Content-Type-Options: nosniff`
 
-The route is authenticated and verified, consistent with the project workspace routes.
+V1 uses no signed public download URL.
 
-Rate limiting may be conservative but must not prevent normal repeated operator exports. V1 does not use signed public download URLs.
+No export-specific rate limiter may be stricter than ordinary interactive use to the point that a normal operator cannot retry a failed download. Authorization, not obscurity or throttling, is the primary bulk-export boundary.
 
 ## 15. UI Integration
 
 The action is placed in the existing project Keywords/Intelligence workspace where the current planning state is visible.
 
-The server-provided project capabilities determine whether the export action is rendered. Frontend hiding is convenience only; backend authorization remains authoritative.
+The server-provided project capabilities determine whether the action is rendered. Frontend hiding is convenience only; backend authorization is authoritative.
 
 The action label is Persian-first and RTL-compatible. The downloaded filename remains ASCII-safe for broad hosting/browser compatibility.
 
@@ -446,7 +451,7 @@ No new global navigation section is required for V1.
 
 ## 16. Test Contract
 
-Implementation is test-driven. Required coverage includes the following.
+Implementation is test-driven.
 
 ### Authorization and isolation
 
@@ -458,51 +463,57 @@ Implementation is test-driven. Required coverage includes the following.
 ### CSV bytes and Persian fidelity
 
 - BOM is the first three bytes.
+- the exact 74-column header order matches `seo-plan/1`.
 - CRLF row endings are exact.
-- commas, quotes, newlines, Persian text, Arabic/Persian character variants, and half-space survive correctly.
+- commas, quotes, embedded newlines, Persian text, Arabic/Persian character variants, and half-space survive correctly.
 - null and numeric formatting are deterministic.
 - empty project produces header-only CSV.
 
 ### Formula injection
 
-- values beginning with `=`, `+`, `-`, `@`, tab, carriage return, or other selected dangerous prefixes are not executable spreadsheet formulas in human-facing cells.
-- `exact_text_json` preserves the original exact value.
+- human-facing strings beginning with `=`, `+`, `-`, `@`, tab, carriage return, or other selected dangerous prefixes are not executable spreadsheet formulas.
+- `exact_text_json` preserves the original exact free text.
 
 ### Current-state semantics
 
 - no current intent gives blank intent columns.
 - exactly one current intent is exported.
 - duplicate current intent rows fail rather than guess.
-- latest metric uses `observed_at`, then id tie-break.
+- latest metric uses `observed_at`, then metric id tie-break.
 - multiple source rows are summarized deterministically.
 - one keyword produces one row.
-- archived cluster membership is represented and priority is not calculated as active.
-- active mapping/page fields are correct.
-- review completeness matches production priority semantics.
+- archived cluster membership is represented and priority is blank.
+- mapping/page fields are correct.
+- row-level metrics remain distinct from priority-basis metrics for secondary members.
+- `priority_basis_keyword_id` is the primary keyword id.
+- review-complete behavior matches the production workspace.
 - priority score and data completeness exactly match `ClusterPriorityScore::calculate()`.
 
 ### Snapshot and performance behavior
 
-- processing is batched by keyword id.
+- keyword processing is batched by ascending id.
 - no all-keywords materialization occurs.
-- output stream spills beyond its in-memory threshold without changing bytes.
-- digest is for exact delivered bytes.
+- at least 10,000 rows exercise bounded batch generation in acceptance/performance-oriented testing without becoming a product cap.
+- the temporary stream can spill beyond its memory threshold without changing bytes.
+- digest matches exact CSV entity bytes.
 - database snapshot closes before response streaming to the client.
 
-### Connected MariaDB acceptance
+### Connected MariaDB 10.11 acceptance
 
-A MariaDB 10.11 acceptance path must:
+Permanent CI must run a connected acceptance that:
 
-1. migrate a real database;
-2. create workspace/user/project data;
-3. insert Persian keywords, multiple metric observations, intent, cluster, page, target, and reviews;
-4. perform authenticated export;
-5. verify project isolation;
-6. parse the downloaded CSV and verify the intended values;
-7. verify priority parity and exact Persian text;
-8. verify the metadata row count and SHA-256 against the downloaded bytes.
+1. migrates a real MariaDB 10.11 database;
+2. creates user/workspace/project data;
+3. inserts Persian keywords, multiple metric observations, intent, cluster membership, page, target, and reviews;
+4. performs an authenticated export;
+5. proves project isolation;
+6. parses the downloaded CSV and verifies the intended values and 74-column contract;
+7. verifies secondary-keyword priority basis uses cluster primary metrics;
+8. verifies exact Persian/half-space text through `exact_text_json`;
+9. verifies formula neutralization;
+10. verifies metadata row count and SHA-256 against the downloaded bytes.
 
-This acceptance must run in permanent CI, not as a diagnostic-only workflow.
+This acceptance is a permanent CI gate, not a diagnostic workflow.
 
 ## 17. Release-Tree Acceptance
 
@@ -510,7 +521,7 @@ The export code must be present and functional in the production release tree cr
 
 No development package, Composer executable, Node, npm, pnpm, Vite dev server, or source-only frontend build step may be required at runtime to generate an export.
 
-The existing runtime-only release-tree smoke remains mandatory after this subsystem is added.
+The existing runtime-only release-tree HTTP smoke remains mandatory after this subsystem is added.
 
 ## 18. Security Review Checklist
 
@@ -521,32 +532,34 @@ Before merge, review explicitly for:
 - authorization bypass;
 - raw payload leakage;
 - hidden user/auth data leakage;
-- path traversal through filenames;
+- filename/path traversal;
 - public temporary files;
 - memory blow-up;
 - transaction held open during client download;
 - ambiguous current-state selection;
-- exception detail leakage.
+- exception-detail leakage.
 
 ## 19. Acceptance Criteria
 
 Persian Export is complete only when all of the following are true:
 
-1. authorized operator can download a Persian-safe CSV from a real project;
+1. an authorized operator can download a Persian-safe CSV from a real project;
 2. unauthorized roles cannot bulk-export;
 3. one canonical keyword is emitted once and only once;
-4. current intent, latest metrics, cluster/mapping, review, and priority semantics match the application;
-5. Persian text and half-space survive byte/parse tests;
-6. formula injection is neutralized while exact text remains recoverable through `exact_text_json`;
-7. cross-project data cannot leak;
-8. large export uses bounded batches and temporary streaming storage;
-9. the database snapshot finishes before network transfer;
-10. exact output SHA-256 and row count are exposed and verified;
-11. MariaDB 10.11 connected acceptance is permanent and green;
-12. PHP 8.4 and PHP 8.5 CI remain green;
-13. static analysis, formatter, frontend checks, backend tests, dependency audits, and release-tree HTTP smoke remain green;
-14. no external network service is required for core export;
-15. the final branch head is reviewed, permanently green, and merged with an exact-head guard.
+4. schema `seo-plan/1` uses the exact 74-column contract above;
+5. current intent, latest metrics, cluster/mapping, review, and priority semantics match the application;
+6. secondary member rows make the cluster-primary priority basis explicit;
+7. Persian text and half-space survive byte/parse tests;
+8. formula injection is neutralized while exact text remains recoverable through `exact_text_json`;
+9. cross-project data cannot leak;
+10. large export uses bounded batches and temporary streaming storage;
+11. the database snapshot finishes before network transfer;
+12. exact CSV entity SHA-256 and row count are exposed and verified;
+13. MariaDB 10.11 connected acceptance is permanent and green;
+14. PHP 8.4 and PHP 8.5 CI remain green;
+15. static analysis, formatter, frontend checks, backend tests, dependency audits, and release-tree HTTP smoke remain green;
+16. no external network service is required for core export;
+17. the final branch head is reviewed, permanently green, and merged with an exact-head guard.
 
 ## 20. Follow-On Boundary
 
