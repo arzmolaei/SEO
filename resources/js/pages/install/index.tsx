@@ -205,8 +205,8 @@ function EnvironmentCard({
                         مرحله ۲ — تنظیمات برنامه و دیتابیس
                     </h2>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        اطلاعات فقط روی همین سرور ذخیره می‌شوند. رمز دیتابیس هیچ‌وقت
-                        دوباره به مرورگر برگردانده نمی‌شود.
+                        اطلاعات فقط روی همین سرور ذخیره می‌شوند. رمز دیتابیس
+                        هیچ‌وقت دوباره به مرورگر برگردانده نمی‌شود.
                     </p>
                 </div>
             </div>
@@ -249,7 +249,7 @@ function EnvironmentCard({
                                     defaultValue={
                                         values.database_driver ?? 'mysql'
                                     }
-                                    className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <option value="mysql">MySQL</option>
                                     <option value="mariadb">MariaDB</option>
@@ -372,9 +372,9 @@ function EnvironmentCard({
                                         رمز دیتابیس فعلی را نگه دار
                                     </span>
                                     <span className="mt-1 block leading-6 text-muted-foreground">
-                                        رمز فعلی نمایش داده نمی‌شود. برای جایگزینی
-                                        آن، این گزینه را بردارید و رمز جدید وارد
-                                        کنید.
+                                        رمز فعلی نمایش داده نمی‌شود. برای
+                                        جایگزینی آن، این گزینه را بردارید و رمز
+                                        جدید وارد کنید.
                                     </span>
                                 </span>
                             </label>
@@ -385,7 +385,11 @@ function EnvironmentCard({
                             disabled={!canSave || processing}
                             className="w-full sm:w-fit"
                         >
-                            {processing ? <Spinner /> : <Save className="size-4" />}
+                            {processing ? (
+                                <Spinner />
+                            ) : (
+                                <Save className="size-4" />
+                            )}
                             ذخیره امن تنظیمات
                         </Button>
                     </>
@@ -545,10 +549,10 @@ export default function Installer({
                                         اتصال دیتابیس تأیید شد
                                     </h2>
                                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        اطلاعات اتصال تأیید و به‌صورت امن ذخیره شده
-                                        است. مرحله بعد فقط زمانی فعال می‌شود که
-                                        اجرای migration به‌صورت resumable آماده
-                                        باشد.
+                                        اطلاعات اتصال تأیید و به‌صورت امن ذخیره
+                                        شده است. مرحله بعد فقط زمانی فعال می‌شود
+                                        که اجرای migration به‌صورت resumable
+                                        آماده باشد.
                                     </p>
                                 </div>
                             </div>
