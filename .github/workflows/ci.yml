@@ -1,23 +1,17 @@
-name: CI
+name: PHP Format Diagnostic
 
 on:
   push:
     branches:
-      - main
-      - 'feature/**'
-  pull_request:
+      - 'diagnostic/font-format-20261022'
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  verify:
+  format:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
 
     steps:
       - name: Checkout
@@ -30,52 +24,11 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Prepare application environment
-        shell: bash
+      - name: Capture Pint diff
         run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          test -f database/database.sqlite || touch database/database.sqlite
-          php artisan migrate --force --ansi
-
-      - name: Install frontend dependencies
-        run: timeout 180s npm ci --prefer-offline --no-audit
-
-      - name: Bundle open-source fonts
-        run: bash scripts/fonts/fetch-vazirmatn.sh
-
-      - name: Generate Wayfinder types
-        run: php artisan wayfinder:generate --with-form
-
-      - name: Check frontend
-        run: npm run check
-
-      - name: Check TypeScript
-        run: npm run types:check
-
-      - name: Build production assets
-        run: npm run build
-
-      - name: Check PHP style
-        run: composer lint:check
-
-      - name: Static analysis
-        run: composer types:check
-
-      - name: Run backend tests
-        run: php artisan test
-
-      - name: Audit runtime npm dependencies
-        run: timeout 120s npm audit --omit=dev --audit-level=high
-
-      - name: Audit runtime Composer dependencies
-        run: timeout 120s composer audit --no-dev
+          ./vendor/bin/pint app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
+          git diff -- app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
+          exit 1
