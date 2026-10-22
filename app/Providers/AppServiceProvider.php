@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\SystemProbe;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
+use App\Support\NativeSystemProbe;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
+        $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
     }
 
     /**
