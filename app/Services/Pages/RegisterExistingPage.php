@@ -26,7 +26,7 @@ class RegisterExistingPage
                     throw new ConflictHttpException('URL identity collision.');
                 }
 
-return $existing;
+                return $existing;
             }
             $page = Page::query()->create(['project_id' => $project->id, 'created_by_id' => $actor->id, 'kind' => PageKind::Existing, 'title' => $this->operations->title($title), 'url' => $url, 'normalized_url' => $normalized, 'url_hash' => $hash]);
             $this->operations->record($actor, $project, $page, null, 'pages.created');
