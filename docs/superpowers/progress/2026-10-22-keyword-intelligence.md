@@ -72,12 +72,18 @@ RED contracts remain under `docs/superpowers/specs/` and
     frontend check/TypeScript/build, Pint, PHPStan, runtime audits and release
     smoke all passed.
 - Task 11 — Connected Keyword Intelligence workspace + acceptance: **active**
-  - First unfinished task. Start with a genuine RED acceptance contract.
-  - Connect existing Grid + Review Queue + cluster/page/mapping/priority/Ready
-    services through project-scoped HTTP/UI boundaries; do not bypass service
-    authorization/locking/history and do not replace server-side Grid scalability.
-  - Final acceptance, Persian RTL/keyboard checks, whole-branch review and fresh
-    final-head CI are required before PR #2 may merge.
+  - The existing `intelligence` server prop is now connected to the Keywords page
+    instead of remaining dead UI. The workspace exposes Grid, Intent, Clusters and
+    Mapping entry points while preserving the existing server-paginated Grid.
+  - Manual cluster merge/move/split controls call only the existing project-scoped,
+    service-backed HTTP boundaries and respect cluster locks. Mapping, priority,
+    conflict refresh, Review Queue and Ready operations remain service-owned.
+  - Acceptance now requires explicit `intelligence.project_id` so the client does
+    not infer project identity from URL shape. RED was observed on CI `39826284166`:
+    only the new property assertion failed while 236 tests passed. The minimal
+    backend/type/UI contract is now implemented and awaiting a permanent full CI.
+  - Final acceptance, Persian RTL/keyboard/empty/error checks, whole-branch review
+    and fresh final-head CI are still required before PR #2 may merge.
 
 ## Execution rules
 
