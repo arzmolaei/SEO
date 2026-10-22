@@ -62,6 +62,7 @@ class KeywordIntelligenceAcceptanceTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $screen) => $screen
                 ->component('projects/keywords')
+                ->where('intelligence.project_id', $project->id)
                 ->where('intelligence.summary.active_clusters', 1)
                 ->where('intelligence.summary.ready_clusters', 1)
                 ->where('intelligence.summary.unmapped_clusters', 0)
