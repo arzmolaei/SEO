@@ -48,7 +48,19 @@ See `docs/release-readiness/foundation-keyword-core.md` for the detailed evidenc
 - IRANSansX/Yekan Bakh proprietary binaries are **not** committed to the public repository. Licensed ZIPs are installed locally into the ignored private font directory using the repository font installer.
 - Core runtime must not depend on an international font/CDN request.
 
-## Next subsystem — start here
+## Active implementation — resume here
+
+Continue existing `feature/keyword-intelligence`; do not create or reset it.
+Tasks 1–4 are verified (latest boundary `9b1107c`, CI `39790760139`).
+Task 5 is in progress: lexical candidate generation, safe application and review.
+Source of current execution evidence: `docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
+The branch includes the newer `main` handoff instructions through merge `114277a`.
+After Task 5 final-head CI passes, execute Task 6, then remaining tasks in order.
+Do not stop for routine confirmation. Preserve unfinished state explicitly if
+an external interruption/tool limit occurs. Full install/backup/restore/update
+acceptance remains future delivery work, not completed by the current slice.
+
+## Keyword Intelligence subsystem boundary
 
 The next slice is **Keyword Intelligence: Intent + Clustering + Mapping**.
 
@@ -79,7 +91,7 @@ Before changing code:
 4. Read the architecture/spec and the relevant implementation plan under `docs/superpowers/`.
 5. Fetch the current `main` head from GitHub and inspect current CI status.
 6. Confirm the working tree/ref you intend to use is based on current `main`.
-7. Create a **new feature branch from current `main`** for the next subsystem. Recommended name: `feature/keyword-intelligence`.
+7. Resume the explicitly named active branch above. Only create a new branch from current main when starting a genuinely new subsystem.
 8. Do not copy/rebuild Foundation + Keyword Core just because the new session lacks chat context.
 9. Use TDD for each bounded behavior: RED -> minimal GREEN -> verification -> commit.
 10. Keep permanent CI gates intact. Diagnostic CI edits must be temporary and removed before the feature is considered verified.

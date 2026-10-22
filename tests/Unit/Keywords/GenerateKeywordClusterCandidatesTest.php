@@ -79,6 +79,15 @@ class GenerateKeywordClusterCandidatesTest extends TestCase
         $this->assertLessThan(5, microtime(true) - $start, 'Gross quadratic regression on a 10k corpus.');
     }
 
+    public function test_shared_anchor_is_not_misreported_as_containment(): void
+    {
+        $candidate = app(GenerateKeywordClusterCandidates::class)->generate([
+            $this->row(1, 'لپ تاپ گیمینگ'), $this->row(2, 'لپ تاپ اداری'),
+        ])[0];
+        $this->assertSame('shared_anchor', $candidate->evidence['relation']);
+        $this->assertSame(IntentConfidence::Medium, $candidate->confidence);
+    }
+
     private function row(int $id, string $text, KeywordIntent $intent = KeywordIntent::Transactional): array
     {
         return ['id' => $id, 'project_id' => 1, 'text' => $text, 'intent' => $intent];

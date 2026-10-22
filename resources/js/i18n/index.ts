@@ -3,6 +3,7 @@ export type Direction = 'rtl' | 'ltr';
 
 const messages = {
     fa: {
+        'review.cluster': 'پیشنهاد خوشه',
         'project.nav.reviews': 'صف بررسی',
         'review.description':
             'نیت جستجو را با دلیل بررسی کنید؛ تصمیم شما بر پیشنهادهای خودکار اولویت دارد.',
@@ -135,6 +136,7 @@ const messages = {
             'عملیات نمای ذخیره‌شده انجام نشد. دوباره تلاش کنید.',
     },
     en: {
+        'review.cluster': 'Cluster suggestion',
         'project.nav.reviews': 'Review Queue',
         'review.description':
             'Review search intent with evidence. Your decisions take precedence over automatic suggestions.',

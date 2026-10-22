@@ -4,6 +4,7 @@ namespace App\Services\Review;
 
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordIntent;
+use App\Domain\Review\ReviewItemType;
 use App\Models\ActivityEvent;
 use App\Models\ChangeSet;
 use App\Models\Keyword;
@@ -41,7 +42,7 @@ class ResolveIntentReview
         return DB::transaction(function () use ($actor, $project, $review, $fingerprint, $decision, $intent): ReviewItem {
             $keyword = Keyword::query()->where('project_id', $project->id)->lockForUpdate()->findOrFail($review->keyword_id);
             $review = ReviewItem::query()->where('project_id', $project->id)->lockForUpdate()->findOrFail($review->id);
-            if ($review->status !== 'pending' || ! hash_equals($review->fingerprint, $fingerprint)) {
+            if ($review->type !== ReviewItemType::Intent || $review->status !== 'pending' || ! hash_equals($review->fingerprint, $fingerprint)) {
                 throw new ConflictHttpException('Review evidence changed. Reload before deciding.');
             }
 

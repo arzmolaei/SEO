@@ -5,6 +5,7 @@ namespace Tests\Feature\Keywords;
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordIntent;
 use App\Domain\Review\ReviewItemType;
+use App\Models\ActivityEvent;
 use App\Models\Keyword;
 use App\Models\Project;
 use App\Models\ReviewItem;
@@ -119,6 +120,41 @@ class ApplyKeywordClusterCandidatesTest extends TestCase
         $this->assertDatabaseCount('review_items', 1);
         $this->expectException(ConflictHttpException::class);
         app(ResolveIntentReview::class)->handle($actor, $project, $review->fresh(), $review->fresh()->fingerprint, 'accept');
+    }
+
+    public function test_cluster_suggestion_is_visible_and_can_be_accepted_at_http_boundary(): void
+    {
+        [$actor, $project, , , $candidate] = $this->fixture();
+        app(ApplyKeywordClusterCandidates::class)->handle($actor, $project, [$candidate]);
+        $review = ReviewItem::query()->firstOrFail();
+        $this->actingAs($actor)->get("/projects/{$project->id}/reviews")->assertOk()
+            ->assertInertia(fn ($page) => $page->has('reviews.data', 1)->where('reviews.data.0.type', 'cluster')->missing('reviews.data.0.suggestion.candidate'));
+        $this->post("/projects/{$project->id}/reviews/{$review->id}/resolve", ['decision' => 'accept', 'fingerprint' => $review->fingerprint])->assertRedirect();
+        $this->assertDatabaseCount('keyword_clusters', 1);
+        $this->assertSame('resolved', $review->fresh()->status);
+    }
+
+    public function test_later_stale_candidate_rolls_back_all_mutations_including_audit(): void
+    {
+        config(['keyword-intelligence.clustering.auto_apply_high_confidence' => true]);
+        [$actor, $project, , , $first] = $this->fixture();
+        $items = [];
+        foreach (['خرید کفش ورزشی', 'قیمت کفش ورزشی'] as $text) {
+            $k = Keyword::query()->create(['project_id' => $project->id, 'display_text' => $text, 'normalized_text' => $text, 'status' => 'review']);
+            app(AssignKeywordIntent::class)->handle($actor, $project, $k, KeywordIntent::Transactional, IntentConfidence::High, 'user');
+            $items[] = $k;
+        }
+        $second = $this->candidate($project, $items);
+        $items[0]->update(['display_text' => 'بیمه خودرو']);
+        $auditCount = ActivityEvent::query()->count();
+        try {
+            app(ApplyKeywordClusterCandidates::class)->handle($actor, $project, [$first, $second]);
+            $this->fail('Stale evidence accepted.');
+        } catch (ConflictHttpException) {
+            $this->assertDatabaseCount('keyword_clusters', 0);
+            $this->assertDatabaseCount('keyword_cluster_members', 0);
+            $this->assertDatabaseCount('activity_events', $auditCount);
+        }
     }
 
     private function fixture(string $second = 'قیمت لپ تاپ'): array

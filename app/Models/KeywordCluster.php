@@ -19,11 +19,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property KeywordIntent $intent
  * @property IntentConfidence $confidence
  * @property ClusterReviewState $review_state
+ * @property string $origin
+ * @property string|null $automation_key
  * @property bool $is_locked
  */
 class KeywordCluster extends Model
 {
-    protected $fillable = ['project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'is_locked'];
+    protected $fillable = ['project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'is_locked', 'origin', 'automation_key'];
 
     protected static function booted(): void
     {

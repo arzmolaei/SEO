@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'clustering' => [
+        'auto_apply_high_confidence' => false,
+        'stop_words' => ['برای', 'از', 'به', 'در', 'با', 'و', 'یک', 'این', 'آن', 'خرید', 'قیمت', 'بهترین', 'آموزش', 'جدید'],
+    ],
     'intent' => [
         'auto_apply_high_confidence' => false,
         'rules' => [

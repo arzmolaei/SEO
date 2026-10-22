@@ -37,7 +37,17 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Creation is transactional/audited, requires the primary as an explicit member, rejects cross-project/duplicate membership and never silently moves a keyword.
   - Decision: one current cluster membership per canonical keyword. Eloquent guards protect primary replacement/removal; future mutation services must acquire locks and never bypass those guards with bulk/raw writes.
   - This task provides domain/application foundations; clustering algorithms and UI are not yet delivered.
-- Tasks 5–11: pending. Next: deterministic candidate generation and safe application, preserving manual/locked memberships.
+- Task 5 — Lexical candidate generation/application: **implemented; final-head CI pending**
+  - RED contract commit `3f33506`; additional real REDs covered HTTP visibility, browser payload bounds and accurate shared-anchor evidence.
+  - 177 full-suite tests / 1072 assertions passed; PHPStan, Pint, TypeScript, frontend build/check and runtime audits passed locally.
+  - 21 related feature tests passed on MariaDB 10.11.
+  - Real Chromium: cluster evidence visible, intent-only edit absent, keyboard accept resolves; no JS page errors.
+  - 10k unrelated corpus completed in roughly 0.08 seconds; no all-pairs comparisons.
+  - Independent review found no security/transaction blockers. Evidence-label issue was regraded for the explainability contract and fixed RED/GREEN.
+  - Project-first serialization intentionally trades per-project mutation concurrency for race safety. Full snapshots remain server-side.
+  - Auto-apply is opt-in and only High; uncertainty is idempotent Review Queue, with same-evidence resolved decisions retained.
+  - Next action: inspect CI for the current Task 5 implementation head. Once green, record SHA/run and enter Task 6 without routine confirmation.
+- Tasks 6–11: pending. Task 6 must have its own RED/implementation/CI boundary.
 
 ## Execution rules
 

@@ -15,6 +15,7 @@ type Intent =
     | 'mixed'
     | 'unknown';
 type Review = {
+    type: 'intent' | 'cluster';
     id: number;
     fingerprint: string;
     suggestion: {
@@ -236,6 +237,9 @@ export default function ReviewQueue({
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <h2 className="text-lg font-semibold">
+                                            {item.type === 'cluster'
+                                                ? `${t('review.cluster')}: `
+                                                : ''}
                                             {item.suggestion.original_text}
                                         </h2>
                                         <div className="flex flex-wrap gap-2 text-xs">
@@ -281,45 +285,62 @@ export default function ReviewQueue({
                                                 <Check />
                                                 {t('review.accept')}
                                             </Button>
-                                            <label className="flex min-w-40 flex-col gap-1 text-xs text-muted-foreground">
-                                                {t('review.intent')}
-                                                <select
-                                                    className="h-9 rounded-md border bg-background px-3 text-sm text-foreground"
-                                                    disabled={busy}
-                                                    value={
-                                                        choices[item.id] ??
-                                                        item.suggestion.intent
-                                                    }
-                                                    onChange={(event) =>
-                                                        setChoices({
-                                                            ...choices,
-                                                            [item.id]: event
-                                                                .target
-                                                                .value as Intent,
-                                                        })
-                                                    }
-                                                >
-                                                    {intents.map((intent) => (
-                                                        <option
-                                                            key={intent}
-                                                            value={intent}
+                                            {item.type === 'intent' && (
+                                                <>
+                                                    <label className="flex min-w-40 flex-col gap-1 text-xs text-muted-foreground">
+                                                        {t('review.intent')}
+                                                        <select
+                                                            className="h-9 rounded-md border bg-background px-3 text-sm text-foreground"
+                                                            disabled={busy}
+                                                            value={
+                                                                choices[
+                                                                    item.id
+                                                                ] ??
+                                                                item.suggestion
+                                                                    .intent
+                                                            }
+                                                            onChange={(event) =>
+                                                                setChoices({
+                                                                    ...choices,
+                                                                    [item.id]:
+                                                                        event
+                                                                            .target
+                                                                            .value as Intent,
+                                                                })
+                                                            }
                                                         >
-                                                            {t(
-                                                                `review.${intent}`,
+                                                            {intents.map(
+                                                                (intent) => (
+                                                                    <option
+                                                                        key={
+                                                                            intent
+                                                                        }
+                                                                        value={
+                                                                            intent
+                                                                        }
+                                                                    >
+                                                                        {t(
+                                                                            `review.${intent}`,
+                                                                        )}
+                                                                    </option>
+                                                                ),
                                                             )}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                            <Button
-                                                variant="outline"
-                                                disabled={busy}
-                                                onClick={() =>
-                                                    decide(item, 'change')
-                                                }
-                                            >
-                                                {t('review.change')}
-                                            </Button>
+                                                        </select>
+                                                    </label>
+                                                    <Button
+                                                        variant="outline"
+                                                        disabled={busy}
+                                                        onClick={() =>
+                                                            decide(
+                                                                item,
+                                                                'change',
+                                                            )
+                                                        }
+                                                    >
+                                                        {t('review.change')}
+                                                    </Button>
+                                                </>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 disabled={busy}

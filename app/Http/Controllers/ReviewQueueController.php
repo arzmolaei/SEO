@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ReviewItem;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
+use App\Services\Review\ResolveClusterReview;
 use App\Services\Review\ResolveIntentReview;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -25,9 +26,9 @@ class ReviewQueueController extends Controller
     {
         $actor = $this->actor($request, $project, false);
         $request->validate(['page' => ['sometimes', 'integer', 'min:1']]);
-        $reviews = ReviewItem::query()->where('project_id', $project->id)->where('type', ReviewItemType::Intent)
+        $reviews = ReviewItem::query()->where('project_id', $project->id)->whereIn('type', [ReviewItemType::Intent, ReviewItemType::Cluster])
             ->where('status', 'pending')->orderBy('id')->paginate(25)->through(fn (ReviewItem $item): array => [
-                'id' => $item->id, 'keyword_id' => $item->keyword_id, 'fingerprint' => $item->fingerprint, 'suggestion' => $item->suggestion,
+                'id' => $item->id, 'type' => $item->type->value, 'keyword_id' => $item->keyword_id, 'fingerprint' => $item->fingerprint, 'suggestion' => array_diff_key($item->suggestion, ['candidate' => true]),
             ]);
 
         return Inertia::render('projects/review-queue', [
@@ -45,7 +46,7 @@ class ReviewQueueController extends Controller
         return to_route('projects.reviews.index', $project);
     }
 
-    public function resolve(Request $request, Project $project, ReviewItem $reviewItem, ResolveIntentReview $resolve): RedirectResponse
+    public function resolve(Request $request, Project $project, ReviewItem $reviewItem, ResolveIntentReview $resolve, ResolveClusterReview $resolveCluster): RedirectResponse
     {
         $actor = $this->actor($request, $project, true);
         if ($reviewItem->project_id !== $project->id) {
@@ -53,11 +54,15 @@ class ReviewQueueController extends Controller
         }
         $validated = $request->validate([
             'fingerprint' => ['required', 'string', 'size:64', 'regex:/^[a-f0-9]+$/'],
-            'decision' => ['required', Rule::in(['accept', 'change', 'skip'])],
+            'decision' => ['required', Rule::in($reviewItem->type === ReviewItemType::Cluster ? ['accept', 'skip'] : ['accept', 'change', 'skip'])],
             'intent' => ['required_if:decision,change', 'nullable', Rule::enum(KeywordIntent::class)],
         ]);
-        $resolve->handle($actor, $project, $reviewItem, $validated['fingerprint'], $validated['decision'],
-            isset($validated['intent']) ? KeywordIntent::from($validated['intent']) : null);
+        if ($reviewItem->type === ReviewItemType::Cluster) {
+            $resolveCluster->handle($actor, $project, $reviewItem, $validated['fingerprint'], $validated['decision']);
+        } else {
+            $resolve->handle($actor, $project, $reviewItem, $validated['fingerprint'], $validated['decision'],
+                isset($validated['intent']) ? KeywordIntent::from($validated['intent']) : null);
+        }
 
         return to_route('projects.reviews.index', $project);
     }

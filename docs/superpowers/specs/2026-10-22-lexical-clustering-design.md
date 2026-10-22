@@ -19,6 +19,12 @@ These weights express evidence strength, not a probability of semantic truth.
 Expected complexity O(total tokens + n log n), O(total input) storage; no hard
 keyword count ceiling. A 10k synthetic corpus guards gross quadratic regression.
 
+Cluster operations first serialize on the project row, then lock keywords,
+clusters, members and reviews in stable order. This deliberately trades
+per-project mutation concurrency for race safety on small-team/self-host installs.
+Review responses exclude full candidate snapshots; only the paginated summary
+is sent to the browser.
+
 Apply revalidates candidate evidence from current normalized inputs and current
 intent assignments, under sorted keyword locks. It locks affected clusters,
 members and review rows in ascending identity order. All candidates in one call
