@@ -108,7 +108,9 @@ export default function Keywords({
     const path = usePage().url.split('?')[0];
     const [search, setSearch] = useState(filters.q ?? '');
     const [source, setSource] = useState(filters.source ?? '');
-    const [status, setStatus] = useState(filters.status ?? '');
+    const [status, setStatus] = useState<KeywordStatus | ''>(
+        filters.status ?? '',
+    );
     const [volumeOperator, setVolumeOperator] = useState(
         filters.volume_operator ?? '',
     );
