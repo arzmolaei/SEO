@@ -10,6 +10,11 @@ import {
 } from 'react';
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import {
+    type SavedKeywordView,
+    type SavedKeywordViewState,
+    SavedKeywordViewsToolbar,
+} from '@/components/saved-keyword-views-toolbar';
+import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
@@ -67,12 +72,37 @@ const defaultColumnVisibility: Record<OptionalColumn, boolean> = {
     createdAt: false,
 };
 
+const visibilityFromSavedColumns = (
+    columns: string[],
+): Record<OptionalColumn, boolean> => ({
+    normalized: columns.includes('normalized'),
+    status: columns.includes('status'),
+    volume: columns.includes('volume'),
+    source: columns.includes('source'),
+    createdAt: columns.includes('created_at'),
+});
+
+const savedColumnsFromVisibility = (
+    visibility: Record<OptionalColumn, boolean>,
+): string[] => [
+    'keyword',
+    ...(visibility.normalized ? ['normalized'] : []),
+    ...(visibility.status ? ['status'] : []),
+    ...(visibility.volume ? ['volume'] : []),
+    ...(visibility.source ? ['source'] : []),
+    ...(visibility.createdAt ? ['created_at'] : []),
+];
+
 export default function Keywords({
     keywords,
     filters,
+    savedViews,
+    activeView,
 }: {
     keywords: KeywordPaginator;
     filters: KeywordFilters;
+    savedViews: SavedKeywordView[];
+    activeView: SavedKeywordView | null;
 }) {
     const { locale, t } = useLocale();
     const path = usePage().url.split('?')[0];
@@ -106,6 +136,12 @@ export default function Keywords({
     );
 
     useEffect(() => {
+        if (activeView !== null) {
+            setVisibleColumns(visibilityFromSavedColumns(activeView.state.columns));
+
+            return;
+        }
+
         const stored = window.localStorage.getItem(columnStorageKey);
 
         if (stored === null) {
@@ -142,7 +178,7 @@ export default function Keywords({
         } catch {
             return;
         }
-    }, []);
+    }, [activeView]);
 
     useEffect(() => {
         window.localStorage.setItem(
@@ -155,6 +191,34 @@ export default function Keywords({
         setActiveRow(0);
         rowRefs.current = [];
     }, [keywords.current_page]);
+
+    const currentViewState = useMemo<SavedKeywordViewState>(() => {
+        const hasVolumeFilter = volumeOperator !== '' && volume.trim() !== '';
+
+        return {
+            query: {
+                q: search.trim() || null,
+                source: source.trim() || null,
+                status: status || null,
+                volume_operator: hasVolumeFilter ? volumeOperator : null,
+                volume: hasVolumeFilter ? Number(volume) : null,
+                sort: filters.sort,
+                direction: filters.direction,
+                per_page: filters.per_page,
+            },
+            columns: savedColumnsFromVisibility(visibleColumns),
+        };
+    }, [
+        filters.direction,
+        filters.per_page,
+        filters.sort,
+        search,
+        source,
+        status,
+        visibleColumns,
+        volume,
+        volumeOperator,
+    ]);
 
     const visitCallbacks = {
         onStart: () => {
@@ -304,6 +368,19 @@ export default function Keywords({
                             </div>
                         </div>
                     </div>
+
+                    <SavedKeywordViewsToolbar
+                        path={path}
+                        savedViews={savedViews}
+                        activeView={activeView}
+                        currentState={currentViewState}
+                        disabled={isLoading}
+                        onApplyColumns={(columns) =>
+                            setVisibleColumns(
+                                visibilityFromSavedColumns(columns),
+                            )
+                        }
+                    />
 
                     <form
                         onSubmit={submit}
