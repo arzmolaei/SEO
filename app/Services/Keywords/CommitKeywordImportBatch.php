@@ -5,6 +5,7 @@ namespace App\Services\Keywords;
 use App\Domain\Keywords\PersianKeywordNormalizer;
 use App\Models\ImportBatch;
 use App\Models\Keyword;
+use App\Models\KeywordMetric;
 use App\Models\KeywordSource;
 use App\Models\Project;
 use App\Models\StagedKeywordRow;
@@ -63,7 +64,7 @@ class CommitKeywordImportBatch
                     ],
                 );
 
-                KeywordSource::query()->firstOrCreate(
+                $keywordSource = KeywordSource::query()->firstOrCreate(
                     [
                         'staged_keyword_row_id' => $row->id,
                     ],
@@ -75,6 +76,22 @@ class CommitKeywordImportBatch
                         'raw_payload' => $row->raw_payload,
                     ],
                 );
+
+                $volume = $this->numericMetric($row, 'volume');
+
+                if ($volume !== null) {
+                    KeywordMetric::query()->firstOrCreate(
+                        [
+                            'keyword_source_id' => $keywordSource->id,
+                            'metric' => 'volume',
+                        ],
+                        [
+                            'keyword_id' => $keyword->id,
+                            'value' => $volume,
+                            'observed_at' => now(),
+                        ],
+                    );
+                }
             }
 
             $lockedBatch->update([
@@ -84,5 +101,22 @@ class CommitKeywordImportBatch
 
             return $lockedBatch->refresh();
         });
+    }
+
+    private function numericMetric(StagedKeywordRow $row, string $field): ?string
+    {
+        $value = ($row->mapped_payload ?? [])[$field] ?? null;
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' && is_numeric($value) ? $value : null;
     }
 }
