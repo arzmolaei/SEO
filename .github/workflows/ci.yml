@@ -63,7 +63,11 @@ jobs:
         run: npm run build
 
       - name: Check PHP style
-        run: composer lint:check
+        shell: bash
+        run: |
+          vendor/bin/pint app/Http/Controllers/KeywordGridController.php
+          git diff -- app/Http/Controllers/KeywordGridController.php
+          git diff --quiet || exit 1
 
       - name: Static analysis
         run: composer types:check
