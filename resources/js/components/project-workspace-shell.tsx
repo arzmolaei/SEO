@@ -43,7 +43,9 @@ export function ProjectWorkspaceShell({
                             aria-disabled="true"
                         >
                             <Search className="size-4 shrink-0" />
-                            <span className="truncate">{t('project.search')}</span>
+                            <span className="truncate">
+                                {t('project.search')}
+                            </span>
                             <span className="ms-auto hidden rounded border px-1.5 py-0.5 text-[10px] sm:inline">
                                 ⌘K
                             </span>
