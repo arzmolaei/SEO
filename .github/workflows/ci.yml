@@ -56,11 +56,14 @@ jobs:
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
-      - name: Diagnose saved views formatting
+      - name: Check frontend
+        run: npm run check
+
+      - name: Diagnose PHP formatting
         shell: bash
         run: |
-          npm run check:fix
-          git diff -- resources/js/components/saved-keyword-views-toolbar.tsx resources/js/components/saved-keyword-views.tsx resources/js/pages/projects/keywords.tsx
+          ./vendor/bin/pint app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
+          git diff -- app/Domain/Keywords/SavedKeywordViewState.php scripts/fonts/install-private-fonts.php
           exit 1
 
       - name: Check TypeScript
