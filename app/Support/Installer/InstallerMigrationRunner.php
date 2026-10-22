@@ -70,7 +70,7 @@ class InstallerMigrationRunner
                 'step' => false,
             ]);
             $ranNow = array_values(array_map(
-                static fn (string $path): string => Migrator::getMigrationName($path),
+                static fn (string $path): string => basename($path, '.php'),
                 $ranPaths,
             ));
             $ranAfter = $this->migrator->getRepository()->getRan();

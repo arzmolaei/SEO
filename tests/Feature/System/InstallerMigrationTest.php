@@ -62,12 +62,12 @@ class InstallerMigrationTest extends TestCase
         $migrator = Mockery::mock(Migrator::class);
 
         $migrator->shouldReceive('usingConnection')
-            ->twice()
+            ->once()
             ->with('installer', Mockery::type('callable'))
             ->andReturnUsing(static fn (string $connection, callable $callback): mixed => $callback());
-        $migrator->shouldReceive('getMigrationFiles')->twice()->with('/migrations')->andReturn($files);
-        $migrator->shouldReceive('repositoryExists')->twice()->andReturn(false, true);
-        $migrator->shouldReceive('getRepository')->times(3)->andReturn($repository);
+        $migrator->shouldReceive('getMigrationFiles')->once()->with('/migrations')->andReturn($files);
+        $migrator->shouldReceive('repositoryExists')->once()->andReturn(false);
+        $migrator->shouldReceive('getRepository')->twice()->andReturn($repository);
         $repository->shouldReceive('createRepository')->once();
         $repository->shouldReceive('getRan')->once()->andReturn(['2026_01_01_000000_first', '2026_01_01_000001_second']);
         $migrator->shouldReceive('run')
@@ -97,9 +97,9 @@ class InstallerMigrationTest extends TestCase
             ->twice()
             ->andReturnUsing(static fn (string $connection, callable $callback): mixed => $callback());
         $migrator->shouldReceive('repositoryExists')->twice()->andReturn(true);
-        $migrator->shouldReceive('getRepository')->once()->andReturn($repository);
-        $migrator->shouldReceive('getMigrationFiles')->once()->with('/migrations')->andReturn($files);
-        $repository->shouldReceive('getRan')->once()->andReturn(['2026_01_01_000000_first']);
+        $migrator->shouldReceive('getRepository')->twice()->andReturn($repository);
+        $migrator->shouldReceive('getMigrationFiles')->twice()->with('/migrations')->andReturn($files);
+        $repository->shouldReceive('getRan')->twice()->andReturn(['2026_01_01_000000_first']);
         $migrator->shouldReceive('run')
             ->once()
             ->andThrow(new RuntimeException('simulated interruption'));
