@@ -8,13 +8,15 @@ The first SEO OS vertical slice is complete on `feature/foundation-keyword-core`
 
 Final reviewed implementation baseline before this documentation update:
 
-- Commit: `2ac554b608fe0e6c6d34f92b746538172ce594e2`
-- CI run: `39772007410`
+- Commit: `d1e497c61196e32479457a6532b7313f7704c65a`
+- CI run: `39772791957`
 - Main verification job: passed
 - PHP 8.4 compatibility: passed
 - PHP 8.5 compatibility: passed
 - Runtime npm audit: passed
 - Runtime Composer audit: passed
+- Runtime-only Composer install: passed
+- Production release-tree build and `php artisan --version` smoke test: passed
 
 ## Verified user workflow
 
@@ -45,8 +47,10 @@ The permanent CI pipeline verifies:
 - Runtime npm dependency audit with high-severity gating.
 - Runtime Composer dependency audit.
 - Production release-package contract and builder tests.
+- Runtime-only Composer dependency installation with development packages removed.
+- Production release-tree smoke test from the built package itself.
 
-The reviewed baseline passed all of these gates, including the end-to-end acceptance workflow.
+The reviewed baseline passed all of these gates, including the end-to-end acceptance workflow and the production release-tree runtime smoke test.
 
 ## Whole-branch review
 
@@ -55,6 +59,8 @@ The completed branch was compared against `main` and reviewed with extra attenti
 One important release-package hardening issue was found and fixed during review: private key files nested below `storage/` could previously evade a top-level-only key check. The release contract now recursively scans `storage` and rejects `.key` files at any depth, reported as `storage/**/*.key`. A dedicated RED/GREEN regression test verifies nested private-key rejection.
 
 Release packaging was also completed with an allowlist-first builder. The builder copies only required runtime files/directories into a clean destination, creates empty writable runtime directories, rejects symlinked release inputs, deliberately excludes proprietary private font assets and development/runtime state, and validates the result against `ReleasePackageContract` before considering the package valid.
+
+The runtime smoke gate also caught an over-broad assertion during review: `phpstan/phpdoc-parser` remains as a legitimate production dependency even after the `phpstan/phpstan` development tool is removed. The final CI checks the actual development package directories (`vendor/phpstan/phpstan` and `vendor/phpunit/phpunit`) instead of incorrectly rejecting the entire vendor namespaces.
 
 No additional Critical or Important findings remained after the focused review and the final reviewed CI baseline above.
 
@@ -69,6 +75,7 @@ The slice keeps the intended self-host characteristics:
 - IRANSansX FaNum is the default interface font and Yekan Bakh is selectable, but their proprietary binaries are intentionally excluded from the public repository. Licensed ZIPs can be installed locally with `scripts/fonts/install-private-fonts.php`; the private font directory is ignored by Git.
 - Installer/System Health foundations check runtime requirements and application state without making shell access a core product requirement.
 - The release builder produces a clean runtime tree instead of copying the development tree and trying to delete unsafe files afterward.
+- CI proves that the produced release tree can boot Laravel directly after runtime-only dependency installation.
 
 ## Data and safety guarantees in this slice
 
