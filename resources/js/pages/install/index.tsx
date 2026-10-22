@@ -126,8 +126,9 @@ function PreflightCard({
                 <div>
                     <h2 className="font-semibold">مرحله ۱ — بررسی میزبان</h2>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        فقط پیش‌نیازهای مستقل از دیتابیس اینجا بررسی می‌شوند. اتصال
-                        دیتابیس، migration، صف و cron در مراحل خودشان تأیید می‌شوند.
+                        فقط پیش‌نیازهای مستقل از دیتابیس اینجا بررسی می‌شوند.
+                        اتصال دیتابیس، migration، صف و cron در مراحل خودشان
+                        تأیید می‌شوند.
                     </p>
                 </div>
                 <span
@@ -473,10 +474,10 @@ function MigrationCard({
                                 مرحله ۴ — ساختار دیتابیس
                             </h2>
                             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                                migrationها داخل خود Laravel اجرا می‌شوند؛ هیچ shell
-                                یا SSH لازم نیست. هر migration موفق در repository
-                                ثبت می‌شود، بنابراین قطع شدن درخواست باعث اجرای
-                                دوباره‌ی بخش‌های تکمیل‌شده نمی‌شود.
+                                migrationها داخل خود Laravel اجرا می‌شوند؛ هیچ
+                                shell یا SSH لازم نیست. هر migration موفق در
+                                repository ثبت می‌شود، بنابراین قطع شدن درخواست
+                                باعث اجرای دوباره‌ی بخش‌های تکمیل‌شده نمی‌شود.
                             </p>
                         </div>
                         <span
@@ -511,7 +512,7 @@ function MigrationCard({
                                 {migrations.pending.map((migration) => (
                                     <li
                                         key={migration}
-                                        className="overflow-hidden text-ellipsis rounded-md border bg-background px-3 py-2 font-mono text-xs"
+                                        className="overflow-hidden rounded-md border bg-background px-3 py-2 font-mono text-xs text-ellipsis"
                                         title={migration}
                                     >
                                         {migration}
@@ -521,9 +522,12 @@ function MigrationCard({
                             {migrations.pending_count !== null &&
                             migrations.pending_count >
                                 migrations.pending.length ? (
-                                <p className="mt-3 text-xs leading-5 text-muted-foreground" dir="rtl">
-                                    برای سبک ماندن صفحه فقط ۲۰ مورد اول نمایش داده
-                                    می‌شود؛ تعداد کل بالا ثبت شده است.
+                                <p
+                                    className="mt-3 text-xs leading-5 text-muted-foreground"
+                                    dir="rtl"
+                                >
+                                    برای سبک ماندن صفحه فقط ۲۰ مورد اول نمایش
+                                    داده می‌شود؛ تعداد کل بالا ثبت شده است.
                                 </p>
                             ) : null}
                         </div>
@@ -601,9 +605,9 @@ export default function Installer({
                                         راه‌اندازی امن SEO OS
                                     </h1>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                                        نصب از داخل مرورگر انجام می‌شود و روی هاست
-                                        مقصد به Composer، Node.js، npm یا دسترسی SSH
-                                        نیاز ندارد.
+                                        نصب از داخل مرورگر انجام می‌شود و روی
+                                        هاست مقصد به Composer، Node.js، npm یا
+                                        دسترسی SSH نیاز ندارد.
                                     </p>
                                 </div>
                             </div>
@@ -678,9 +682,9 @@ export default function Installer({
                                 مرحله فعلی با موفقیت باز شده است
                             </h2>
                             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                این مرحله فقط بعد از تکمیل قرارداد backend خودش فعال
-                                می‌شود؛ تا آن زمان هیچ دکمه‌ی عبور ساختگی نمایش داده
-                                نمی‌شود.
+                                این مرحله فقط بعد از تکمیل قرارداد backend خودش
+                                فعال می‌شود؛ تا آن زمان هیچ دکمه‌ی عبور ساختگی
+                                نمایش داده نمی‌شود.
                             </p>
                         </section>
                     ) : null}
