@@ -23,6 +23,9 @@ Route::post('install/database/verify', [InstallerController::class, 'verifyDatab
 Route::post('install/migrations/run', [InstallerController::class, 'runMigrations'])
     ->middleware('throttle:6,1')
     ->name('install.migrations.run');
+Route::post('install/owner', [InstallerController::class, 'createOwner'])
+    ->middleware('throttle:6,1')
+    ->name('install.owner.store');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {
