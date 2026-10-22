@@ -5,6 +5,7 @@ namespace App\Services\Keywords;
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordIntent;
 use App\Models\ActivityEvent;
+use App\Models\ChangeSet;
 use App\Models\Keyword;
 use App\Models\KeywordIntentAssignment;
 use App\Models\Project;
@@ -80,11 +81,23 @@ class AssignKeywordIntent
                 'is_current' => true,
             ]);
 
+            $changeSet = ChangeSet::query()->create([
+                'workspace_id' => $project->workspace_id,
+                'project_id' => $project->id,
+                'actor_id' => $actor->id,
+                'action' => 'keywords.intent.assign',
+                'changes' => [[
+                    'keyword_id' => $keyword->id,
+                    'before' => $current?->intent->value ?? KeywordIntent::Unknown->value,
+                    'after' => $intent->value,
+                ]],
+            ]);
+
             ActivityEvent::query()->create([
                 'workspace_id' => $project->workspace_id,
                 'project_id' => $project->id,
                 'actor_id' => $actor->id,
-                'change_set_id' => null,
+                'change_set_id' => $changeSet->id,
                 'event' => 'keywords.intent.assigned',
                 'metadata' => [
                     'keyword_id' => $keyword->id,
