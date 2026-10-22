@@ -1,0 +1,176 @@
+/*
+ * Font binaries for IRANSansX and Yekan Bakh are intentionally not committed.
+ * They are proprietary assets and are installed into /public/fonts/private.
+ * Vazirmatn is OFL-licensed and is bundled into /public/fonts/open at release time.
+ */
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum Light'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum Regular'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum Medium'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-Medium.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum DemiBold'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-DemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum Bold'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum ExtraBold'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-ExtraBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IRANSansX FaNum';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src:
+        local('IRANSansXFaNum Black'),
+        url('/fonts/private/iransansx/IRANSansXFaNum-Black.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum Light'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-Light.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum Regular'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum SemiBold'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum Bold'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum ExtraBold'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-ExtraBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Yekan Bakh FaNum';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src:
+        local('Yekan Bakh FaNum Black'),
+        url('/fonts/private/yekan-bakh/YekanBakhFaNum-Black.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src:
+        local('Vazirmatn'),
+        url('/fonts/open/vazirmatn/Vazirmatn[wght].woff2') format('woff2');
+}
+
+:root,
+html[data-font='iransansx'] {
+    --app-font-family:
+        'IRANSansX FaNum', 'Vazirmatn', Tahoma, 'Segoe UI', ui-sans-serif,
+        system-ui, sans-serif;
+}
+
+html[data-font='yekan-bakh'] {
+    --app-font-family:
+        'Yekan Bakh FaNum', 'IRANSansX FaNum', 'Vazirmatn', Tahoma,
+        'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+}
+
+html[data-font='vazirmatn'] {
+    --app-font-family:
+        'Vazirmatn', 'IRANSansX FaNum', Tahoma, 'Segoe UI', ui-sans-serif,
+        system-ui, sans-serif;
+}
+
+[data-font-preview='iransansx'] {
+    font-family: 'IRANSansX FaNum', Tahoma, sans-serif;
+}
+
+[data-font-preview='yekan-bakh'] {
+    font-family: 'Yekan Bakh FaNum', Tahoma, sans-serif;
+}
+
+[data-font-preview='vazirmatn'] {
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+}
