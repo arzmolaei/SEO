@@ -21,9 +21,9 @@ class PersianKeywordNormalizerTest extends TestCase
     {
         $normalizer = new PersianKeywordNormalizer;
         $corpus = [
-            "  كلمات   كليدي  ",
+            '  كلمات   كليدي  ',
             "نرم\u{200C}افزار\u{200B} سئو\u{200D}",
-            "سئو ، سایت ! ( تست )",
+            'سئو ، سایت ! ( تست )',
             "Cafe\u{0301}",
             'C++ .NET seo-tools #1',
         ];
