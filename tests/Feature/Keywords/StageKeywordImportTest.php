@@ -243,4 +243,46 @@ class StageKeywordImportTest extends TestCase
             $row->mapped_payload,
         );
     }
+
+    public function test_duplicate_source_rows_remain_staged_and_emit_a_row_warning(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
+        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
+
+        $duplicate = ['Keyword' => 'سئو سایت', 'Search Volume' => '1200'];
+
+        $response = $this->actingAs($owner)->postJson(
+            "/projects/{$project->id}/keyword-imports/stage",
+            [
+                'source' => 'generic_csv',
+                'original_filename' => 'duplicates.csv',
+                'mapping' => [
+                    'keyword' => 'Keyword',
+                    'volume' => 'Search Volume',
+                ],
+                'rows' => [$duplicate, $duplicate],
+            ],
+        );
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'staged')
+            ->assertJsonPath('data.total_rows', 2)
+            ->assertJsonPath('data.valid_rows', 2)
+            ->assertJsonPath('data.invalid_rows', 0)
+            ->assertJsonPath('data.warning_count', 1)
+            ->assertJsonPath('data.error_count', 0);
+
+        $rows = StagedKeywordRow::query()
+            ->where('import_batch_id', $response->json('data.id'))
+            ->orderBy('row_number')
+            ->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame([], $rows[0]->warnings);
+        $this->assertSame(['duplicate_row'], $rows[1]->warnings);
+        $this->assertSame($duplicate, $rows[0]->raw_payload);
+        $this->assertSame($duplicate, $rows[1]->raw_payload);
+    }
 }
