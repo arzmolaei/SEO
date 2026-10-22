@@ -8,7 +8,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -30,18 +30,19 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-
-      - name: Diagnose Composer lock refresh
+      - name: Refresh Composer lock metadata
         shell: bash
         run: |
           composer update --lock --no-install --no-scripts --no-interaction --no-progress
-          git diff -- composer.lock
-          exit 1
+          if git diff --quiet -- composer.lock; then
+            echo "Composer lock metadata is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          git commit -m "build: sync Composer lock metadata"
+          git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
@@ -53,6 +54,12 @@ jobs:
           php artisan key:generate --ansi
           test -f database/database.sqlite || touch database/database.sqlite
           php artisan migrate --force --ansi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
 
       - name: Install frontend dependencies
         run: timeout 180s npm ci --prefer-offline --no-audit
