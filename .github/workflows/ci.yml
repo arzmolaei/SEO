@@ -17,6 +17,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -47,7 +48,7 @@ jobs:
           php artisan migrate --force --ansi
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: timeout 180s npm ci --prefer-offline --no-audit
 
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
