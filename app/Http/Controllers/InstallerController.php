@@ -33,22 +33,27 @@ class InstallerController extends Controller
     public function index(): Response
     {
         $snapshot = $this->status->snapshot();
-        $phase = $snapshot['phase'];
+        $preflight = $this->preflight->check();
+        $durablePhase = $snapshot['phase'];
+        $displayPhase = $durablePhase === InstallerPhase::Preflight && $preflight['ready']
+            ? InstallerPhase::Environment
+            : $durablePhase;
 
         return Inertia::render('install/index', [
             'installer' => [
-                'phase' => $phase->value,
+                'phase' => $displayPhase->value,
                 'installed' => $snapshot['installed'],
-                'values' => $phase === InstallerPhase::Preflight
+                'values' => in_array($displayPhase, [InstallerPhase::Preflight, InstallerPhase::Environment], true)
                     ? []
                     : $this->environment->publicValues(),
-                'actions' => match ($phase) {
+                'actions' => match ($displayPhase) {
                     InstallerPhase::Preflight => ['refresh_preflight'],
+                    InstallerPhase::Environment => ['refresh_preflight', 'save_environment'],
                     InstallerPhase::Database => ['save_environment', 'verify_database'],
                     default => [],
                 },
             ],
-            'preflight' => $this->preflight->check(),
+            'preflight' => $preflight,
         ]);
     }
 
