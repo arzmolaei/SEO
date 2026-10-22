@@ -35,7 +35,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('projects/{project}/keywords/bulk-status', BulkKeywordStatusController::class)->name('projects.keywords.bulk-status');
     Route::post('projects/{project}/keyword-change-sets/{changeSet}/undo', [KeywordChangeSetController::class, 'undo'])->name('projects.keyword-change-sets.undo');
 
+    Route::get('projects/{project}/keyword-intelligence/clusters/search', [KeywordIntelligenceController::class, 'searchClusters'])->name('projects.keyword-intelligence.clusters.search');
     Route::post('projects/{project}/keyword-intelligence/clusters', [KeywordIntelligenceController::class, 'storeCluster'])->name('projects.keyword-intelligence.clusters.store');
+    Route::get('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/members/search', [KeywordIntelligenceController::class, 'searchClusterMembers'])->name('projects.keyword-intelligence.cluster-members.search');
+    Route::post('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/merge', [KeywordIntelligenceController::class, 'mergeClusters'])->name('projects.keyword-intelligence.clusters.merge');
+    Route::post('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/members/{keyword}/move', [KeywordIntelligenceController::class, 'moveClusterMember'])->name('projects.keyword-intelligence.cluster-members.move');
+    Route::post('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/split', [KeywordIntelligenceController::class, 'splitCluster'])->name('projects.keyword-intelligence.clusters.split');
     Route::patch('projects/{project}/keyword-intelligence/clusters/{keywordCluster}', [KeywordIntelligenceController::class, 'updateCluster'])->name('projects.keyword-intelligence.clusters.update');
     Route::patch('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/lock', [KeywordIntelligenceController::class, 'setLock'])->name('projects.keyword-intelligence.clusters.lock');
     Route::post('projects/{project}/keyword-intelligence/pages', [KeywordIntelligenceController::class, 'storePage'])->name('projects.keyword-intelligence.pages.store');
