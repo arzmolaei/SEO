@@ -36,8 +36,12 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Validate Composer metadata
-        run: composer validate --strict --no-check-publish
+      - name: Diagnose Composer lock refresh
+        shell: bash
+        run: |
+          composer update --lock --no-install --no-interaction --no-progress
+          git diff -- composer.lock
+          exit 1
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
