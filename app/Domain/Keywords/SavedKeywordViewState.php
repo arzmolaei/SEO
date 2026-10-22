@@ -31,8 +31,8 @@ final readonly class SavedKeywordViewState
     ];
 
     /**
-     * @param array<string, mixed> $query
-     * @param list<string> $columns
+     * @param  array<string, mixed>  $query
+     * @param  list<string>  $columns
      */
     private function __construct(
         public array $query,
@@ -93,8 +93,8 @@ final readonly class SavedKeywordViewState
     }
 
     /**
-     * @param array<mixed> $value
-     * @param list<string> $expected
+     * @param  array<mixed>  $value
+     * @param  list<string>  $expected
      */
     private static function assertExactKeys(array $value, array $expected, string $scope): void
     {
@@ -109,8 +109,8 @@ final readonly class SavedKeywordViewState
     }
 
     /**
-     * @param array<mixed> $value
-     * @param list<string> $allowed
+     * @param  array<mixed>  $value
+     * @param  list<string>  $allowed
      */
     private static function assertAllowedKeys(array $value, array $allowed, string $scope): void
     {
