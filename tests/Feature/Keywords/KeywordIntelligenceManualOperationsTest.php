@@ -5,6 +5,7 @@ namespace Tests\Feature\Keywords;
 use App\Domain\Keywords\KeywordIntent;
 use App\Models\Keyword;
 use App\Models\KeywordCluster;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Projects\CreateProject;
@@ -95,7 +96,7 @@ class KeywordIntelligenceManualOperationsTest extends TestCase
         $this->assertSame(2, $a->members()->count());
     }
 
-    /** @return array{User, \App\Models\Project, KeywordCluster, KeywordCluster, list<Keyword>} */
+    /** @return array{User, Project, KeywordCluster, KeywordCluster, list<Keyword>} */
     private function fixture(): array
     {
         $actor = User::factory()->create();
