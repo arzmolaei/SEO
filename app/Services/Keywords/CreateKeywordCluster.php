@@ -33,6 +33,7 @@ class CreateKeywordCluster
         bool $locked = false,
         string $origin = 'user',
         ?string $automationKey = null,
+        ClusterReviewState $reviewState = ClusterReviewState::Pending,
     ): KeywordCluster {
         if (! $this->policy->manageKeywords($actor, $project) || $primary->project_id !== $project->id) {
             throw new AuthorizationException;
@@ -57,7 +58,7 @@ class CreateKeywordCluster
             throw new InvalidArgumentException('The primary keyword must be an explicit member.');
         }
 
-        return DB::transaction(function () use ($actor, $project, $name, $primary, $memberIds, $intent, $confidence, $locked, $origin, $automationKey): KeywordCluster {
+        return DB::transaction(function () use ($actor, $project, $name, $primary, $memberIds, $intent, $confidence, $locked, $origin, $automationKey, $reviewState): KeywordCluster {
             Project::query()->whereKey($project->id)->lockForUpdate()->firstOrFail();
             $keywords = Keyword::query()->where('project_id', $project->id)->whereIn('id', $memberIds)->orderBy('id')->lockForUpdate()->get();
             if ($keywords->count() !== count($memberIds)) {
@@ -70,10 +71,9 @@ class CreateKeywordCluster
                 'project_id' => $project->id, 'primary_keyword_id' => $primary->id,
                 'created_by_id' => $actor->id, 'name' => $name, 'intent' => $intent,
                 'origin' => $origin, 'automation_key' => $automationKey,
-                'confidence' => $confidence, 'review_state' => ClusterReviewState::Pending, 'is_locked' => $locked,
+                'confidence' => $confidence, 'review_state' => $reviewState, 'is_locked' => $locked,
             ]);
             $changes = [];
-            $validatedIds = [];
             foreach ($memberIds as $id) {
                 $cluster->members()->create(['project_id' => $project->id, 'keyword_id' => $id]);
                 $changes[] = ['keyword_id' => $id, 'before' => 'unclustered', 'after' => (string) $cluster->id];
@@ -86,7 +86,8 @@ class CreateKeywordCluster
                 'workspace_id' => $project->workspace_id, 'project_id' => $project->id,
                 'actor_id' => $actor->id, 'change_set_id' => $changeSet->id, 'event' => 'keywords.cluster.created',
                 'metadata' => ['cluster_id' => $cluster->id, 'name' => $name, 'primary_keyword_id' => $primary->id,
-                    'source' => $origin, 'member_count' => count($memberIds), 'intent' => $intent->value, 'confidence' => $confidence->value, 'is_locked' => $locked],
+                    'source' => $origin, 'member_count' => count($memberIds), 'intent' => $intent->value,
+                    'confidence' => $confidence->value, 'review_state' => $reviewState->value, 'is_locked' => $locked],
             ]);
 
             return $cluster;
