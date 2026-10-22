@@ -6,11 +6,7 @@ import {
     SavedKeywordViews,
 } from '@/components/saved-keyword-views';
 
-export type {
-    SavedKeywordView,
-    SavedKeywordViewColumn,
-    SavedKeywordViewState,
-};
+export type { SavedKeywordView, SavedKeywordViewColumn, SavedKeywordViewState };
 
 type Props = {
     path: string;
