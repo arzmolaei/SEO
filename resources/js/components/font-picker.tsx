@@ -41,7 +41,7 @@ export function FontPicker() {
                         data-font-preview={option.value}
                         aria-pressed={active}
                         className={cn(
-                            'relative rounded-xl border bg-card p-4 text-start transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            'relative rounded-xl border bg-card p-4 text-start transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                             active && 'border-primary ring-1 ring-primary',
                         )}
                     >
