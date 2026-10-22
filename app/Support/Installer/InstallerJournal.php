@@ -7,8 +7,11 @@ use RuntimeException;
 
 class InstallerJournal
 {
-    public function __construct(private readonly string $path)
+    private readonly string $path;
+
+    public function __construct(?string $path = null)
     {
+        $this->path = $path ?? (string) config('installer.journal_path');
     }
 
     /** @return array<string, mixed> */
@@ -69,6 +72,13 @@ class InstallerJournal
         }
     }
 
+    public function clear(): void
+    {
+        if (is_file($this->path) && ! unlink($this->path)) {
+            throw new RuntimeException('Unable to clear installer journal.');
+        }
+    }
+
     /** @param array<mixed> $value */
     private function assertContainsNoSecrets(array $value): void
     {
@@ -79,7 +89,18 @@ class InstallerJournal
 
             if (is_array($nested)) {
                 $this->assertContainsNoSecrets($nested);
+
+                continue;
+            }
+
+            if (is_string($nested) && $this->looksLikeCredentialBearingDsn($nested)) {
+                throw new InvalidArgumentException('Installer journal cannot contain raw credential-bearing DSNs.');
             }
         }
+    }
+
+    private function looksLikeCredentialBearingDsn(string $value): bool
+    {
+        return preg_match('~(?:[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s@]+@|password\s*=)~i', $value) === 1;
     }
 }
