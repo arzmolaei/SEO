@@ -1,4 +1,4 @@
-name: Installer phase RED
+name: Installer phase focused
 
 on:
   push:
