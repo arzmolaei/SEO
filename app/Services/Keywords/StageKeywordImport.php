@@ -46,7 +46,15 @@ class StageKeywordImport
             $rows,
             $importMapping,
         ): ImportBatch {
-            $batchErrors = $importMapping->hasKeywordColumn() ? [] : ['mapping.keyword_required'];
+            $batchErrors = [];
+
+            if (! $importMapping->hasKeywordColumn()) {
+                $batchErrors[] = 'mapping.keyword_required';
+            }
+
+            if ($importMapping->hasSourceColumnConflict()) {
+                $batchErrors[] = 'mapping.source_column_conflict';
+            }
 
             $batch = ImportBatch::query()->create([
                 'project_id' => $project->id,
