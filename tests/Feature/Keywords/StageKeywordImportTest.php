@@ -114,4 +114,47 @@ class StageKeywordImportTest extends TestCase
         $this->assertSame(['keyword_mapping_missing'], $row->errors);
         $this->assertSame(['Search Volume' => '1200'], $row->raw_payload);
     }
+
+    public function test_invalid_numeric_field_remains_staged_with_row_level_diagnostic(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
+        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
+
+        $response = $this->actingAs($owner)->postJson(
+            "/projects/{$project->id}/keyword-imports/stage",
+            [
+                'source' => 'generic_csv',
+                'original_filename' => 'invalid-volume.csv',
+                'mapping' => [
+                    'keyword' => 'Keyword',
+                    'volume' => 'Search Volume',
+                ],
+                'rows' => [
+                    ['Keyword' => 'سئو سایت', 'Search Volume' => 'many'],
+                ],
+            ],
+        );
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'staged')
+            ->assertJsonPath('data.total_rows', 1)
+            ->assertJsonPath('data.valid_rows', 0)
+            ->assertJsonPath('data.invalid_rows', 1)
+            ->assertJsonPath('data.error_count', 1);
+
+        $row = StagedKeywordRow::query()
+            ->where('import_batch_id', $response->json('data.id'))
+            ->where('row_number', 1)
+            ->firstOrFail();
+
+        $this->assertFalse($row->is_valid);
+        $this->assertSame(['volume_not_numeric'], $row->errors);
+        $this->assertSame('many', $row->mapped_payload['volume']);
+        $this->assertSame(
+            ['Keyword' => 'سئو سایت', 'Search Volume' => 'many'],
+            $row->raw_payload,
+        );
+    }
 }
