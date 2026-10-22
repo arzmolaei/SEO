@@ -1,109 +1,120 @@
 # SEO OS — handoff to the next implementation agent
 
-Checkpoint: 2026-10-22. The user requested that development pause and all current
-work/explanations be committed for another AI. This handoff does not mean the
-whole product is complete.
+Checkpoint: 2026-10-22. Repository evidence and current CI always override stale
+chat context. This handoff records the current verified implementation boundary;
+it does not mean the full product is complete.
 
 ## Start here
 
 Read `AGENTS.md`, `docs/PROJECT_STATE.md`, the foundation release-readiness report,
-the master product spec, the active Keyword Intelligence plan and its progress
-file. Fetch origin and check actual HEAD/latest CI; repository evidence wins.
+the master product spec, the active Keyword Intelligence plan and progress file.
+Fetch origin and check actual HEAD/latest CI before changing code.
 
 - Repository: `arzmolaei/SEO`.
 - Continue **`feature/keyword-intelligence`**; never reset it or develop on main.
 - Foundation + Keyword Core: completed, reviewed and merged through PR #1.
-- Keyword Intelligence Tasks **1–8 verified**.
-- Latest verified implementation: `d19e4ab390668ed606b8414c069e1a197a4e768e`.
-- Permanent CI: [39804656866](https://github.com/arzmolaei/SEO/actions/runs/39804656866), success on that exact implementation SHA.
-- Open subsystem PR: [#2](https://github.com/arzmolaei/SEO/pull/2). Do not create a duplicate or merge before Task 11 acceptance/review/final-head CI.
-- Documentation-only handoff commits may follow this implementation SHA. Check their CI separately.
+- Keyword Intelligence Tasks **1–10 verified**.
+- Latest verified implementation: `f51f5d76aca3331153383726bbc76eebffab6846`.
+- Permanent CI: `39813493267`, success on that exact implementation head/PR merge ref.
+- Full suite at this boundary: **226 backend tests / 1229 assertions**.
+- PHP 8.4/8.5 compatibility, frontend check/TypeScript/build, Pint, PHPStan,
+  runtime npm/Composer audits and runtime-only release smoke all passed.
+- Open subsystem PR: #2. Do not create a duplicate and do not merge before Task 11
+  acceptance, whole-branch review and a fresh final-head CI.
 
-## Delivered since Task 4
+## Delivered since Task 8
 
-5. Deterministic Persian lexical candidates with explainable evidence, scalable
-   blocking, safe opt-in high-confidence application and idempotent review.
-6. Transactional merge/split/move/lock, attributed history and revision-safe Undo.
-7. Existing/planned pages, conservative local URL normalization and stable promotion.
-8. Cluster target types, one current mapping, remap history, source attribution,
-   atomic page promotion and protection against stale cluster Undo.
+### Task 9 — mapping conflicts
 
-Task 8 verification: 204 backend tests / 1166 assertions, full Pint and PHPStan;
-8 mapping tests / 32 assertions on actual MariaDB 10.11. Final CI also passed
-frontend lint/TypeScript/build, PHP compatibility, runtime audits and release
-package/runtime-only smoke gates. Independent mapping review found no actionable
-security/data-integrity findings. See progress/specs for exact earlier evidence.
+Deterministic, bounded mapping warnings are implemented and verified. They cover
+competing pages only when known intent also shares meaningful topic anchors,
+overloaded pages with distinct anchors, high-demand unmapped clusters only from
+real latest volume evidence, and structurally invalid targets. Detection never
+silently remaps. Review fingerprints preserve resolved decisions until evidence
+changes, changed evidence reopens them, stale acknowledgements fail, and HTTP
+resolution is project-authorized/audited.
 
-## Exact next work — Task 9
+Verified Task 9 implementation boundary: `bd38cc696de7eaca60776c52abd62c4e32929fe1`,
+CI `39810763754`, success. The old pending RED-contract document is historical
+evidence only; do not treat Task 9 as unfinished.
 
-No Task 9 production code exists. Its bounded design is:
-`docs/superpowers/specs/2026-10-22-mapping-conflicts-design.md`.
+### Task 10 — priority + Ready lifecycle
 
-Six test contracts were run and genuinely failed because the new detector does
-not exist. The user requested handoff before implementation. Their exact source
-and RED result are preserved in:
-`docs/superpowers/contracts/2026-10-22-mapping-conflicts-red.md`.
-Copy that source back into `tests/Feature/Keywords/KeywordMappingConflictTest.php`
-and reconfirm RED. Then implement Task 9, including remaining invalid-target and
-HTTP review-resolution coverage. Do not mistake this pending test document for
-a completed detector or remove existing verification gates.
+Priority is local, deterministic and explainable. It uses only known signals:
+latest recorded volume, latest recorded difficulty, optional manual business
+relevance (1–5), mapping completeness and review completeness. Missing metrics
+remain missing and contribute no invented value. The score exposes component
+points/evidence plus data completeness.
 
-Warnings must be deterministic, evidence-based and reviewable, never silently
-remap. Same intent alone is not a conflict; require shared meaningful topic.
-Missing metrics are not high demand. Resolved evidence stays closed until changed;
-stale acknowledgements must fail. Keep queries/project state bounded and avoid
-all-pairs comparisons. Complete Task 9 with final-head CI before Task 10, then
-Task 11 connected UI/acceptance/whole-branch review.
+Clusters have a separate `planning|ready` lifecycle. Ready requires an active,
+reviewed cluster, an explicit current target (including explicit Ignore), and no
+pending review for its primary keyword. A later real remap, reopened/new pending
+review, or cluster mutation invalidates Ready back to Planning instead of leaving
+a stale readiness decision. Those state changes remain auditable and cluster
+mutation snapshots include the new lifecycle inputs so Undo stays revision-safe.
+
+Final Task 10 boundary: `f51f5d76aca3331153383726bbc76eebffab6846`,
+CI `39813493267`, success; 226 tests / 1229 assertions.
+
+## Exact next work — Task 11
+
+Task 11 is the first unfinished task. Follow
+`docs/superpowers/plans/2026-10-22-keyword-intelligence.md` exactly:
+
+1. Write a connected backend acceptance contract first and observe RED where the
+   missing integration truly fails.
+2. Connect the existing canonical Keyword Grid to intent, cluster, page-target,
+   mapping-conflict, priority and Ready workflows with project-scoped HTTP
+   boundaries. Do not replace the existing high-performance grid with an
+   unbounded client-side dataset.
+3. Expose manual cluster editing and page targeting without bypassing the existing
+   transactional services, project-first locking, revisions, locks or history.
+4. Preserve Persian-first RTL, keyboard review actions and explicit
+   loading/empty/error states.
+5. Run full backend/static/style/frontend/runtime/release gates, then perform a
+   whole-branch review focused on authorization, idempotency, locks/manual
+   overrides, stale decisions and silent-remap risks.
+6. Merge PR #2 only after the final branch head and PR CI are green.
 
 ## Critical integration invariants
 
-- Preserve original keyword data, manual intent, locked clusters and memberships.
-- All cluster/mapping/page mutations use project-first serialization and stable
-  row-lock ordering, service authorization and project-scoped lookups.
-- Mapping changes increment cluster revision: old membership Undo must not erase
-  later mapping decisions. Page promotion does this for active AND archived sources.
-- `PromotePageTargets` uses Laravel event autodiscovery only. Manual registration
-  duplicates execution; an exactly-once revision regression test covers this.
-- Merge archives source identities. Do not reactivate an empty source; primary
-  membership is mandatory for active clusters.
-- UI integration is Task 11. Services existing does not mean cluster/page/mapping
-  screens, generation triggers or the entire workflow are already usable.
-- No crawler/SERP/AI/vector service in this slice. Crawler follows stable mapping.
+- Preserve original keyword data, provenance, manual intent, locked clusters and
+  memberships. Automation must never silently overwrite explicit human decisions.
+- All cluster/mapping/page mutations remain project-scoped, authorized and use the
+  existing serialization/locking services rather than raw HTTP ORM writes.
+- Mapping changes increment cluster revision; old cluster Undo must not erase later
+  mapping decisions.
+- `PromotePageTargets` uses Laravel event autodiscovery only. Do not manually
+  register it and duplicate execution.
+- Merge archives source cluster identities. Never reactivate an invalid empty
+  source; active clusters require a primary member.
+- Ready is a decision derived from current evidence, not a sticky badge. Later
+  material SEO/review changes must invalidate it.
+- No crawler/SERP/AI/vector dependency belongs in Task 11. Crawler follows stable
+  keyword-to-page relationships.
 - Commercial font binaries, `.env`, secrets and local runtime fixtures stay ignored.
 
 ## Engineering and verification
 
-Use RED → confirm correct RED → minimal GREEN → refactor → meaningful focused
-verification → full permanent CI → semantic commit/push. Diagnose failures before
-fixing. Use official formatter output; full `composer lint:check` must actually
-finish successfully (dirty-only formatting previously missed new-file indentation).
-Do not add tests that merely mirror implementation or repeat unchanged broad gates.
-Each task is separate; do not ask the user for routine permission to continue.
-Never force-push, overwrite history, weaken gates or infer success from cancelled CI.
+Use RED → correct RED → minimal GREEN → refactor → meaningful focused verification
+→ full permanent CI → semantic commit/push. Diagnose failures before changing code.
+Never force-push, overwrite history, weaken gates, remove a legitimate regression
+test or infer success from a cancelled/older run. Continue task-by-task without
+routine user confirmation.
 
-The current Composer/Laravel dependency floor is **PHP ^8.4.1** despite older spec/
-AGENTS references to 8.3. Do not advertise 8.3 runtime compatibility or downgrade
-Laravel blindly; reconcile supported-runtime documentation in the release work.
+The actual dependency floor is **PHP ^8.4.1**. Older 8.3 references are stale;
+do not advertise PHP 8.3 compatibility or downgrade Laravel blindly.
 
-In this workspace PHP is provided through Docker, not the host:
-`docker exec seo-os-dev php artisan test`. The `seo-os-mariadb` container uses
-MariaDB 10.11 on a private test network. Do not rely on these local containers,
-ignored fixtures or scratch logs surviving into another environment; recreate
-normal development dependencies from repository manifests as needed.
-Frontend Wayfinder generation needs PHP; generate before TypeScript/build.
+## What remains beyond Keyword Intelligence
 
-## What still prevents a complete usable product
+Task 11 connected UI/acceptance/review is still unfinished, so the subsystem is
+not yet complete or merge-ready. The wider SEO OS product also remains unfinished.
+After this slice, follow `docs/DELIVERY_PLAN.md`: real self-host fresh-install,
+normal-use, Persian export, backup/restore, update/interruption/recovery acceptance,
+then Site Intelligence/crawler, technical history/issues, content/tasks/internal
+linking and performance/opportunity/recommendation work. Never present those later
+systems as delivered before their own acceptance evidence exists.
 
-Task 9 conflicts, Task 10 priority/Ready guards and Task 11 connected UI/acceptance
-are unfinished. The wider SEO OS product is also unfinished. Follow
-`docs/DELIVERY_PLAN.md` and the master spec after the current slice.
-
-A self-host release additionally needs real fresh-install, normal-use, Persian
-export, backup/restore and update/interruption/recovery acceptance. Installer,
-health and packaging foundations alone do not prove those flows. Crawler/site
-intelligence, technical SEO, content/tasks/internal linking and performance/
-opportunities remain later master-plan work. Never present these as delivered.
-
-If interrupted, record the last verified SHA/CI and exact first unfinished task
-in Git. Continue from evidence; do not rebuild completed foundations or promise
-background execution after the session ends.
+If execution is externally interrupted, record the last verified SHA/CI and exact
+first unfinished behavior in Git. Resume from repository evidence instead of
+rebuilding completed work.
