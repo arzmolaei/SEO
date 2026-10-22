@@ -6,6 +6,7 @@ use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
+use SplFileInfo;
 
 final class ReleasePackageBuilder
 {
@@ -143,9 +144,16 @@ final class ReleasePackageBuilder
             throw new RuntimeException("Unable to create directory: {$destination}");
         }
 
-        $iterator = new FilesystemIterator($source, FilesystemIterator::SKIP_DOTS);
+        $iterator = new FilesystemIterator(
+            $source,
+            FilesystemIterator::SKIP_DOTS | FilesystemIterator::CURRENT_AS_FILEINFO,
+        );
 
         foreach ($iterator as $item) {
+            if (! $item instanceof SplFileInfo) {
+                throw new RuntimeException("Unexpected release input entry: {$source}");
+            }
+
             if ($item->isLink()) {
                 throw new RuntimeException("Symlinks are not allowed in release inputs: {$item->getPathname()}");
             }
