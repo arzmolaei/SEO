@@ -3,122 +3,137 @@ name: CI
 on:
   push:
     branches:
-      - 'feature/keyword-intelligence'
+      - main
+      - 'feature/**'
+  pull_request:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  patch-manual-editor:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
 
-      - name: Patch manual editor edge states
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application environment
         shell: bash
         run: |
-          python3 <<'PY'
-          from pathlib import Path
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
 
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected one match, found {count}')
-              return text.replace(old, new, 1)
+      - name: Install frontend dependencies
+        run: timeout 180s npm ci --prefer-offline --no-audit
 
-          path = Path('resources/js/components/keyword-intelligence/cluster-manual-editor.tsx')
-          text = path.read_text()
+      - name: Bundle open-source fonts
+        run: bash scripts/fonts/fetch-vazirmatn.sh
 
-          text = replace_once(
-              text,
-              "    const [mergeSearching, setMergeSearching] = useState(false);\n",
-              "    const [mergeSearching, setMergeSearching] = useState(false);\n    const [mergeSearched, setMergeSearched] = useState(false);\n",
-              'merge searched state',
-          )
-          text = replace_once(
-              text,
-              "    const [memberSearching, setMemberSearching] = useState(false);\n",
-              "    const [memberSearching, setMemberSearching] = useState(false);\n    const [memberSearched, setMemberSearched] = useState(false);\n",
-              'member searched state',
-          )
-          text = replace_once(
-              text,
-              "    const [targetSearching, setTargetSearching] = useState(false);\n",
-              "    const [targetSearching, setTargetSearching] = useState(false);\n    const [targetSearched, setTargetSearched] = useState(false);\n",
-              'target searched state',
-          )
-          text = replace_once(
-              text,
-              "        setSearching: (value: boolean) => void,\n    ) => {\n        setSearching(true);\n",
-              "        setSearching: (value: boolean) => void,\n        setSearched: (value: boolean) => void,\n    ) => {\n        setSearching(true);\n        setSearched(true);\n",
-              'cluster search signature',
-          )
-          text = replace_once(
-              text,
-              "    const searchMembers = async () => {\n        setMemberSearching(true);\n",
-              "    const searchMembers = async () => {\n        setMemberSearching(true);\n        setMemberSearched(true);\n",
-              'member search state',
-          )
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
 
-          text = text.replace(
-              "                                        setMergeSearching,\n                                    );",
-              "                                        setMergeSearching,\n                                        setMergeSearched,\n                                    );",
-          )
-          text = text.replace(
-              "                                    setMergeSearching,\n                                )",
-              "                                    setMergeSearching,\n                                    setMergeSearched,\n                                )",
-          )
-          text = text.replace(
-              "                                        setTargetSearching,\n                                    );",
-              "                                        setTargetSearching,\n                                        setTargetSearched,\n                                    );",
-          )
-          text = text.replace(
-              "                                    setTargetSearching,\n                                )",
-              "                                    setTargetSearching,\n                                    setTargetSearched,\n                                )",
+      - name: Check frontend
+        run: npm run check
+
+      - name: Check TypeScript
+        run: npm run types:check
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Check PHP style
+        run: composer lint:check
+
+      - name: Static analysis
+        run: composer types:check
+
+      - name: Run backend tests
+        run: php artisan test
+
+      - name: Audit runtime npm dependencies
+        run: timeout 120s npm audit --omit=dev --audit-level=high
+
+      - name: Audit runtime Composer dependencies
+        run: timeout 120s composer audit --no-dev
+
+      - name: Install runtime-only Composer dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
+
+      - name: Build and smoke-test production release tree
+        shell: bash
+        run: |
+          RELEASE_ROOT="$RUNNER_TEMP/seo-os-release"
+          php scripts/release/build-release.php "$RELEASE_ROOT"
+          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
+          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
+          test ! -e "$RELEASE_ROOT/.env"
+          test ! -e "$RELEASE_ROOT/node_modules"
+          test ! -e "$RELEASE_ROOT/tests"
+          (
+            cd "$RELEASE_ROOT"
+            php artisan --version
           )
 
-          text = replace_once(
-              text,
-              "                    {mergeResults.length > 0 && (\n                        <div className=\"mt-2 max-h-40 overflow-auto rounded-md border p-1\">",
-              "                    {mergeSearched &&\n                        !mergeSearching &&\n                        mergeResults.length === 0 && (\n                            <p className=\"mt-2 text-xs text-muted-foreground\">\n                                {copy.noResults}\n                            </p>\n                        )}\n                    {mergeResults.length > 0 && (\n                        <div className=\"mt-2 max-h-40 overflow-auto rounded-md border p-1\">",
-              'merge empty state',
-          )
-          text = replace_once(
-              text,
-              "                    {memberResults.length > 0 && (\n                        <div className=\"mt-2 max-h-40 overflow-auto rounded-md border p-1\">",
-              "                    {memberSearched &&\n                        !memberSearching &&\n                        memberResults.length === 0 && (\n                            <p className=\"mt-2 text-xs text-muted-foreground\">\n                                {copy.noResults}\n                            </p>\n                        )}\n                    {memberResults.length > 0 && (\n                        <div className=\"mt-2 max-h-40 overflow-auto rounded-md border p-1\">",
-              'member empty state',
-          )
-          text = replace_once(
-              text,
-              "                    {targetResults.length > 0 && (\n                        <div className=\"mt-2 max-h-36 overflow-auto rounded-md border p-1\">",
-              "                    {targetSearched &&\n                        !targetSearching &&\n                        targetResults.length === 0 && (\n                            <p className=\"mt-2 text-xs text-muted-foreground\">\n                                {copy.noResults}\n                            </p>\n                        )}\n                    {targetResults.length > 0 && (\n                        <div className=\"mt-2 max-h-36 overflow-auto rounded-md border p-1\">",
-              'target empty state',
-          )
-          text = replace_once(
-              text,
-              "            if (splitPrimaryId === member.keyword_id) setSplitPrimaryId(null);\n            return;\n        }\n        setSplitMembers((current) => [...current, member]);",
-              "            if (splitPrimaryId === member.keyword_id) setSplitPrimaryId(null);\n            if (member.is_primary) setSplitReplacement(null);\n            return;\n        }\n        if (splitReplacement?.keyword_id === member.keyword_id) {\n            setSplitReplacement(null);\n        }\n        setSplitMembers((current) => [...current, member]);",
-              'split replacement consistency',
-          )
+  php-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
 
-          path.write_text(text)
-          PY
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
-          npm ci --prefer-offline --no-audit
-          ./node_modules/.bin/vp check --fix
-          npm run types:check
-          git diff --check
-          git checkout HEAD^ -- .github/workflows/ci.yml
-          git add .github/workflows/ci.yml resources/js/components/keyword-intelligence/cluster-manual-editor.tsx
-          if git diff --cached --quiet; then
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "fix: harden manual cluster editor states"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+          ini-values: error_reporting=E_ALL
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare compatibility environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+
+      - name: Run backend compatibility suite
+        run: php artisan test
