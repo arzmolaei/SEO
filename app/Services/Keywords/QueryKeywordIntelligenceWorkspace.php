@@ -39,7 +39,8 @@ class QueryKeywordIntelligenceWorkspace
             ->with('primaryKeyword:id,project_id,display_text,normalized_text')
             ->withCount('members')
             ->orderBy('id')
-            ->paginate(self::PAGE_SIZE, ['*'], 'cluster_page', $page);
+            ->paginate(self::PAGE_SIZE, ['*'], 'cluster_page', $page)
+            ->withQueryString();
 
         $clusterModels = $clusters->getCollection();
         $clusterIds = $clusterModels->modelKeys();
