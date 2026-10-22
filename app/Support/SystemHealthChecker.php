@@ -4,10 +4,14 @@ namespace App\Support;
 
 use App\Contracts\SystemProbe;
 use App\Support\Installer\InstallerPreflight;
+use App\Support\Operations\OperationalHealth;
 
 class SystemHealthChecker
 {
-    public function __construct(private readonly SystemProbe $probe) {}
+    public function __construct(
+        private readonly SystemProbe $probe,
+        private readonly OperationalHealth $operationalHealth,
+    ) {}
 
     /**
      * @return array{
@@ -21,8 +25,10 @@ class SystemHealthChecker
         $checks = $preflight['checks'];
         $checks['database_extension'] = $this->databaseExtensionCheck();
         $checks['database'] = $this->databaseCheck();
-        $checks['queue'] = $this->queueCheck();
-        $checks['scheduler'] = $this->schedulerCheck();
+
+        $operations = $this->operationalHealth->snapshot();
+        $checks['queue'] = $this->queueCheck($operations['queue']);
+        $checks['scheduler'] = $this->schedulerCheck($operations['scheduler']);
 
         foreach ($checks as $check) {
             if ($check['required'] && $check['status'] === 'fail') {
@@ -71,38 +77,60 @@ class SystemHealthChecker
         );
     }
 
-    /** @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string} */
-    private function queueCheck(): array
+    /**
+     * @param  array{state: 'verified'|'warning'|'fail', completed_at: ?string}  $evidence
+     * @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string}
+     */
+    private function queueCheck(array $evidence): array
     {
-        $connection = trim($this->probe->queueConnection());
-
-        if ($connection === '') {
-            return $this->result('fail', true, $connection, 'A queue connection must be configured.');
-        }
-
-        if ($connection === 'sync') {
-            return $this->result(
+        return match ($evidence['state']) {
+            'verified' => $this->result(
+                'pass',
+                true,
+                $evidence['completed_at'],
+                'A recent queue probe completed successfully.',
+            ),
+            'warning' => $this->result(
                 'warning',
                 true,
-                $connection,
-                'Sync queue works for installation, but a persistent queue is recommended for production.',
-            );
-        }
-
-        return $this->result('pass', true, $connection, 'Queue backend is configured.');
+                $evidence['completed_at'],
+                'No completed queue probe has been observed recently.',
+            ),
+            'fail' => $this->result(
+                'fail',
+                true,
+                $evidence['completed_at'],
+                'Queue operational evidence indicates a blocking failure.',
+            ),
+        };
     }
 
-    /** @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string} */
-    private function schedulerCheck(): array
+    /**
+     * @param  array{state: 'verified'|'warning'|'fail', observed_at: ?string}  $evidence
+     * @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string}
+     */
+    private function schedulerCheck(array $evidence): array
     {
-        $supported = $this->probe->schedulerSupported();
-
-        return $this->result(
-            $supported ? 'pass' : 'fail',
-            true,
-            $supported,
-            $supported ? 'Scheduler runtime is available.' : 'Scheduler runtime files are unavailable.',
-        );
+        return match ($evidence['state']) {
+            'verified' => $this->result(
+                'pass',
+                true,
+                $evidence['observed_at'],
+                'A recent scheduler heartbeat has been observed.',
+            ),
+            'warning' => $this->result(
+                'warning',
+                true,
+                $evidence['observed_at'],
+                'No recent scheduler heartbeat has been observed.',
+            ),
+            'fail' => $this->result(
+                'fail',
+                true,
+                $evidence['observed_at'],
+                'Scheduler operational evidence indicates a blocking failure.',
+            ),
+        };
     }
 
     /**
