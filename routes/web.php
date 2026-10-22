@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectWorkspaceController;
+use App\Support\ProjectWorkspaceContext;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -20,6 +22,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.show');
     Route::patch('projects/{project}', [ProjectController::class, 'update'])
         ->name('projects.update');
+
+    Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
+        ->name('projects.overview');
+    Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
+        ->whereIn('section', array_values(array_filter(
+            ProjectWorkspaceContext::SECTIONS,
+            fn (string $section): bool => $section !== 'overview',
+        )))
+        ->name('projects.section');
 });
 
 require __DIR__.'/settings.php';
