@@ -30,6 +30,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.keyword-imports.stage');
     Route::post('projects/{project}/keyword-views', [SavedKeywordViewController::class, 'store'])
         ->name('projects.keyword-views.store');
+    Route::patch('projects/{project}/keyword-views/{savedKeywordView}', [SavedKeywordViewController::class, 'update'])
+        ->name('projects.keyword-views.update');
+    Route::post('projects/{project}/keyword-views/{savedKeywordView}/default', [SavedKeywordViewController::class, 'setDefault'])
+        ->name('projects.keyword-views.default');
 
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
