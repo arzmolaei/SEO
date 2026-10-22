@@ -36,6 +36,9 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
