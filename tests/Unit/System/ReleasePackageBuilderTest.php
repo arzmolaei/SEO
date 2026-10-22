@@ -20,32 +20,32 @@ class ReleasePackageBuilderTest extends TestCase
         $this->source = sys_get_temp_dir()."/seo-os-release-source-{$suffix}";
         $this->destination = sys_get_temp_dir()."/seo-os-release-output-{$suffix}";
 
-        $this->put('artisan', '#!/usr/bin/env php');
-        $this->put('composer.json', '{}');
-        $this->put('composer.lock', '{}');
-        $this->put('.env.example', 'APP_ENV=production');
-        $this->put('app/Foo.php', '<?php');
-        $this->put('bootstrap/app.php', '<?php');
-        $this->put('config/app.php', '<?php return [];');
-        $this->put('database/migrations/0001_example.php', '<?php');
-        $this->put('public/index.php', '<?php');
-        $this->put('public/build/manifest.json', '{}');
-        $this->put('public/fonts/open/vazirmatn/Vazirmatn[wght].woff2', 'font');
-        $this->put('resources/views/app.blade.php', '<html></html>');
-        $this->put('routes/web.php', '<?php');
-        $this->put('vendor/autoload.php', '<?php');
+        $this->writeFixture('artisan', '#!/usr/bin/env php');
+        $this->writeFixture('composer.json', '{}');
+        $this->writeFixture('composer.lock', '{}');
+        $this->writeFixture('.env.example', 'APP_ENV=production');
+        $this->writeFixture('app/Foo.php', '<?php');
+        $this->writeFixture('bootstrap/app.php', '<?php');
+        $this->writeFixture('config/app.php', '<?php return [];');
+        $this->writeFixture('database/migrations/0001_example.php', '<?php');
+        $this->writeFixture('public/index.php', '<?php');
+        $this->writeFixture('public/build/manifest.json', '{}');
+        $this->writeFixture('public/fonts/open/vazirmatn/Vazirmatn[wght].woff2', 'font');
+        $this->writeFixture('resources/views/app.blade.php', '<html></html>');
+        $this->writeFixture('routes/web.php', '<?php');
+        $this->writeFixture('vendor/autoload.php', '<?php');
 
-        $this->put('.env', 'APP_KEY=secret');
-        $this->put('auth.json', '{"secret":true}');
-        $this->put('.github/workflows/ci.yml', 'name: CI');
-        $this->put('node_modules/example/index.js', 'dev');
-        $this->put('tests/ExampleTest.php', '<?php');
-        $this->put('resources/js/app.tsx', 'dev');
-        $this->put('resources/css/app.css', 'dev');
-        $this->put('package.json', '{}');
-        $this->put('package-lock.json', '{}');
-        $this->put('storage/logs/laravel.log', 'sensitive runtime log');
-        $this->put('storage/app/private/upload.txt', 'private upload');
+        $this->writeFixture('.env', 'APP_KEY=secret');
+        $this->writeFixture('auth.json', '{"secret":true}');
+        $this->writeFixture('.github/workflows/ci.yml', 'name: CI');
+        $this->writeFixture('node_modules/example/index.js', 'dev');
+        $this->writeFixture('tests/ExampleTest.php', '<?php');
+        $this->writeFixture('resources/js/app.tsx', 'dev');
+        $this->writeFixture('resources/css/app.css', 'dev');
+        $this->writeFixture('package.json', '{}');
+        $this->writeFixture('package-lock.json', '{}');
+        $this->writeFixture('storage/logs/laravel.log', 'sensitive runtime log');
+        $this->writeFixture('storage/app/private/upload.txt', 'private upload');
     }
 
     protected function tearDown(): void
@@ -87,7 +87,7 @@ class ReleasePackageBuilderTest extends TestCase
         $this->assertDirectoryExists($this->destination.'/storage/logs');
     }
 
-    private function put(string $path, string $contents): void
+    private function writeFixture(string $path, string $contents): void
     {
         $fullPath = $this->source.'/'.$path;
         $directory = dirname($fullPath);
