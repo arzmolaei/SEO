@@ -29,6 +29,14 @@ class LocaleDirectionTest extends TestCase
         $response->assertSee('dir="ltr"', false);
     }
 
+    public function test_document_defaults_to_iransansx_font_preference(): void
+    {
+        $response = $this->get(route('login'));
+
+        $response->assertOk();
+        $response->assertSee('data-font="iransansx"', false);
+    }
+
     public function test_inertia_shares_the_locale_contract(): void
     {
         app()->setLocale('fa');
