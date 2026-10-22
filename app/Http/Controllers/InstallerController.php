@@ -13,6 +13,8 @@ use App\Support\Installer\InstallerMutex;
 use App\Support\Installer\InstallerPhase;
 use App\Support\Installer\InstallerPreflight;
 use App\Support\Installer\InstallerStatus;
+use App\Support\Operations\OperationalHealth;
+use App\Support\Operations\QueueProbe;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +34,8 @@ class InstallerController extends Controller
         private readonly DatabaseVerifier $databaseVerifier,
         private readonly InstallerMigrationRunner $migrationRunner,
         private readonly CreateInitialOwner $initialOwner,
+        private readonly OperationalHealth $operationalHealth,
+        private readonly QueueProbe $queueProbe,
         private readonly InstallerJournal $journal,
         private readonly InstallerMutex $mutex,
     ) {}
@@ -45,6 +49,9 @@ class InstallerController extends Controller
             ? InstallerPhase::Environment
             : $durablePhase;
         $migrations = $this->migrationStatus($displayPhase);
+        $operations = $displayPhase === InstallerPhase::Operations
+            ? $this->operationalHealth->snapshot()
+            : null;
 
         return Inertia::render('install/index', [
             'installer' => [
@@ -59,11 +66,13 @@ class InstallerController extends Controller
                     InstallerPhase::Database => ['save_environment', 'verify_database'],
                     InstallerPhase::Migrations => ['run_migrations'],
                     InstallerPhase::Owner => ['create_owner'],
+                    InstallerPhase::Operations => ['dispatch_queue_probe', 'continue_operations'],
                     default => [],
                 },
             ],
             'preflight' => $preflight,
             'migrations' => $migrations,
+            'operations' => $operations,
         ]);
     }
 
@@ -266,6 +275,100 @@ class InstallerController extends Controller
 
         if ($error !== null) {
             return redirect('/install')->withErrors(['owner' => $error]);
+        }
+
+        return redirect('/install');
+    }
+
+    public function dispatchQueueProbe(): RedirectResponse
+    {
+        try {
+            $error = $this->mutex->run(function (): ?string {
+                if ($this->status->snapshot()['phase'] !== InstallerPhase::Operations) {
+                    return 'Queue verification is not available in the current installer phase.';
+                }
+
+                try {
+                    $probeId = $this->queueProbe->dispatch();
+                } catch (Throwable) {
+                    return 'Queue probe could not be dispatched safely.';
+                }
+
+                $next = $this->journal->read();
+                $next['phase'] = InstallerPhase::Operations->value;
+                $next['queue_probe_id'] = $probeId;
+                $next['queue_probe_dispatched_at'] = now()->toIso8601String();
+                unset(
+                    $next['operations_verified_at'],
+                    $next['operations_warnings_acknowledged_at'],
+                    $next['operations_checked_at'],
+                    $next['operations_scheduler_state'],
+                    $next['operations_queue_state'],
+                );
+                $this->journal->replace($next);
+
+                return null;
+            });
+        } catch (Throwable) {
+            $error = 'Queue probe could not be dispatched safely.';
+        }
+
+        if ($error !== null) {
+            return redirect('/install')->withErrors(['operations' => $error]);
+        }
+
+        return redirect('/install');
+    }
+
+    public function continueOperations(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'acknowledge_warnings' => ['required', 'boolean'],
+        ]);
+        $acknowledgeWarnings = (bool) $validated['acknowledge_warnings'];
+
+        try {
+            $error = $this->mutex->run(function () use ($acknowledgeWarnings): ?string {
+                if ($this->status->snapshot()['phase'] !== InstallerPhase::Operations) {
+                    return 'Operational activation is not available in the current installer phase.';
+                }
+
+                $operations = $this->operationalHealth->snapshot();
+                if ($operations['blocking']) {
+                    return 'A blocking scheduler or queue failure must be fixed before installation can continue.';
+                }
+
+                $hasWarnings = $operations['scheduler']['state'] === 'warning'
+                    || $operations['queue']['state'] === 'warning';
+
+                if ($hasWarnings && ! $acknowledgeWarnings) {
+                    return 'Scheduler or queue execution has not been observed yet. Acknowledge the warning only after configuring the shown commands.';
+                }
+
+                $next = $this->journal->read();
+                $next['phase'] = InstallerPhase::Finalize->value;
+                $next['operations_checked_at'] = now()->toIso8601String();
+                $next['operations_scheduler_state'] = $operations['scheduler']['state'];
+                $next['operations_queue_state'] = $operations['queue']['state'];
+
+                if ($hasWarnings) {
+                    $next['operations_warnings_acknowledged_at'] = now()->toIso8601String();
+                    unset($next['operations_verified_at']);
+                } else {
+                    $next['operations_verified_at'] = now()->toIso8601String();
+                    unset($next['operations_warnings_acknowledged_at']);
+                }
+
+                $this->journal->replace($next);
+
+                return null;
+            });
+        } catch (Throwable) {
+            $error = 'Operational activation could not be completed safely.';
+        }
+
+        if ($error !== null) {
+            return redirect('/install')->withErrors(['operations' => $error]);
         }
 
         return redirect('/install');
