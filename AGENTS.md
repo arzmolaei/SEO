@@ -4,22 +4,29 @@ This repository is the source of truth for SEO OS.
 
 ## Read First
 
-Before changing product behavior, read:
+Before changing product behavior, read in this order:
 
-1. `docs/superpowers/specs/2026-10-22-seo-os-design.md`
-2. The active implementation plan in `docs/superpowers/plans/`
+1. `docs/PROJECT_STATE.md` — durable cross-session checkpoint and current subsystem boundary.
+2. `docs/release-readiness/foundation-keyword-core.md` — verified baseline already completed; do not reimplement it.
+3. `docs/superpowers/specs/2026-10-22-seo-os-design.md`
+4. The active implementation plan in `docs/superpowers/plans/`
 
-The product spec is authoritative when implementation details conflict.
+Then fetch the current `main` head and CI status before choosing a working branch. Git + CI evidence outrank chat/session memory.
+
+The product spec is authoritative when implementation details conflict. `docs/PROJECT_STATE.md` is authoritative for what has already been completed and where the next session should resume.
 
 ## Working Method
 
 - Work on a feature branch or isolated worktree; do not develop directly on `main`.
+- Never resume an old feature branch for a new subsystem merely because a previous chat used it; branch from current `main` unless the project-state checkpoint explicitly says otherwise.
 - Use test-driven development for product behavior: RED → GREEN → refactor.
 - A failing check is diagnosed before it is patched. Fix root causes, not symptoms.
 - Keep changes scoped to the active task; avoid unrelated refactors.
 - Preserve explicit module boundaries and communicate through application services/contracts.
 - Never claim a task complete without fresh verification evidence.
 - Never commit secrets, `.env`, production credentials, generated private data, or customer data.
+- If a chat/model/tool session ends, stop at the last verified commit. The next session must resume from repository evidence, not reconstructed chain-of-thought or guesses.
+- Update `docs/PROJECT_STATE.md` when a substantial subsystem reaches a reviewed, fully green boundary.
 
 ## Product Constraints
 
