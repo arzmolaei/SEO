@@ -77,7 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])->name('projects.overview');
     Route::get('projects/{project}/keywords', [KeywordGridController::class, 'index'])->name('projects.keywords.index');
     Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
-        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews'], true))))
+        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => !in_array($section, ['overview', 'keywords', 'reviews'], true))))
         ->name('projects.section');
 });
 
