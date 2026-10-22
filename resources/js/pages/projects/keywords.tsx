@@ -137,7 +137,9 @@ export default function Keywords({
 
     useEffect(() => {
         if (activeView !== null) {
-            setVisibleColumns(visibilityFromSavedColumns(activeView.state.columns));
+            setVisibleColumns(
+                visibilityFromSavedColumns(activeView.state.columns),
+            );
 
             return;
         }
