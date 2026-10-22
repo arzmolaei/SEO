@@ -22,11 +22,11 @@ class InstallationState
         return $this->assumeInstalled || is_file($this->lockPath);
     }
 
-    /** @return array<string, mixed> */
-    public function details(): array
+    /** @return array<string, mixed>|null */
+    public function details(): ?array
     {
         if (! is_file($this->lockPath)) {
-            return [];
+            return null;
         }
 
         $contents = file_get_contents($this->lockPath);
