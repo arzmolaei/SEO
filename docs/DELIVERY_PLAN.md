@@ -41,7 +41,7 @@ Before calling any release ready for normal installation/use, verify all of:
 - No dead UI actions represented as completed modules; unfinished modules are
   explicitly unavailable until delivered.
 
-Installer/health/release *foundations* do not satisfy backup/restore/update gates.
+Installer/health/release _foundations_ do not satisfy backup/restore/update gates.
 Use bounded implementation plans for the remaining operational flows; inspect and
 reuse existing installer/System Health/release packaging instead of rebuilding
 them.

@@ -108,7 +108,7 @@ The required operational acceptance still includes:
 9. queue/scheduler failure visibility and self-host instructions;
 10. no dead UI represented as delivered functionality.
 
-Installer/health/release *foundations* already exist but do not satisfy these
+Installer/health/release _foundations_ already exist but do not satisfy these
 acceptance gates. Inspect current implementation before choosing the first bounded
 operational task; reuse foundations rather than rebuilding them.
 
