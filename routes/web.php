@@ -15,25 +15,25 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('install', [InstallerController::class, 'index'])->name('install.index');
 Route::post('install/environment', [InstallerController::class, 'saveEnvironment'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:installer')
     ->name('install.environment.store');
 Route::post('install/database/verify', [InstallerController::class, 'verifyDatabase'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:installer')
     ->name('install.database.verify');
 Route::post('install/migrations/run', [InstallerController::class, 'runMigrations'])
-    ->middleware('throttle:6,1')
+    ->middleware('throttle:installer')
     ->name('install.migrations.run');
 Route::post('install/owner', [InstallerController::class, 'createOwner'])
-    ->middleware('throttle:6,1')
+    ->middleware('throttle:installer')
     ->name('install.owner.store');
 Route::post('install/operations/probe', [InstallerController::class, 'dispatchQueueProbe'])
-    ->middleware('throttle:6,1')
+    ->middleware('throttle:installer')
     ->name('install.operations.probe');
 Route::post('install/operations/continue', [InstallerController::class, 'continueOperations'])
-    ->middleware('throttle:6,1')
+    ->middleware('throttle:installer')
     ->name('install.operations.continue');
 Route::post('install/finalize', [InstallerController::class, 'finalize'])
-    ->middleware('throttle:6,1')
+    ->middleware('throttle:installer')
     ->name('install.finalize');
 Route::inertia('/', 'welcome')->name('home');
 
