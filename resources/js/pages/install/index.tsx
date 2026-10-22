@@ -82,7 +82,9 @@ export default function Installer({
 }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const canRefresh = installer.actions.includes('refresh_preflight');
-    const activePhase = phases.findIndex((phase) => phase.key === installer.phase);
+    const activePhase = phases.findIndex(
+        (phase) => phase.key === installer.phase,
+    );
 
     const refreshPreflight = () => {
         if (!canRefresh || isRefreshing) {
@@ -114,9 +116,9 @@ export default function Installer({
                                         راه‌اندازی امن SEO OS
                                     </h1>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                                        نصب از داخل مرورگر انجام می‌شود و روی هاست
-                                        مقصد به Composer، Node.js، npm یا دسترسی
-                                        SSH نیاز ندارد.
+                                        نصب از داخل مرورگر انجام می‌شود و روی
+                                        هاست مقصد به Composer، Node.js، npm یا
+                                        دسترسی SSH نیاز ندارد.
                                     </p>
                                 </div>
                             </div>
@@ -236,7 +238,9 @@ export default function Installer({
                     </section>
 
                     <section className="rounded-2xl border border-dashed bg-card/50 p-5 sm:p-6">
-                        <h2 className="font-semibold">مراحل بعدی محافظت شده‌اند</h2>
+                        <h2 className="font-semibold">
+                            مراحل بعدی محافظت شده‌اند
+                        </h2>
                         <p className="mt-1 text-sm leading-6 text-muted-foreground">
                             تا زمانی که هر قابلیت backend به‌صورت کامل و قابل
                             بازیابی آماده نشده باشد، دکمه‌ای برای عبور ساختگی از
