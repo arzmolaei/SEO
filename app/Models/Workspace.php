@@ -14,4 +14,10 @@ class Workspace extends Model
     {
         return $this->hasMany(Membership::class);
     }
+
+    /** @return HasMany<Project, $this> */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
+    }
 }
