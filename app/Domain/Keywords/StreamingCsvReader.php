@@ -5,7 +5,7 @@ namespace App\Domain\Keywords;
 use Generator;
 use RuntimeException;
 
-final class StreamingCsvReader
+final class StreamingCsvReader implements KeywordRowReader
 {
     /**
      * @return Generator<int, array<string, string|null>>
