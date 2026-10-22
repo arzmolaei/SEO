@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Keywords;
 
+use App\Models\ImportBatch;
+use App\Models\StagedKeywordRow;
 use App\Models\User;
 use App\Services\Projects\CreateProject;
 use App\Services\Workspaces\CreateWorkspace;
@@ -71,5 +73,45 @@ class StageKeywordImportTest extends TestCase
             'row_number' => 2,
             'keyword_original' => 'خدمات سئو',
         ]);
+    }
+
+    public function test_missing_keyword_mapping_remains_staged_with_row_level_diagnostics(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
+        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
+
+        $response = $this->actingAs($owner)->postJson(
+            "/projects/{$project->id}/keyword-imports/stage",
+            [
+                'source' => 'generic_csv',
+                'original_filename' => 'missing-keyword.csv',
+                'mapping' => [
+                    'volume' => 'Search Volume',
+                ],
+                'rows' => [
+                    ['Search Volume' => '1200'],
+                ],
+            ],
+        );
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'staged')
+            ->assertJsonPath('data.total_rows', 1)
+            ->assertJsonPath('data.valid_rows', 0)
+            ->assertJsonPath('data.invalid_rows', 1)
+            ->assertJsonPath('data.error_count', 2);
+
+        $batch = ImportBatch::query()->findOrFail($response->json('data.id'));
+        $row = StagedKeywordRow::query()
+            ->where('import_batch_id', $batch->id)
+            ->where('row_number', 1)
+            ->firstOrFail();
+
+        $this->assertSame(['mapping.keyword_required'], $batch->errors);
+        $this->assertFalse($row->is_valid);
+        $this->assertSame(['keyword_mapping_missing'], $row->errors);
+        $this->assertSame(['Search Volume' => '1200'], $row->raw_payload);
     }
 }
