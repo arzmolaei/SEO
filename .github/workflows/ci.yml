@@ -42,14 +42,6 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Diagnose PHP formatter diff
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          ./vendor/bin/pint app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php
-          git diff -- app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php
-          test -z "$(git status --short -- app/Services/Keywords/QueryKeywordIntelligenceWorkspace.php tests/Feature/Keywords/KeywordIntelligenceManualOperationsTest.php)"
-
       - name: Prepare application environment
         shell: bash
         run: |
