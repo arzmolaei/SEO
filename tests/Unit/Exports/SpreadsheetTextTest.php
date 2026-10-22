@@ -9,7 +9,7 @@ class SpreadsheetTextTest extends TestCase
 {
     public function test_safe_preserves_persian_and_half_space_without_normalization(): void
     {
-        $value = 'سئو\u{200C}سایت؛ تست';
+        $value = "سئو\u{200C}سایت؛ تست";
 
         $this->assertSame($value, SpreadsheetText::safe($value));
         $this->assertNull(SpreadsheetText::safe(null));
@@ -34,7 +34,7 @@ class SpreadsheetTextTest extends TestCase
     {
         $fields = [
             'project_name' => '=پروژه',
-            'keyword_display_text' => 'سئو\u{200C}سایت',
+            'keyword_display_text' => "سئو\u{200C}سایت",
             'page_url' => 'https://example.test/مسیر',
         ];
 
