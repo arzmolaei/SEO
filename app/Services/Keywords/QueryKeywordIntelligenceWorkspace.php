@@ -117,6 +117,7 @@ class QueryKeywordIntelligenceWorkspace
         $unmappedCount = (clone $activeClusters)->whereNotIn('id', $mappedClusterIds)->count();
 
         return [
+            'project_id' => $project->id,
             'can_manage' => $this->policy->manageKeywords($actor, $project),
             'summary' => [
                 'active_clusters' => $activeCount,
