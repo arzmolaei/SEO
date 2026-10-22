@@ -13,9 +13,9 @@ use App\Support\Installer\InstallerPreflight;
 use App\Support\Installer\InstallerStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use InvalidArgumentException;
 use Inertia\Inertia;
 use Inertia\Response;
+use InvalidArgumentException;
 use RuntimeException;
 
 class InstallerController extends Controller
