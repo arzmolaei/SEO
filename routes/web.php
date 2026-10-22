@@ -5,6 +5,7 @@ use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\KeywordChangeSetController;
 use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
+use App\Http\Controllers\KeywordIntelligenceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\ReviewQueueController;
@@ -45,6 +46,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.keywords.bulk-status');
     Route::post('projects/{project}/keyword-change-sets/{changeSet}/undo', [KeywordChangeSetController::class, 'undo'])
         ->name('projects.keyword-change-sets.undo');
+
+    Route::post('projects/{project}/keyword-intelligence/clusters', [KeywordIntelligenceController::class, 'storeCluster'])
+        ->name('projects.keyword-intelligence.clusters.store');
+    Route::patch('projects/{project}/keyword-intelligence/clusters/{keywordCluster}', [KeywordIntelligenceController::class, 'updateCluster'])
+        ->name('projects.keyword-intelligence.clusters.update');
+    Route::post('projects/{project}/keyword-intelligence/pages', [KeywordIntelligenceController::class, 'storePage'])
+        ->name('projects.keyword-intelligence.pages.store');
+    Route::put('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/target', [KeywordIntelligenceController::class, 'mapTarget'])
+        ->name('projects.keyword-intelligence.clusters.target');
+    Route::post('projects/{project}/keyword-intelligence/clusters/{keywordCluster}/ready', [KeywordIntelligenceController::class, 'markReady'])
+        ->name('projects.keyword-intelligence.clusters.ready');
 
     Route::get('projects/{project}/reviews', [ReviewQueueController::class, 'index'])->name('projects.reviews.index');
     Route::post('projects/{project}/reviews/refresh', [ReviewQueueController::class, 'refresh'])->middleware('throttle:6,1')->name('projects.reviews.refresh');
