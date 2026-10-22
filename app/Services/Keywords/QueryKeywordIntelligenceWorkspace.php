@@ -26,7 +26,7 @@ class QueryKeywordIntelligenceWorkspace
     public function __construct(private ProjectPolicy $policy) {}
 
     /**
-     * @param array<string,mixed> $query
+     * @param  array<string,mixed>  $query
      * @return array<string,mixed>
      */
     public function handle(User $actor, Project $project, array $query = []): array
