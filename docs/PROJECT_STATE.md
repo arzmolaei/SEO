@@ -51,11 +51,12 @@ See `docs/release-readiness/foundation-keyword-core.md` for the detailed evidenc
 ## Active implementation — resume here
 
 Continue existing `feature/keyword-intelligence`; do not create or reset it.
-Tasks 1–7 are verified (latest boundary `c0af6e0`, CI `39803137862`).
-Task 8 is in progress: cluster targeting and mapping history.
+Tasks 1–8 are verified (latest boundary `d19e4ab`, CI `39804656866`).
+Task 9 is started but NOT implemented: bounded design and six observed RED contracts only.
+The user requested a handoff to another AI; resume from `docs/HANDOFF.md`.
 Source of current execution evidence: `docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
 The branch includes the newer `main` handoff instructions through merge `114277a`.
-After Task 8 final-head CI passes, execute Task 9, then remaining tasks in order.
+After Task 9 final-head CI passes, execute Task 10, then Task 11 in order.
 Do not stop for routine confirmation. Preserve unfinished state explicitly if
 an external interruption/tool limit occurs. Full install/backup/restore/update
 acceptance remains future delivery work, not completed by the current slice.

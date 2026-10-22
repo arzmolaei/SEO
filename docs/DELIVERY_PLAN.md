@@ -15,7 +15,7 @@ completed work. Do not weaken gates or add implementation-mirroring tests.
 ## Verified foundation
 
 - Foundation + Keyword Core completed and merged.
-- Keyword Intelligence Tasks 1–6 verified; Task 7 active.
+- Keyword Intelligence Tasks 1–8 verified; Task 9 active.
 
 ## Current delivery: connected Keyword Intelligence
 

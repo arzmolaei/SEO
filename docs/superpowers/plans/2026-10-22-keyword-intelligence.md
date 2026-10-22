@@ -163,10 +163,10 @@
 
 **Produces:** mapping from cluster to `existing_page|planned_page|merge_target|redirect_target|ignore` with history and explicit status.
 
-- [ ] RED tests for every target type, project isolation, one active mapping per cluster, manual remap attribution and invalid cross-project page IDs.
-- [ ] Implement schema/service/policies and history integration.
-- [ ] Verify remap does not erase prior mapping history.
-- [ ] Full CI GREEN and commit `feat: add cluster target mapping`.
+- [x] RED tests for every target type, project isolation, one active mapping per cluster, manual remap attribution and invalid cross-project page IDs.
+- [x] Implement schema/service/policies and history integration.
+- [x] Verify remap does not erase prior mapping history.
+- [x] Full CI GREEN and commit `feat: add cluster target mapping`.
 
 ### Task 9 — Mapping conflict detection and review
 

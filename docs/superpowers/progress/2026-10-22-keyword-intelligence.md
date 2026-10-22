@@ -67,13 +67,19 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Page changes have explicit page_id audit entries; keyword Undo validates keyword-only payloads and its existing suite remains green.
   - CI caught one official Pint indentation issue in page registration; applied formatter output in `c0af6e0`, verified the exact gate, then full final-head CI `39803137862` passed.
   - Verified head `c0af6e086069b36f015371d2df52374ddc0d2d4c`; Task 8 now active.
-- Task 8 — Cluster target mapping: **implemented; final-head CI pending**
+- Task 8 — Cluster target mapping: **verified**
   - Eight real RED/GREEN contracts cover target kinds, project isolation, remap history/idempotency, promotion identity, deletion restrictions and stale Undo protection.
   - Full suite: 204 tests / 1166 assertions; PHPStan and full Pint gate green. Eight mapping tests passed on MariaDB 10.11 (32 assertions).
   - Synchronous promotion updates active targets atomically and invalidates archived-cluster Undo. An exactly-once regression caught duplicate listener registration; Laravel autodiscovery is now the sole registration.
   - Mapping preserves membership, primary keyword and lock state; revisions protect later human decisions. Independent read-only review found no actionable security/data-integrity issues.
   - No frontend code changed; permanent CI retains frontend/build/runtime-audit/release gates.
-- Tasks 9–11: pending.
+  - Final-head CI `39804656866` on `d19e4ab390668ed606b8414c069e1a197a4e768e`: success.
+- Task 9 — Mapping conflict review: **started; NOT implemented**
+  - Bounded design: `docs/superpowers/specs/2026-10-22-mapping-conflicts-design.md`.
+  - Six behavior contracts observed RED: missing `DetectKeywordMappingConflicts`, 6 failures / 1 assertion. Production code has not been added.
+  - User requested handoff at this boundary. Exact pending test source and resumption instructions are preserved in `docs/superpowers/contracts/2026-10-22-mapping-conflicts-red.md`; restore to the active test path and reconfirm RED before implementation.
+  - No existing tests/gates were removed; the unimplemented contract is a documentation artifact, not a claim of passing Task 9.
+- Tasks 10–11: pending.
 
 ## Execution rules
 
