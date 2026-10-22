@@ -2,16 +2,19 @@
 
 namespace Tests\Feature\Keywords;
 
+use App\Domain\Keywords\ClusterReviewState;
 use App\Domain\Keywords\KeywordIntent;
 use App\Domain\Review\ReviewItemType;
 use App\Jobs\RefreshProjectClusterReviews;
 use App\Jobs\RefreshProjectMappingConflicts;
 use App\Models\Keyword;
+use App\Models\KeywordCluster;
 use App\Models\ReviewItem;
 use App\Models\User;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
+use App\Services\Review\ResolveClusterReview;
 use App\Services\Workspaces\CreateWorkspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -34,6 +37,23 @@ class KeywordIntelligenceWorkspaceTest extends TestCase
         $review = ReviewItem::query()->firstOrFail();
         $this->assertSame(ReviewItemType::Cluster, $review->type);
         $this->assertSame('pending', $review->status);
+    }
+
+    public function test_accepting_cluster_suggestion_marks_human_review_complete(): void
+    {
+        [$actor, $project] = $this->fixture();
+        $this->keyword($project->id, 'کفش ورزشی');
+        $this->keyword($project->id, 'کفش ورزشی زنانه');
+
+        RefreshProjectClusterReviews::dispatchSync($actor->id, $project->id);
+        $review = ReviewItem::query()->firstOrFail();
+
+        app(ResolveClusterReview::class)->handle($actor, $project, $review, $review->fingerprint, 'accept');
+
+        $cluster = KeywordCluster::query()->firstOrFail();
+        $this->assertSame(ClusterReviewState::Reviewed, $cluster->review_state);
+        $this->assertSame('resolved', $review->fresh()->status);
+        $this->assertSame('accept', $review->fresh()->resolution);
     }
 
     public function test_refresh_endpoints_dispatch_bounded_background_work(): void
