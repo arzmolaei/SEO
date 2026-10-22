@@ -4,6 +4,7 @@ namespace App\Services\Pages;
 
 use App\Domain\Pages\NormalizePageUrl;
 use App\Domain\Pages\PageKind;
+use App\Events\Pages\PagePromoted;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\User;
@@ -35,6 +36,7 @@ class PromotePlannedPage
             }
             $before = $page->getAttributes();
             $page->update(['kind' => PageKind::Existing, 'url' => $url, 'normalized_url' => $normalized, 'url_hash' => $hash]);
+            event(new PagePromoted($actor, $project, $page));
             $this->operations->record($actor, $project, $page, $before, 'pages.promoted');
 
             return $page;

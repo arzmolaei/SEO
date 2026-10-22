@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
  * @property int $project_id
  * @property int|null $actor_id
  * @property string $action
- * @property list<array{keyword_id?: int, page_id?: int, before: string, after: string}> $changes
+ * @property list<array{keyword_id?: int, page_id?: int, cluster_id?: int, before: string, after: string}> $changes
  * @property Carbon|null $undone_at
  * @property int|null $undone_by_id
  */

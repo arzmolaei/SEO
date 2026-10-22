@@ -58,15 +58,22 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Future mapping services MUST increment cluster revision when targets change, preventing Undo from erasing later mapping decisions.
   - Final-head CI `39801676900` on `9adedd5238368b8d23b13552066bbd8935974c5a`: success.
   - Task 7 now active, with its own RED/verification boundary.
-- Task 7 — Existing/planned page foundation: **implemented; final-head CI pending**
+- Task 7 — Existing/planned page foundation: **verified**
   - Initial 7 behavior tests observed RED before implementation; additional default-type and IDN identity regressions observed RED then GREEN.
   - Full suite: 196 tests / 1134 assertions, PHPStan and Pint green. Seven DB-sensitive page tests passed on MariaDB 10.11 (29 assertions).
   - Independent review found transitional IDNA domain merging; fixed with non-transitional conversion and Unicode/A-label/distinct-host tests.
   - URLs are never fetched; original input is retained, canonical identity uses a project-scoped SHA-256 index with collision comparison. Path case/query order/HTTP-vs-HTTPS are preserved.
   - Promotion preserves page identity and rejects URL collisions atomically; registration never overwrites an existing title.
   - Page changes have explicit page_id audit entries; keyword Undo validates keyword-only payloads and its existing suite remains green.
-  - Next action: final-head CI, then record verified SHA/run and enter Task 8 automatically.
-- Tasks 8–11: pending.
+  - CI caught one official Pint indentation issue in page registration; applied formatter output in `c0af6e0`, verified the exact gate, then full final-head CI `39803137862` passed.
+  - Verified head `c0af6e086069b36f015371d2df52374ddc0d2d4c`; Task 8 now active.
+- Task 8 — Cluster target mapping: **implemented; final-head CI pending**
+  - Eight real RED/GREEN contracts cover target kinds, project isolation, remap history/idempotency, promotion identity, deletion restrictions and stale Undo protection.
+  - Full suite: 204 tests / 1166 assertions; PHPStan and full Pint gate green. Eight mapping tests passed on MariaDB 10.11 (32 assertions).
+  - Synchronous promotion updates active targets atomically and invalidates archived-cluster Undo. An exactly-once regression caught duplicate listener registration; Laravel autodiscovery is now the sole registration.
+  - Mapping preserves membership, primary keyword and lock state; revisions protect later human decisions. Independent read-only review found no actionable security/data-integrity issues.
+  - No frontend code changed; permanent CI retains frontend/build/runtime-audit/release gates.
+- Tasks 9–11: pending.
 
 ## Execution rules
 

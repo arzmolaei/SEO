@@ -147,10 +147,10 @@
 
 **Produces:** first-class existing/planned page entities usable before crawler implementation.
 
-- [ ] RED tests for existing URL normalization/uniqueness, planned page without live URL, project isolation and page type/status.
-- [ ] Implement page schema/models/services without crawler fields that cannot yet be sourced.
-- [ ] Verify planned page can later be promoted to existing without losing its identity/cluster mappings.
-- [ ] Full CI GREEN and commit `feat: add page targeting foundation`.
+- [x] RED tests for existing URL normalization/uniqueness, planned page without live URL, project isolation and page type/status.
+- [x] Implement page schema/models/services without crawler fields that cannot yet be sourced.
+- [x] Verify planned page can later be promoted to existing without losing its identity/cluster mappings.
+- [x] Full CI GREEN and commit `feat: add page targeting foundation`.
 
 ### Task 8 — Cluster-to-page Mapping domain
 
