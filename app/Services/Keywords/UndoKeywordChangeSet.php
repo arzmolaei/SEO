@@ -45,19 +45,15 @@ class UndoKeywordChangeSet
 
             $changes = $lockedChangeSet->changes;
 
-            if (! is_array($changes) || $changes === []) {
+            if ($changes === []) {
                 throw new ConflictHttpException('This change set has no reversible changes.');
             }
 
-            $keywordIds = [];
-
-            foreach ($changes as $change) {
-                if (! is_array($change) || ! isset($change['keyword_id'], $change['before'], $change['after'])) {
-                    throw new ConflictHttpException('This change set contains invalid change data.');
-                }
-
-                $keywordIds[] = (int) $change['keyword_id'];
-            }
+            /** @var list<int> $keywordIds */
+            $keywordIds = array_map(
+                static fn (array $change): int => $change['keyword_id'],
+                $changes,
+            );
 
             $keywords = Keyword::query()
                 ->where('project_id', $project->id)
@@ -70,13 +66,13 @@ class UndoKeywordChangeSet
                 throw new ConflictHttpException('One or more changed keywords no longer exist in this project.');
             }
 
+            /** @var list<array{0: Keyword, 1: KeywordStatus}> $reversions */
             $reversions = [];
 
             foreach ($changes as $change) {
-                $keywordId = (int) $change['keyword_id'];
-                $before = is_string($change['before']) ? KeywordStatus::tryFrom($change['before']) : null;
-                $after = is_string($change['after']) ? KeywordStatus::tryFrom($change['after']) : null;
-                $keyword = $keywords->get($keywordId);
+                $keyword = $keywords->get($change['keyword_id']);
+                $before = KeywordStatus::tryFrom($change['before']);
+                $after = KeywordStatus::tryFrom($change['after']);
 
                 if (! $keyword instanceof Keyword || $before === null || $after === null) {
                     throw new ConflictHttpException('This change set cannot be reversed safely.');
