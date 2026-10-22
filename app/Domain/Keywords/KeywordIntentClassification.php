@@ -15,7 +15,8 @@ final readonly class KeywordIntentClassification
         public IntentConfidence $confidence,
         public array $matchedRuleIds,
         public array $evidence,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array{
