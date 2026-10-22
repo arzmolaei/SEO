@@ -4,6 +4,7 @@ namespace Tests\Feature\Keywords;
 
 use App\Domain\Keywords\ClusterTargetType;
 use App\Domain\Keywords\KeywordIntent;
+use App\Models\ClusterTarget;
 use App\Models\ImportBatch;
 use App\Models\Keyword;
 use App\Models\KeywordMetric;
@@ -143,6 +144,39 @@ class KeywordMappingConflictTest extends TestCase
         app(MapClusterToTarget::class)->handle($actor, $project, $b, ClusterTargetType::Ignore);
         $this->expectException(ConflictHttpException::class);
         app(ResolveMappingConflictReview::class)->handle($actor, $project, $review, $review->fingerprint, 'accept');
+    }
+
+    public function test_invalid_target_contract_is_reviewable_without_mutation(): void
+    {
+        [$actor, $project] = $this->fixture();
+        $cluster = $this->cluster($actor, $project, 'کفش ورزشی');
+        $page = app(CreatePlannedPage::class)->handle($actor, $project, 'Planned');
+        $target = app(MapClusterToTarget::class)->handle($actor, $project, $cluster, ClusterTargetType::PlannedPage, $page);
+
+        ClusterTarget::query()->whereKey($target->id)->update(['type' => ClusterTargetType::ExistingPage->value]);
+
+        app(DetectKeywordMappingConflicts::class)->handle($actor, $project);
+        $review = ReviewItem::firstOrFail();
+        $this->assertStringContainsString('invalid_target', json_encode($review->suggestion));
+        $this->assertDatabaseHas('cluster_targets', ['id' => $target->id, 'type' => ClusterTargetType::ExistingPage->value, 'page_id' => $page->id]);
+    }
+
+    public function test_mapping_conflict_can_be_acknowledged_at_http_boundary(): void
+    {
+        [$actor, $project] = $this->fixture();
+        $page = app(CreatePlannedPage::class)->handle($actor, $project, 'Shared');
+        foreach (['کفش ورزشی', 'لپ تاپ'] as $text) {
+            app(MapClusterToTarget::class)->handle($actor, $project, $this->cluster($actor, $project, $text), ClusterTargetType::PlannedPage, $page);
+        }
+        app(DetectKeywordMappingConflicts::class)->handle($actor, $project);
+        $review = ReviewItem::query()->orderBy('id')->firstOrFail();
+
+        $this->actingAs($actor)->post(route('projects.reviews.resolve', [$project, $review]), [
+            'fingerprint' => $review->fingerprint,
+            'decision' => 'accept',
+        ])->assertRedirect(route('projects.reviews.index', $project));
+
+        $this->assertDatabaseHas('review_items', ['id' => $review->id, 'status' => 'resolved', 'resolution' => 'accept']);
     }
 
     public function test_detector_rejects_foreign_project(): void
