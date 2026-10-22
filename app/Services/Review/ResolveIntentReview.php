@@ -54,7 +54,18 @@ class ResolveIntentReview
             }
 
             if ($decision !== 'skip') {
-                $selected = $decision === 'accept' ? KeywordIntent::from($review->suggestion['intent']) : $intent;
+                if ($decision === 'accept') {
+                    $suggestedIntent = $review->suggestion['intent'] ?? null;
+                    if (! is_string($suggestedIntent)) {
+                        throw new ConflictHttpException('Intent review payload is invalid. Refresh the queue.');
+                    }
+                    $selected = KeywordIntent::from($suggestedIntent);
+                } else {
+                    $selected = $intent;
+                }
+                if (! $selected instanceof KeywordIntent) {
+                    throw new InvalidArgumentException('A selected intent is required.');
+                }
                 $this->assignIntent->handle($actor, $project, $keyword, $selected, IntentConfidence::High, 'user', [
                     'review_item_id' => $review->id,
                     'fingerprint' => $review->fingerprint,
