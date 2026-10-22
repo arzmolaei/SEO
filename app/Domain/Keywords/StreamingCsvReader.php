@@ -19,6 +19,8 @@ final class StreamingCsvReader
         }
 
         try {
+            $this->prepareEncoding($handle);
+
             $header = fgetcsv($handle, null, ',', '"', '');
 
             if ($header === false) {
@@ -42,6 +44,47 @@ final class StreamingCsvReader
             }
         } finally {
             fclose($handle);
+        }
+    }
+
+    /** @param resource $handle */
+    private function prepareEncoding($handle): void
+    {
+        $prefix = fread($handle, 4);
+
+        if ($prefix === false) {
+            throw new RuntimeException('Unable to inspect CSV encoding.');
+        }
+
+        $encoding = null;
+        $offset = 0;
+
+        if (str_starts_with($prefix, "\xEF\xBB\xBF")) {
+            $offset = 3;
+        } elseif (str_starts_with($prefix, "\xFF\xFE")) {
+            $encoding = 'UTF-16LE';
+            $offset = 2;
+        } elseif (str_starts_with($prefix, "\xFE\xFF")) {
+            $encoding = 'UTF-16BE';
+            $offset = 2;
+        }
+
+        if (fseek($handle, $offset) !== 0) {
+            throw new RuntimeException('Unable to position CSV stream after encoding detection.');
+        }
+
+        if ($encoding === null) {
+            return;
+        }
+
+        $filter = stream_filter_append(
+            $handle,
+            "convert.iconv.{$encoding}/UTF-8",
+            STREAM_FILTER_READ,
+        );
+
+        if ($filter === false) {
+            throw new RuntimeException("Unable to convert {$encoding} CSV stream to UTF-8.");
         }
     }
 
