@@ -43,7 +43,7 @@ class InstallerFlowTest extends TestCase
             ->assertRedirect('/install');
     }
 
-    public function test_installer_page_exposes_preflight_phase_without_database_backed_runtime_dependencies(): void
+    public function test_ready_preflight_exposes_environment_phase_without_database_backed_runtime_dependencies(): void
     {
         $this->app->bind(SystemProbe::class, fn () => $this->probe(
             databaseReachable: false,
@@ -56,10 +56,10 @@ class InstallerFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('install/index')
-                ->where('installer.phase', 'preflight')
+                ->where('installer.phase', 'environment')
                 ->where('installer.installed', false)
                 ->where('installer.values', [])
-                ->where('installer.actions', ['refresh_preflight'])
+                ->where('installer.actions', ['refresh_preflight', 'save_environment'])
                 ->where('preflight.ready', true)
                 ->missing('preflight.checks.database')
                 ->missing('preflight.checks.queue')
@@ -69,6 +69,19 @@ class InstallerFlowTest extends TestCase
         $this->assertSame('file', config('session.driver'));
         $this->assertSame('file', config('cache.default'));
         $this->assertSame('sync', config('queue.default'));
+    }
+
+    public function test_failed_preflight_stays_on_preflight_and_does_not_offer_environment_save(): void
+    {
+        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.4.0'));
+
+        $this->get('/install')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('installer.phase', 'preflight')
+                ->where('installer.actions', ['refresh_preflight'])
+                ->where('preflight.ready', false)
+            );
     }
 
     public function test_legacy_complete_endpoint_cannot_finalize_a_partial_installation(): void
@@ -98,19 +111,21 @@ class InstallerFlowTest extends TestCase
         string $databaseDriver = 'mysql',
         string $queueConnection = 'database',
         bool $schedulerSupported = true,
+        string $phpVersion = '8.4.1',
     ): SystemProbe {
-        return new class($databaseReachable, $databaseDriver, $queueConnection, $schedulerSupported) implements SystemProbe
+        return new class($databaseReachable, $databaseDriver, $queueConnection, $schedulerSupported, $phpVersion) implements SystemProbe
         {
             public function __construct(
                 private bool $databaseReachable,
                 private string $databaseDriver,
                 private string $queueConnection,
                 private bool $schedulerSupported,
+                private string $phpVersion,
             ) {}
 
             public function phpVersion(): string
             {
-                return '8.4.1';
+                return $this->phpVersion;
             }
 
             public function extensionLoaded(string $extension): bool
