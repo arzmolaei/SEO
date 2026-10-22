@@ -15,4 +15,9 @@ enum WorkspaceRole: string
     {
         return in_array($this, [self::Owner, self::Admin], true);
     }
+
+    public function canManageProjects(): bool
+    {
+        return in_array($this, [self::Owner, self::Admin, self::SeoManager], true);
+    }
 }
