@@ -15,7 +15,8 @@ final readonly class IntentRule
         public IntentConfidence $confidence,
         public array $phrases,
         public string $evidence,
-    ) {}
+    ) {
+    }
 
     /** @param array<string, mixed> $definition */
     public static function fromArray(string $id, array $definition): self
