@@ -96,6 +96,17 @@ class ReleasePackageContractTest extends TestCase
         $this->assertContains('storage/*.key', $report['forbidden']);
     }
 
+    public function test_nested_private_key_artifacts_are_rejected(): void
+    {
+        $this->seedRequiredRuntimeFiles();
+        $this->writeFile('storage/app/private/oauth-private.key');
+
+        $report = (new ReleasePackageContract)->inspect($this->root);
+
+        $this->assertFalse($report['valid']);
+        $this->assertContains('storage/**/*.key', $report['forbidden']);
+    }
+
     /** @param list<string> $except */
     private function seedRequiredRuntimeFiles(array $except = []): void
     {
