@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectWorkspaceController;
 use App\Support\ProjectWorkspaceContext;
@@ -22,6 +23,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.show');
     Route::patch('projects/{project}', [ProjectController::class, 'update'])
         ->name('projects.update');
+
+    Route::post('projects/{project}/keyword-imports/stage', [KeywordImportController::class, 'store'])
+        ->name('projects.keyword-imports.stage');
 
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
