@@ -171,8 +171,7 @@ export default function Keywords({
             sort: filters.sort,
             direction: filters.direction,
         };
-        const hasVolumeFilter =
-            volumeOperator !== '' && volume.trim() !== '';
+        const hasVolumeFilter = volumeOperator !== '' && volume.trim() !== '';
         const values = {
             q: search.trim() || null,
             source: source.trim() || null,
@@ -338,7 +337,9 @@ export default function Keywords({
                                 value={status}
                                 onChange={(event) =>
                                     setStatus(
-                                        event.target.value as KeywordStatus | '',
+                                        event.target.value as
+                                            | KeywordStatus
+                                            | '',
                                     )
                                 }
                                 className="h-9 w-full rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -544,9 +545,7 @@ export default function Keywords({
                                                     }
                                                     className="font-medium text-foreground"
                                                 >
-                                                    {t(
-                                                        'keywords.latestVolume',
-                                                    )}
+                                                    {t('keywords.latestVolume')}
                                                 </button>
                                             </th>
                                         ) : null}
@@ -567,7 +566,8 @@ export default function Keywords({
                                         <tr
                                             key={keyword.id}
                                             ref={(element) => {
-                                                rowRefs.current[index] = element;
+                                                rowRefs.current[index] =
+                                                    element;
                                             }}
                                             tabIndex={
                                                 index === activeRow ? 0 : -1
@@ -577,7 +577,7 @@ export default function Keywords({
                                             onKeyDown={(event) =>
                                                 handleRowKeyDown(event, index)
                                             }
-                                            className="border-t outline-none hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-selected:bg-muted/20"
+                                            className="border-t outline-none hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset aria-selected:bg-muted/20"
                                         >
                                             <td className="sticky start-0 bg-card px-4 py-3 font-medium group-focus-within:bg-muted/50">
                                                 {keyword.display_text}
