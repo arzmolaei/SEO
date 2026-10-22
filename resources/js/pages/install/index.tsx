@@ -1,15 +1,24 @@
-import { Head, router } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
     CircleX,
+    Database,
     HardDrive,
+    KeyRound,
     LoaderCircle,
     RefreshCw,
+    Save,
     ServerCog,
     ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
+import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 
 type HealthStatus = 'pass' | 'warning' | 'fail';
 type InstallerPhase =
@@ -34,10 +43,20 @@ type HealthReport = {
     checks: Record<string, HealthCheck>;
 };
 
+type InstallerValues = {
+    app_url?: string;
+    database_driver?: string;
+    database_host?: string;
+    database_port?: number;
+    database_name?: string;
+    database_username?: string;
+    has_database_password?: boolean;
+};
+
 type InstallerState = {
     phase: InstallerPhase;
     installed: boolean;
-    values: Record<string, unknown>;
+    values: InstallerValues;
     actions: string[];
 };
 
@@ -73,18 +92,14 @@ function StatusIcon({ status }: { status: HealthStatus }) {
     return <CircleX className="size-5 shrink-0 text-destructive" />;
 }
 
-export default function Installer({
-    installer,
+function PreflightCard({
     preflight,
+    canRefresh,
 }: {
-    installer: InstallerState;
     preflight: HealthReport;
+    canRefresh: boolean;
 }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const canRefresh = installer.actions.includes('refresh_preflight');
-    const activePhase = phases.findIndex(
-        (phase) => phase.key === installer.phase,
-    );
 
     const refreshPreflight = () => {
         if (!canRefresh || isRefreshing) {
@@ -97,6 +112,350 @@ export default function Installer({
             onFinish: () => setIsRefreshing(false),
         });
     };
+
+    return (
+        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 className="font-semibold">مرحله ۱ — بررسی میزبان</h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        فقط پیش‌نیازهایی بررسی می‌شوند که قبل از وارد کردن اطلاعات
+                        دیتابیس قابل تشخیص‌اند. دیتابیس، صف و cron در مراحل بعدی
+                        بررسی می‌شوند.
+                    </p>
+                </div>
+                <span
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                        preflight.ready
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : 'border-destructive/30 bg-destructive/10 text-destructive'
+                    }`}
+                >
+                    {preflight.ready ? 'میزبان آماده است' : 'نیازمند اصلاح'}
+                </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {Object.entries(preflight.checks).map(([key, check]) => (
+                    <article
+                        key={key}
+                        className="flex gap-3 rounded-xl border bg-background p-4"
+                    >
+                        <StatusIcon status={check.status} />
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-sm font-semibold">
+                                    {labels[key] ?? key}
+                                </h3>
+                                {check.required ? (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                        ضروری
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                                {check.message}
+                            </p>
+                        </div>
+                    </article>
+                ))}
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-muted-foreground">
+                    {preflight.ready
+                        ? 'پیش‌نیازهای میزبان تأیید شده‌اند و می‌توانید تنظیمات نصب را وارد کنید.'
+                        : 'موارد قرمز را در کنترل‌پنل هاست اصلاح کنید و دوباره بررسی را اجرا کنید.'}
+                </p>
+                <button
+                    type="button"
+                    onClick={refreshPreflight}
+                    disabled={!canRefresh || isRefreshing}
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-semibold shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                    {isRefreshing ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                        <RefreshCw className="size-4" />
+                    )}
+                    بررسی دوباره
+                </button>
+            </div>
+        </section>
+    );
+}
+
+function EnvironmentCard({
+    values,
+    canSave,
+}: {
+    values: InstallerValues;
+    canSave: boolean;
+}) {
+    const hasPassword = values.has_database_password === true;
+
+    return (
+        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted/30">
+                    <KeyRound className="size-5" />
+                </div>
+                <div>
+                    <h2 className="font-semibold">
+                        مرحله ۲ — تنظیمات برنامه و دیتابیس
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        اطلاعات فقط روی همین سرور ذخیره می‌شوند. رمز دیتابیس هیچ‌وقت
+                        دوباره به مرورگر برگردانده نمی‌شود.
+                    </p>
+                </div>
+            </div>
+
+            <Form
+                action="/install/environment"
+                method="post"
+                resetOnSuccess={['database_password']}
+                disableWhileProcessing
+                className="mt-6 grid gap-5"
+            >
+                {({ processing, errors }) => (
+                    <>
+                        <InputError message={errors.preflight} />
+                        <InputError message={errors.environment} />
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="app_url">آدرس اصلی برنامه</Label>
+                            <Input
+                                id="app_url"
+                                name="app_url"
+                                type="url"
+                                dir="ltr"
+                                required
+                                defaultValue={values.app_url ?? ''}
+                                placeholder="https://seo.example.com"
+                                autoComplete="url"
+                            />
+                            <InputError message={errors.app_url} />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="database_driver">
+                                    نوع دیتابیس
+                                </Label>
+                                <select
+                                    id="database_driver"
+                                    name="database_driver"
+                                    defaultValue={
+                                        values.database_driver ?? 'mysql'
+                                    }
+                                    className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                >
+                                    <option value="mysql">MySQL</option>
+                                    <option value="mariadb">MariaDB</option>
+                                </select>
+                                <InputError message={errors.database_driver} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="database_host">
+                                    میزبان دیتابیس
+                                </Label>
+                                <Input
+                                    id="database_host"
+                                    name="database_host"
+                                    dir="ltr"
+                                    required
+                                    defaultValue={
+                                        values.database_host ?? '127.0.0.1'
+                                    }
+                                    autoComplete="off"
+                                />
+                                <InputError message={errors.database_host} />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div className="grid gap-2">
+                                <Label htmlFor="database_port">پورت</Label>
+                                <Input
+                                    id="database_port"
+                                    name="database_port"
+                                    type="number"
+                                    inputMode="numeric"
+                                    dir="ltr"
+                                    required
+                                    min={1}
+                                    max={65535}
+                                    defaultValue={values.database_port ?? 3306}
+                                />
+                                <InputError message={errors.database_port} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="database_name">
+                                    نام دیتابیس
+                                </Label>
+                                <Input
+                                    id="database_name"
+                                    name="database_name"
+                                    dir="ltr"
+                                    required
+                                    defaultValue={values.database_name ?? ''}
+                                    autoComplete="off"
+                                />
+                                <InputError message={errors.database_name} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="database_username">
+                                    نام کاربری دیتابیس
+                                </Label>
+                                <Input
+                                    id="database_username"
+                                    name="database_username"
+                                    dir="ltr"
+                                    required
+                                    defaultValue={
+                                        values.database_username ?? ''
+                                    }
+                                    autoComplete="username"
+                                />
+                                <InputError
+                                    message={errors.database_username}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <Label htmlFor="database_password">
+                                    رمز دیتابیس
+                                </Label>
+                                {hasPassword ? (
+                                    <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                                        یک رمز ذخیره شده است
+                                    </span>
+                                ) : null}
+                            </div>
+                            <PasswordInput
+                                id="database_password"
+                                name="database_password"
+                                dir="ltr"
+                                required={!hasPassword}
+                                autoComplete="new-password"
+                                placeholder={
+                                    hasPassword
+                                        ? 'برای تغییر رمز، گزینه نگه‌داشتن را بردارید'
+                                        : 'رمز دیتابیس'
+                                }
+                            />
+                            <InputError message={errors.database_password} />
+                        </div>
+
+                        <input
+                            type="hidden"
+                            name="keep_database_password"
+                            value="0"
+                        />
+                        {hasPassword ? (
+                            <label className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="keep_database_password"
+                                    value="1"
+                                    defaultChecked
+                                    className="mt-1 size-4 rounded border-input"
+                                />
+                                <span>
+                                    <span className="font-medium">
+                                        رمز دیتابیس فعلی را نگه دار
+                                    </span>
+                                    <span className="mt-1 block leading-6 text-muted-foreground">
+                                        رمز فعلی نمایش داده نمی‌شود. برای جایگزینی
+                                        آن، این گزینه را بردارید و رمز جدید وارد
+                                        کنید.
+                                    </span>
+                                </span>
+                            </label>
+                        ) : null}
+
+                        <Button
+                            type="submit"
+                            disabled={!canSave || processing}
+                            className="w-full sm:w-fit"
+                        >
+                            {processing ? <Spinner /> : <Save className="size-4" />}
+                            ذخیره امن تنظیمات
+                        </Button>
+                    </>
+                )}
+            </Form>
+        </section>
+    );
+}
+
+function DatabaseCard({ canVerify }: { canVerify: boolean }) {
+    return (
+        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted/30">
+                    <Database className="size-5" />
+                </div>
+                <div>
+                    <h2 className="font-semibold">
+                        مرحله ۳ — بررسی اتصال دیتابیس
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        اتصال، احراز هویت و امکان خواندن/نوشتن محلی بررسی می‌شود.
+                        پیام خطا هیچ رمز یا DSN حساسی را نمایش نمی‌دهد.
+                    </p>
+                </div>
+            </div>
+
+            <Form
+                action="/install/database/verify"
+                method="post"
+                disableWhileProcessing
+                className="mt-5"
+            >
+                {({ processing, errors }) => (
+                    <div className="space-y-4">
+                        <InputError message={errors.database} />
+                        <Button
+                            type="submit"
+                            disabled={!canVerify || processing}
+                        >
+                            {processing ? (
+                                <Spinner />
+                            ) : (
+                                <Database className="size-4" />
+                            )}
+                            تست اتصال دیتابیس
+                        </Button>
+                    </div>
+                )}
+            </Form>
+        </section>
+    );
+}
+
+export default function Installer({
+    installer,
+    preflight,
+}: {
+    installer: InstallerState;
+    preflight: HealthReport;
+}) {
+    const canRefresh = installer.actions.includes('refresh_preflight');
+    const canSaveEnvironment = installer.actions.includes('save_environment');
+    const canVerifyDatabase = installer.actions.includes('verify_database');
+    const activePhase = phases.findIndex(
+        (phase) => phase.key === installer.phase,
+    );
+    const showEnvironment = ['environment', 'database'].includes(
+        installer.phase,
+    );
 
     return (
         <>
@@ -161,91 +520,40 @@ export default function Installer({
                         </ol>
                     </nav>
 
-                    <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <h2 className="font-semibold">
-                                    مرحله ۱ — بررسی میزبان
-                                </h2>
-                                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                                    فقط پیش‌نیازهایی بررسی می‌شوند که قبل از وارد
-                                    کردن اطلاعات دیتابیس قابل تشخیص‌اند. دیتابیس،
-                                    صف و cron در مراحل بعدی بررسی می‌شوند.
-                                </p>
+                    <PreflightCard
+                        preflight={preflight}
+                        canRefresh={canRefresh}
+                    />
+
+                    {showEnvironment ? (
+                        <EnvironmentCard
+                            values={installer.values}
+                            canSave={canSaveEnvironment}
+                        />
+                    ) : null}
+
+                    {installer.phase === 'database' ? (
+                        <DatabaseCard canVerify={canVerifyDatabase} />
+                    ) : null}
+
+                    {installer.phase === 'migrations' ? (
+                        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+                            <div className="flex items-start gap-3">
+                                <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-emerald-600" />
+                                <div>
+                                    <h2 className="font-semibold">
+                                        اتصال دیتابیس تأیید شد
+                                    </h2>
+                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                                        اطلاعات اتصال تأیید و به‌صورت امن ذخیره شده
+                                        است. مرحله بعد فقط زمانی فعال می‌شود که
+                                        اجرای migration به‌صورت resumable آماده
+                                        باشد.
+                                    </p>
+                                </div>
                             </div>
-                            <span
-                                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                                    preflight.ready
-                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                        : 'border-destructive/30 bg-destructive/10 text-destructive'
-                                }`}
-                            >
-                                {preflight.ready
-                                    ? 'میزبان آماده است'
-                                    : 'نیازمند اصلاح'}
-                            </span>
-                        </div>
-
-                        <div className="mt-5 grid gap-3 md:grid-cols-2">
-                            {Object.entries(preflight.checks).map(
-                                ([key, check]) => (
-                                    <article
-                                        key={key}
-                                        className="flex gap-3 rounded-xl border bg-background p-4"
-                                    >
-                                        <StatusIcon status={check.status} />
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="text-sm font-semibold">
-                                                    {labels[key] ?? key}
-                                                </h3>
-                                                {check.required ? (
-                                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                                        ضروری
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                                                {check.message}
-                                            </p>
-                                        </div>
-                                    </article>
-                                ),
-                            )}
-                        </div>
-
-                        <div className="mt-5 flex flex-col gap-3 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="text-sm leading-6 text-muted-foreground">
-                                {preflight.ready
-                                    ? 'پیش‌نیازهای میزبان تأیید شده‌اند. تنظیمات محیط و دیتابیس در مرحله بعد ثبت می‌شوند.'
-                                    : 'موارد قرمز را در کنترل‌پنل هاست اصلاح کنید و دوباره بررسی را اجرا کنید.'}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={refreshPreflight}
-                                disabled={!canRefresh || isRefreshing}
-                                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-semibold shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
-                            >
-                                {isRefreshing ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="size-4" />
-                                )}
-                                بررسی دوباره
-                            </button>
-                        </div>
-                    </section>
-
-                    <section className="rounded-2xl border border-dashed bg-card/50 p-5 sm:p-6">
-                        <h2 className="font-semibold">
-                            مراحل بعدی محافظت شده‌اند
-                        </h2>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            تا زمانی که هر قابلیت backend به‌صورت کامل و قابل
-                            بازیابی آماده نشده باشد، دکمه‌ای برای عبور ساختگی از
-                            مرحله یا ساخت فایل قفل نصب نمایش داده نمی‌شود.
-                        </p>
-                    </section>
+                        </section>
+                    ) : null}
                 </div>
             </main>
         </>
