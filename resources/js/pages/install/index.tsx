@@ -60,6 +60,13 @@ type InstallerState = {
     actions: string[];
 };
 
+type MigrationState = {
+    pending_count: number | null;
+    pending: string[];
+    complete: boolean;
+    available: boolean;
+};
+
 const labels: Record<string, string> = {
     php: 'نسخه PHP',
     extensions: 'افزونه‌های پایه PHP',
@@ -119,9 +126,8 @@ function PreflightCard({
                 <div>
                     <h2 className="font-semibold">مرحله ۱ — بررسی میزبان</h2>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        فقط پیش‌نیازهایی بررسی می‌شوند که قبل از وارد کردن اطلاعات
-                        دیتابیس قابل تشخیص‌اند. دیتابیس، صف و cron در مراحل بعدی
-                        بررسی می‌شوند.
+                        فقط پیش‌نیازهای مستقل از دیتابیس اینجا بررسی می‌شوند. اتصال
+                        دیتابیس، migration، صف و cron در مراحل خودشان تأیید می‌شوند.
                     </p>
                 </div>
                 <span
@@ -205,8 +211,8 @@ function EnvironmentCard({
                         مرحله ۲ — تنظیمات برنامه و دیتابیس
                     </h2>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        اطلاعات فقط روی همین سرور ذخیره می‌شوند. رمز دیتابیس
-                        هیچ‌وقت دوباره به مرورگر برگردانده نمی‌شود.
+                        اطلاعات فقط روی همین سرور ذخیره می‌شوند. رمز دیتابیس هرگز
+                        به journal نصب یا دوباره به مرورگر برگردانده نمی‌شود.
                     </p>
                 </div>
             </div>
@@ -444,16 +450,133 @@ function DatabaseCard({ canVerify }: { canVerify: boolean }) {
     );
 }
 
+function MigrationCard({
+    migrations,
+    canRun,
+}: {
+    migrations: MigrationState;
+    canRun: boolean;
+}) {
+    const hasPending =
+        migrations.pending_count === null || migrations.pending_count > 0;
+
+    return (
+        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-muted/30">
+                    <Database className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="font-semibold">
+                                مرحله ۴ — ساختار دیتابیس
+                            </h2>
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                                migrationها داخل خود Laravel اجرا می‌شوند؛ هیچ shell
+                                یا SSH لازم نیست. هر migration موفق در repository
+                                ثبت می‌شود، بنابراین قطع شدن درخواست باعث اجرای
+                                دوباره‌ی بخش‌های تکمیل‌شده نمی‌شود.
+                            </p>
+                        </div>
+                        <span
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                                migrations.complete
+                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                    : 'bg-muted/30 text-muted-foreground'
+                            }`}
+                        >
+                            {migrations.pending_count === null
+                                ? 'وضعیت نامشخص'
+                                : migrations.complete
+                                  ? 'ساختار آماده است'
+                                  : `${migrations.pending_count.toLocaleString('fa-IR')} مورد باقی مانده`}
+                        </span>
+                    </div>
+
+                    {!migrations.available ? (
+                        <div className="mt-4 flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-800 dark:text-amber-300">
+                            <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+                            وضعیت migrationها خوانده نشد. اجرای دوباره امن است و
+                            فقط موارد ثبت‌نشده را اجرا می‌کند.
+                        </div>
+                    ) : null}
+
+                    {migrations.pending.length > 0 ? (
+                        <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                                موارد باقی‌مانده
+                            </p>
+                            <ul className="mt-3 grid gap-2" dir="ltr">
+                                {migrations.pending.map((migration) => (
+                                    <li
+                                        key={migration}
+                                        className="overflow-hidden text-ellipsis rounded-md border bg-background px-3 py-2 font-mono text-xs"
+                                        title={migration}
+                                    >
+                                        {migration}
+                                    </li>
+                                ))}
+                            </ul>
+                            {migrations.pending_count !== null &&
+                            migrations.pending_count >
+                                migrations.pending.length ? (
+                                <p className="mt-3 text-xs leading-5 text-muted-foreground" dir="rtl">
+                                    برای سبک ماندن صفحه فقط ۲۰ مورد اول نمایش داده
+                                    می‌شود؛ تعداد کل بالا ثبت شده است.
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    <Form
+                        action="/install/migrations/run"
+                        method="post"
+                        disableWhileProcessing
+                        className="mt-5"
+                    >
+                        {({ processing, errors }) => (
+                            <div className="space-y-4">
+                                <InputError message={errors.migrations} />
+                                <Button
+                                    type="submit"
+                                    disabled={!canRun || processing}
+                                >
+                                    {processing ? (
+                                        <Spinner />
+                                    ) : migrations.complete ? (
+                                        <CheckCircle2 className="size-4" />
+                                    ) : (
+                                        <Database className="size-4" />
+                                    )}
+                                    {migrations.complete
+                                        ? 'تأیید تکمیل و ادامه'
+                                        : hasPending
+                                          ? 'اجرای migrations / تلاش مجدد'
+                                          : 'ادامه'}
+                                </Button>
+                            </div>
+                        )}
+                    </Form>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 export default function Installer({
     installer,
     preflight,
+    migrations,
 }: {
     installer: InstallerState;
     preflight: HealthReport;
+    migrations: MigrationState | null;
 }) {
     const canRefresh = installer.actions.includes('refresh_preflight');
     const canSaveEnvironment = installer.actions.includes('save_environment');
     const canVerifyDatabase = installer.actions.includes('verify_database');
+    const canRunMigrations = installer.actions.includes('run_migrations');
     const activePhase = phases.findIndex(
         (phase) => phase.key === installer.phase,
     );
@@ -478,9 +601,9 @@ export default function Installer({
                                         راه‌اندازی امن SEO OS
                                     </h1>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                                        نصب از داخل مرورگر انجام می‌شود و روی
-                                        هاست مقصد به Composer، Node.js، npm یا
-                                        دسترسی SSH نیاز ندارد.
+                                        نصب از داخل مرورگر انجام می‌شود و روی هاست
+                                        مقصد به Composer، Node.js، npm یا دسترسی SSH
+                                        نیاز ندارد.
                                     </p>
                                 </div>
                             </div>
@@ -540,22 +663,25 @@ export default function Installer({
                         <DatabaseCard canVerify={canVerifyDatabase} />
                     ) : null}
 
-                    {installer.phase === 'migrations' ? (
-                        <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
-                            <div className="flex items-start gap-3">
-                                <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-emerald-600" />
-                                <div>
-                                    <h2 className="font-semibold">
-                                        اتصال دیتابیس تأیید شد
-                                    </h2>
-                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        اطلاعات اتصال تأیید و به‌صورت امن ذخیره
-                                        شده است. مرحله بعد فقط زمانی فعال می‌شود
-                                        که اجرای migration به‌صورت resumable
-                                        آماده باشد.
-                                    </p>
-                                </div>
-                            </div>
+                    {installer.phase === 'migrations' && migrations ? (
+                        <MigrationCard
+                            migrations={migrations}
+                            canRun={canRunMigrations}
+                        />
+                    ) : null}
+
+                    {['owner', 'operations', 'finalize'].includes(
+                        installer.phase,
+                    ) ? (
+                        <section className="rounded-2xl border border-dashed bg-card/50 p-5 sm:p-6">
+                            <h2 className="font-semibold">
+                                مرحله فعلی با موفقیت باز شده است
+                            </h2>
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                                این مرحله فقط بعد از تکمیل قرارداد backend خودش فعال
+                                می‌شود؛ تا آن زمان هیچ دکمه‌ی عبور ساختگی نمایش داده
+                                نمی‌شود.
+                            </p>
                         </section>
                     ) : null}
                 </div>
