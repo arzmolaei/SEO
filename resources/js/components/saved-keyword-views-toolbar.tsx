@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
     type SavedKeywordView,
     type SavedKeywordViewState,
@@ -24,11 +24,14 @@ export function SavedKeywordViewsToolbar({
     disabled = false,
     onApplyColumns,
 }: Props) {
+    const applyColumnsRef = useRef(onApplyColumns);
+    applyColumnsRef.current = onApplyColumns;
+
     useEffect(() => {
         if (activeView !== null) {
-            onApplyColumns(activeView.state.columns);
+            applyColumnsRef.current(activeView.state.columns);
         }
-    }, [activeView, onApplyColumns]);
+    }, [activeView]);
 
     return (
         <SavedKeywordViews
