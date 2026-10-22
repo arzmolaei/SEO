@@ -56,11 +56,8 @@ jobs:
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
-      - name: Diagnose frontend formatting
-        shell: bash
-        run: |
-          npm run check:fix
-          git diff -- resources/js/pages/install/index.tsx
+      - name: Check frontend
+        run: npm run check
 
       - name: Check TypeScript
         run: npm run types:check
@@ -68,11 +65,8 @@ jobs:
       - name: Build production assets
         run: npm run build
 
-      - name: Diagnose PHP style
-        shell: bash
-        run: |
-          composer lint
-          git diff -- app/Support/SystemHealthChecker.php
+      - name: Check PHP style
+        run: composer lint:check
 
       - name: Static analysis
         run: composer types:check
@@ -118,23 +112,4 @@ jobs:
           php artisan migrate --force --ansi
 
       - name: Run backend compatibility suite
-        id: compatibility-tests
-        shell: bash
-        run: |
-          set +e
-          php artisan test --stop-on-failure --log-junit "test-results-${{ matrix.php-version }}.xml"
-          status=$?
-          echo "TEST_STATUS=$status" >> "$GITHUB_ENV"
-          exit 0
-
-      - name: Upload compatibility test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: php-${{ matrix.php-version }}-test-results
-          path: test-results-${{ matrix.php-version }}.xml
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Fail when compatibility suite failed
-        shell: bash
-        run: test "$TEST_STATUS" -eq 0
+        run: php artisan test
