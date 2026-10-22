@@ -41,7 +41,7 @@ class BulkKeywordStatusController extends Controller
         }
 
         $validated = $validator->validated();
-        $keywordIds = array_map('intval', $validated['keyword_ids']);
+        $keywordIds = array_values(array_map('intval', $validated['keyword_ids']));
         $status = KeywordStatus::from((string) $validated['status']);
 
         try {
