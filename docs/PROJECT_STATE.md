@@ -51,11 +51,11 @@ See `docs/release-readiness/foundation-keyword-core.md` for the detailed evidenc
 ## Active implementation — resume here
 
 Continue existing `feature/keyword-intelligence`; do not create or reset it.
-Tasks 1–5 are verified (latest boundary `9fb5890`, CI `39799527623`).
-Task 6 is in progress: cluster operations and safe Undo.
+Tasks 1–6 are verified (latest boundary `9adedd5`, CI `39801676900`).
+Task 7 is in progress: existing/planned pages.
 Source of current execution evidence: `docs/superpowers/progress/2026-10-22-keyword-intelligence.md`.
 The branch includes the newer `main` handoff instructions through merge `114277a`.
-After Task 6 final-head CI passes, execute Task 7, then remaining tasks in order.
+After Task 7 final-head CI passes, execute Task 8, then remaining tasks in order.
 Do not stop for routine confirmation. Preserve unfinished state explicitly if
 an external interruption/tool limit occurs. Full install/backup/restore/update
 acceptance remains future delivery work, not completed by the current slice.

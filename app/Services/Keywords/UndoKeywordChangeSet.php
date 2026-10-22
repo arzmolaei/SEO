@@ -49,11 +49,13 @@ class UndoKeywordChangeSet
                 throw new ConflictHttpException('This change set has no reversible changes.');
             }
 
-            /** @var list<int> $keywordIds */
-            $keywordIds = array_map(
-                static fn (array $change): int => $change['keyword_id'],
-                $changes,
-            );
+            $keywordIds = [];
+            foreach ($changes as $change) {
+                if (! isset($change['keyword_id'])) {
+                    throw new ConflictHttpException('Invalid keyword change payload.');
+                }
+                $keywordIds[] = $change['keyword_id'];
+            }
 
             $keywords = Keyword::query()
                 ->where('project_id', $project->id)

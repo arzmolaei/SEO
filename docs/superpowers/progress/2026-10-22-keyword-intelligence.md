@@ -48,7 +48,7 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Auto-apply is opt-in and only High; uncertainty is idempotent Review Queue, with same-evidence resolved decisions retained.
   - Final-head CI `39799527623` on `9fb589035cec7c3f430e5959b1113dedfb012504`: success.
   - Task 6 now active; separate RED/implementation boundary.
-- Task 6 — Cluster operations/Undo: **implemented; final-head CI pending**
+- Task 6 — Cluster operations/Undo: **verified**
   - Initial 8 contract tests observed RED in `e571fbb`; 3 additional RED regressions cover lock/review independence, pre-lookup authorization and empty-source reactivation.
   - Full local suite: 188 tests / 1103 assertions; PHPStan and Pint passed. No frontend code changed in this task; permanent CI still runs its frontend/build/audit/release gates.
   - 11 operation/Undo tests passed on actual MariaDB 10.11.
@@ -56,8 +56,17 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Merge archives sources; split uses existing creation; primary movement requires explicit remaining replacement. All edits invalidate automation reuse and audit actor/before/after.
   - Undo uses exact snapshots/revisions; intervening edits or repeated undo conflict. Restoration uses model operations atomically under project-first serialization.
   - Future mapping services MUST increment cluster revision when targets change, preventing Undo from erasing later mapping decisions.
-  - Next action: inspect final Task 6 implementation CI; after success record the exact SHA/run and enter Task 7 automatically.
-- Tasks 7–11: pending.
+  - Final-head CI `39801676900` on `9adedd5238368b8d23b13552066bbd8935974c5a`: success.
+  - Task 7 now active, with its own RED/verification boundary.
+- Task 7 — Existing/planned page foundation: **implemented; final-head CI pending**
+  - Initial 7 behavior tests observed RED before implementation; additional default-type and IDN identity regressions observed RED then GREEN.
+  - Full suite: 196 tests / 1134 assertions, PHPStan and Pint green. Seven DB-sensitive page tests passed on MariaDB 10.11 (29 assertions).
+  - Independent review found transitional IDNA domain merging; fixed with non-transitional conversion and Unicode/A-label/distinct-host tests.
+  - URLs are never fetched; original input is retained, canonical identity uses a project-scoped SHA-256 index with collision comparison. Path case/query order/HTTP-vs-HTTPS are preserved.
+  - Promotion preserves page identity and rejects URL collisions atomically; registration never overwrites an existing title.
+  - Page changes have explicit page_id audit entries; keyword Undo validates keyword-only payloads and its existing suite remains green.
+  - Next action: final-head CI, then record verified SHA/run and enter Task 8 automatically.
+- Tasks 8–11: pending.
 
 ## Execution rules
 

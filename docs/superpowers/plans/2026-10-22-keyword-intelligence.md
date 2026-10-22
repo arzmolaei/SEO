@@ -130,10 +130,10 @@
 
 **Produces:** safe manual cluster editing with audit/change history and undo support where state is unchanged since the operation.
 
-- [ ] RED tests for merge/split/move/lock authorization, membership invariants, audit attribution and safe undo/conflict refusal.
-- [ ] Implement transactional services reusing ChangeSet/ActivityEvent patterns.
-- [ ] Verify automatic clustering cannot modify locked clusters.
-- [ ] Full CI GREEN and commit `feat: add cluster editing operations`.
+- [x] RED tests for merge/split/move/lock authorization, membership invariants, audit attribution and safe undo/conflict refusal.
+- [x] Implement transactional services reusing ChangeSet/ActivityEvent patterns.
+- [x] Verify automatic clustering cannot modify locked clusters.
+- [x] Full CI GREEN and commit `feat: add cluster editing operations`.
 
 ### Task 7 — Existing/Planned Page foundation
 
