@@ -2,80 +2,134 @@
 
 Date: 2026-10-22
 
-## Scope
+## Scope and status
 
-Intent domain, deterministic Persian classifier, Intent Review Queue and cluster
-domain/membership are implemented and verified. The complete Intent + Clustering + Mapping subsystem
-is **not complete**; Tasks 5–11 remain pending. Foundation was already merged in
-PR #1. Development continues on `feature/keyword-intelligence`.
+The complete bounded Keyword Intelligence slice is implemented and verified:
 
-Verified product head: `e720c0a6bf21ea3e9acbf95b4ace02651ae92e43`.
-Permanent CI: https://github.com/arzmolaei/SEO/actions/runs/39790364710 — success.
-This documentation update follows that verified product head.
+`Canonical Keyword -> Intent/Review -> Cluster -> Manual Cluster Edits -> Existing/Planned Page -> Mapping -> Conflict Review -> Priority -> Ready`
+
+Tasks 1–11 in `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
+are complete. Foundation + Keyword Core was already merged through PR #1; this
+slice is carried by PR #2. This report is readiness evidence for the Keyword
+Intelligence increment only, **not** a claim that the whole SEO OS product or the
+first usable self-host release gate is complete.
+
+Post-review implementation boundary: `216a4d2448defdd2f481dcf0beb55dbeeb112f10`.
+Permanent CI: `39828064083` — success on that exact implementation head.
+A documentation-only final-head CI is still required before PR #2 integration.
 
 ## Delivered workflow
 
-Canonical keywords produce explainable local suggestions through a database queue
-job. The Review Queue is available in project navigation. It paginates 25 pending
-items, shows evidence and confidence, and supports accept/change/skip inline.
-Enter accepts the focused row, S skips, arrows navigate, Tab reaches controls.
+### Intent and Review Queue
 
-High confidence is reviewed by default. Administrators may explicitly set
-`keyword-intelligence.intent.auto_apply_high_confidence` to true; only known,
-high-confidence suggestions without an existing review are then auto-applied.
-Human assignments remain authoritative. Medium/low confidence, mixed and unknown
-suggestions require review. Skips remain closed until input/result evidence
-changes. Manual assignments supersede pending suggestions on refresh.
+Canonical project keywords receive deterministic, explainable local intent
+suggestions. Ambiguous or lower-confidence results remain reviewable instead of
+being silently forced. Human assignments are authoritative, review fingerprints
+are stale-safe, and resolved items reopen only when relevant evidence changes.
 
-Refresh processes at most 100 keywords per job, chaining continuation jobs by ID.
-Each retry upserts the same review identity. Every service checks project access;
-workers recheck permissions, including access revoked after dispatch. Viewers can
-read but cannot refresh or resolve. Decisions reject stale evidence, changed
-keyword input and intervening manual assignments. Assignment, resolution and
-attributed audit changes commit together. Review decisions do not change keyword
-lifecycle status or invoke the existing status-only Undo handler.
+The project Review Queue supports intent, cluster and mapping-conflict items. It is
+Persian-first/RTL-safe, keyboard-friendly and exposes evidence instead of hiding
+automatic decisions. Mapping warnings are explicitly labelled and support only the
+bounded accept/skip acknowledgement semantics; they never mutate a target by
+acceptance alone.
+
+### Clustering and manual editing
+
+Deterministic lexical candidate generation uses bounded grouping and explicit
+evidence; it does not depend on SERP, AI or an external service. Locked clusters,
+manual memberships and explicit human decisions survive recalculation.
+
+Manual merge/split/move/lock operations are project-authorized transactional
+services with stable locking, revisioned history and safe Undo where no
+intervening material state invalidates it. The connected UI calls those services
+through project-scoped HTTP boundaries. Primary membership cannot be silently
+removed; moving/splitting a primary requires an explicit replacement.
+
+### Pages, mapping and conflicts
+
+Existing and planned pages are first-class project entities before crawler work.
+Planned pages can later promote to existing identity without losing mappings.
+Each active cluster has at most one current target while previous mapping decisions
+remain auditable.
+
+Mapping-conflict detection is deterministic and conservative. It covers competing
+pages only with same known intent plus meaningful shared topic, overloaded pages
+with distinct topic anchors, high-demand unmapped clusters only when real current
+volume evidence meets the configured threshold, and structurally invalid targets.
+Warnings are grouped/bounded and never perform an automatic remap.
+
+### Priority and Ready lifecycle
+
+Priority is deterministic and explainable. It uses only available local evidence:
+latest volume, latest difficulty, optional manual business relevance, mapping
+completeness and review completeness. Missing metrics remain missing and contribute
+no invented value. Component evidence and data completeness are exposed.
+
+Ready is a guarded current-state decision, not a sticky badge. It requires an
+active reviewed cluster, an explicit mapping (including explicit Ignore) and no
+pending primary-keyword review. Material remaps, cluster mutations or new/reopened
+required reviews invalidate stale Ready back to Planning.
+
+### Connected workspace
+
+The existing server-paginated Keyword Grid remains the performance-oriented source
+surface. The Keywords page now connects Grid, Intent, Clusters and Mapping entry
+points without replacing the Grid with an unbounded browser dataset. The server
+supplies explicit `intelligence.project_id`; the client does not infer project
+identity from URL shape.
+
+The workspace exposes review state, locks, page targeting, conflict refresh,
+priority/data completeness, Ready transition and manual cluster editing. Empty,
+error, busy and no-result states are explicit where applicable. Proprietary font
+binaries and foreign-service dependencies remain outside the runtime package.
 
 ## Verification evidence
 
-- 160 PHP tests, 1007 assertions passed locally on PHP 8.4.
-- All 12 new cluster tests passed on actual MariaDB 10.11.
-- CI PHP 8.4 and 8.5 compatibility suites passed.
-- Frontend formatter/linter, TypeScript, production build, Pint and PHPStan passed.
-- Runtime npm audit: zero vulnerabilities; Composer: no security advisories.
-- Runtime-only Composer installation and clean release-tree Laravel boot passed
-  locally and in CI. No Node.js runtime is required by the release.
-- Independent increment review found no Critical/Important issues.
-- Real Chromium Persian workflow verified queue dispatch, actual worker execution,
-  keyboard accept/skip, manual intent change and resolved-item refresh idempotency.
-- Desktop RTL and 390px mobile were exercised without JavaScript page errors or
-  horizontal overflow. Browser testing found a pre-existing fixed-left sidebar
-  blocking RTL actions; sidebar side now follows the shared direction contract.
+Post-review full permanent CI `39828064083` passed on
+`216a4d2448defdd2f481dcf0beb55dbeeb112f10`:
+
+- **237 PHP tests / 1317 assertions** passed.
+- PHP 8.4 and PHP 8.5 compatibility suites passed.
+- Frontend formatter/linter passed.
+- TypeScript passed.
+- Production frontend build passed.
+- Laravel Pint passed across 224 files.
+- PHPStan/Larastan passed across 169 analyzed files with no errors.
+- Runtime npm audit reported zero vulnerabilities.
+- Composer runtime audit reported no security advisories.
+- Runtime-only Composer installation passed.
+- Clean production release tree built and booted Laravel 13.38.0 successfully.
+- Connected acceptance verifies the reviewed -> mapped -> Ready workflow and
+  rejection of cross-project identifiers.
+- Manual cluster HTTP operations, mapping conflicts, stale review refusal, Ready
+  invalidation, project isolation and Persian RTL/LTR direction/font contracts are
+  covered by the passing suite.
+
+Whole-branch review rechecked the intended high-risk boundaries: authorization,
+project isolation, idempotency, lock/manual override preservation, stale decisions,
+revision-safe Undo and silent-remap risk. No open PR review threads remained at the
+post-review boundary.
 
 ## Runtime and operational notes
 
-The current Laravel 13 dependency baseline actually requires **PHP 8.4.1+**
-(`composer.json`), despite earlier documents describing a PHP 8.3 floor. PHP 8.3
-compatibility is not verified. Database queue and local storage remain defaults.
+The actual dependency baseline requires **PHP 8.4.1+** (`composer.json`). Earlier
+PHP 8.3 references are stale; PHP 8.3 compatibility is not claimed. Database queue
+and local storage remain defaults. Core Keyword Intelligence does not require an
+international API, AI provider, SERP provider or font CDN.
 
-Queued suggestion generation needs the existing queue worker (`php artisan
-queue:work`) or a cron-driven worker. Jobs have a 60-second timeout, below the
-existing database queue retry interval. The UI reports that preparation was
-requested and offers explicit result reload; it does not claim a dispatched job
-has completed. Worker failures remain visible through Laravel failed-job/log
-facilities. No international API, AI service or external font CDN is required.
+Queue-backed preparation still requires the normal self-host worker/cron setup.
+Worker/queue operational acceptance belongs to the first usable self-host release
+gate and is not implied complete by this increment.
 
-## Deferred minor and next work
+## Deferred product work
 
-Resolving/reloading page 2+ currently returns to page 1. This affects review
-position, not decision integrity; preserve pagination in a later UX pass.
+Keyword Intelligence is ready to integrate, but the product is not yet a usable
+self-host release. Follow `docs/DELIVERY_PLAN.md` next for bounded operational
+release work: fresh browser installation/first owner/lock/health, Persian export
+and access isolation, backup/restore with versioned checksum manifest, safe update
+and interruption recovery/rollback, and queue/scheduler visibility/instructions.
 
-The cluster foundation now enforces project-scoped membership and the primary
-keyword invariant, persists confidence/review/lock state, and records attributable
-transactional creation history. It has no HTTP mutation endpoint yet. Future
-mutation services must use row locks and preserve primary membership; raw/bulk
-ORM writes bypass model guards and are not supported mutation paths.
-
-Next task: deterministic clustering candidate generation and safe application,
-then manual merge/split/move/lock operations. Existing/planned pages,
-mapping conflicts and prioritization follow. Do not start crawler work or merge
-this whole subsystem as complete before its remaining acceptance/review gates.
+Only after those release prerequisites are deliberately planned should subsequent
+full-product phases proceed through Site Intelligence/crawler, technical
+issues/history, content/tasks/internal linking and performance/opportunity/
+recommendation systems.
