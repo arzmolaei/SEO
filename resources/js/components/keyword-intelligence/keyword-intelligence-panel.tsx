@@ -11,6 +11,7 @@ import {
     Target,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { ClusterManualEditor } from '@/components/keyword-intelligence/cluster-manual-editor';
 import { useLocale } from '@/hooks/use-locale';
 import type {
     IntelligenceCluster,
@@ -508,6 +509,11 @@ function ClusterCard({
                     </div>
                 </div>
             </div>
+            <ClusterManualEditor
+                cluster={cluster}
+                projectId={projectId}
+                canManage={canManage}
+            />
             {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
         </article>
     );

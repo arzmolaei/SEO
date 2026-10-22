@@ -8,6 +8,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { KeywordIntelligencePanel } from '@/components/keyword-intelligence/keyword-intelligence-panel';
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import {
     type SavedKeywordView,
@@ -23,6 +24,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLocale } from '@/hooks/use-locale';
+import type { KeywordIntelligenceWorkspace } from '@/types/keyword-intelligence';
 
 type KeywordStatus = 'review' | 'ready';
 
@@ -99,14 +101,20 @@ export default function Keywords({
     filters,
     savedViews,
     activeView,
+    intelligence,
 }: {
     keywords: KeywordPaginator;
     filters: KeywordFilters;
     savedViews: SavedKeywordView[];
     activeView: SavedKeywordView | null;
+    intelligence: KeywordIntelligenceWorkspace;
 }) {
     const { locale, t } = useLocale();
     const path = usePage().url.split('?')[0];
+    const projectId = Number(path.split('/')[2]);
+    const [workspaceTab, setWorkspaceTab] = useState<
+        'grid' | 'intent' | 'clusters' | 'mapping'
+    >('grid');
     const [search, setSearch] = useState(filters.q ?? '');
     const [source, setSource] = useState(filters.source ?? '');
     const [status, setStatus] = useState<KeywordStatus | ''>(
@@ -374,6 +382,34 @@ export default function Keywords({
                         </div>
                     </div>
 
+                    <nav
+                        className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4"
+                        aria-label={locale === 'fa' ? 'بخش‌های هوشمندی کلمات' : 'Keyword intelligence sections'}
+                    >
+                        {([
+                            ['grid', locale === 'fa' ? 'جدول' : 'Grid'],
+                            ['intent', locale === 'fa' ? 'نیت' : 'Intent'],
+                            ['clusters', locale === 'fa' ? 'خوشه‌ها' : 'Clusters'],
+                            ['mapping', locale === 'fa' ? 'نگاشت' : 'Mapping'],
+                        ] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                                    workspaceTab === value
+                                        ? 'bg-background shadow-xs'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                                onClick={() => setWorkspaceTab(value)}
+                                aria-pressed={workspaceTab === value}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {workspaceTab === 'grid' ? (
+                        <>
                     <SavedKeywordViewsToolbar
                         path={path}
                         savedViews={savedViews}
@@ -751,6 +787,48 @@ export default function Keywords({
                             </button>
                         </div>
                     </div>
+                        </>
+                    ) : workspaceTab === 'intent' ? (
+                        <section className="rounded-xl border bg-card p-6">
+                            <h2 className="text-lg font-semibold">
+                                {locale === 'fa' ? 'بررسی نیت جستجو' : 'Search intent review'}
+                            </h2>
+                            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                                {locale === 'fa'
+                                    ? 'پیشنهادهای نیت مبهم یا نیازمند تصمیم انسانی را در صف بررسی حل کنید؛ تصمیم‌های دستی در بازآموزی محلی بازنویسی نمی‌شوند.'
+                                    : 'Resolve ambiguous or human-required intent suggestions in the Review Queue; manual decisions remain authoritative during local recalculation.'}
+                            </p>
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <a
+                                    href={`/projects/${projectId}/reviews`}
+                                    className="inline-flex min-h-9 items-center rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                                >
+                                    {locale === 'fa' ? 'باز کردن صف بررسی' : 'Open Review Queue'}
+                                </a>
+                                <span className="text-sm text-muted-foreground">
+                                    {locale === 'fa' ? 'موارد در انتظار:' : 'Pending items:'}{' '}
+                                    {numberFormatter.format(intelligence.summary.pending_reviews)}
+                                </span>
+                            </div>
+                        </section>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                                {workspaceTab === 'clusters'
+                                    ? locale === 'fa'
+                                        ? 'تمرکز این نما روی بررسی، قفل و ویرایش دستی خوشه‌هاست؛ نگاشت صفحه نیز برای حفظ زمینه تصمیم در همان کارت دیده می‌شود.'
+                                        : 'This view focuses on cluster review, locks, and manual edits; page mapping remains visible in the same card for decision context.'
+                                    : locale === 'fa'
+                                      ? 'تمرکز این نما روی صفحه هدف، تعارض نگاشت، اولویت و آماده‌سازی نهایی است؛ وضعیت خوشه برای جلوگیری از تصمیم بدون زمینه نمایش داده می‌شود.'
+                                      : 'This view focuses on target pages, mapping conflicts, priority, and readiness; cluster state stays visible to preserve decision context.'}
+                            </div>
+                            <KeywordIntelligencePanel
+                                key={workspaceTab}
+                                data={intelligence}
+                                projectId={projectId}
+                            />
+                        </div>
+                    )}
                 </div>
             </ProjectWorkspaceShell>
         </>
