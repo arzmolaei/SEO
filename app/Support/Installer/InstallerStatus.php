@@ -9,8 +9,7 @@ class InstallerStatus
     public function __construct(
         private readonly InstallationState $installationState,
         private readonly InstallerJournal $journal,
-    ) {
-    }
+    ) {}
 
     /** @return array{phase: InstallerPhase, installed: bool, journal: array<string, mixed>} */
     public function snapshot(): array
