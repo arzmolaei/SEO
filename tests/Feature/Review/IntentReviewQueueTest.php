@@ -185,6 +185,40 @@ class IntentReviewQueueTest extends TestCase
         app()->call([$job, 'handle']);
     }
 
+    public function test_resolution_refuses_changed_keyword_input_before_refresh(): void
+    {
+        [$owner, $project, $keyword] = $this->keyword('لپ تاپ');
+        $item = app(UpsertIntentReviewItems::class)->handle($owner, $project, $keyword);
+        $keyword->update(['display_text' => 'آموزش خرید']);
+        $this->expectException(ConflictHttpException::class);
+        app(ResolveIntentReview::class)->handle($owner, $project, $item, $item->fingerprint, 'accept');
+    }
+
+    public function test_resolution_cannot_overwrite_a_newer_manual_assignment(): void
+    {
+        [$owner, $project, $keyword] = $this->keyword('لپ تاپ');
+        $item = app(UpsertIntentReviewItems::class)->handle($owner, $project, $keyword);
+        app(AssignKeywordIntent::class)->handle($owner, $project, $keyword, KeywordIntent::Local, IntentConfidence::High, 'user');
+        $this->expectException(ConflictHttpException::class);
+        app(ResolveIntentReview::class)->handle($owner, $project, $item, $item->fingerprint, 'accept');
+    }
+
+    public function test_refresh_continues_in_bounded_batches_instead_of_restarting_whole_project(): void
+    {
+        [$owner, $project] = $this->keyword('اول');
+        for ($i = 0; $i < 100; $i++) {
+            $this->addKeyword($project, 'کلمه '.$i);
+        }
+        Queue::fake();
+        app()->call([new RefreshProjectIntentReviews($owner->id, $project->id), 'handle']);
+        $this->assertDatabaseCount('review_items', 100);
+        Queue::assertPushed(RefreshProjectIntentReviews::class, function ($job): bool {
+            app()->call([$job, 'handle']);
+            return true;
+        });
+        $this->assertDatabaseCount('review_items', 101);
+    }
+
     /** @return array{User, Project, Keyword} */
     private function keyword(string $text): array
     {
