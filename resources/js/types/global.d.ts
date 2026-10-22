@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { ProjectContext } from '@/types/project';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -13,6 +14,7 @@ declare module '@inertiajs/core' {
             locale: 'fa' | 'en';
             direction: 'rtl' | 'ltr';
             auth: Auth;
+            projectContext: ProjectContext | null;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
