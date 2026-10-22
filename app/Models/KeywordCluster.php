@@ -9,8 +9,11 @@ use DomainException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
+ * @property int $revision
+ * @property Carbon|null $archived_at
  * @property int $id
  * @property int $project_id
  * @property int $primary_keyword_id
@@ -25,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class KeywordCluster extends Model
 {
-    protected $fillable = ['project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'is_locked', 'origin', 'automation_key'];
+    protected $fillable = ['project_id', 'primary_keyword_id', 'created_by_id', 'name', 'intent', 'confidence', 'review_state', 'is_locked', 'origin', 'automation_key', 'revision', 'archived_at'];
 
     protected static function booted(): void
     {
@@ -33,7 +36,7 @@ class KeywordCluster extends Model
             if ($cluster->isDirty('project_id')) {
                 throw new DomainException('A cluster cannot move across projects.');
             }
-            if ($cluster->isDirty('primary_keyword_id') && ! $cluster->members()->where('keyword_id', $cluster->primary_keyword_id)->exists()) {
+            if ($cluster->archived_at === null && $cluster->isDirty(['primary_keyword_id', 'archived_at']) && ! $cluster->members()->where('keyword_id', $cluster->primary_keyword_id)->exists()) {
                 throw new DomainException('The primary keyword must already belong to this cluster.');
             }
         });
@@ -60,6 +63,6 @@ class KeywordCluster extends Model
     protected function casts(): array
     {
         return ['intent' => KeywordIntent::class, 'confidence' => IntentConfidence::class,
-            'review_state' => ClusterReviewState::class, 'is_locked' => 'boolean'];
+            'review_state' => ClusterReviewState::class, 'is_locked' => 'boolean', 'revision' => 'integer', 'archived_at' => 'datetime'];
     }
 }

@@ -48,7 +48,16 @@ Plan: `docs/superpowers/plans/2026-10-22-keyword-intelligence.md`
   - Auto-apply is opt-in and only High; uncertainty is idempotent Review Queue, with same-evidence resolved decisions retained.
   - Final-head CI `39799527623` on `9fb589035cec7c3f430e5959b1113dedfb012504`: success.
   - Task 6 now active; separate RED/implementation boundary.
-- Tasks 6–11: pending. Task 6 must have its own RED/implementation/CI boundary.
+- Task 6 — Cluster operations/Undo: **implemented; final-head CI pending**
+  - Initial 8 contract tests observed RED in `e571fbb`; 3 additional RED regressions cover lock/review independence, pre-lookup authorization and empty-source reactivation.
+  - Full local suite: 188 tests / 1103 assertions; PHPStan and Pint passed. No frontend code changed in this task; permanent CI still runs its frontend/build/audit/release gates.
+  - 11 operation/Undo tests passed on actual MariaDB 10.11.
+  - Independent review found no service-path blockers; defensive unarchive-primary invariant was strengthened with a RED/GREEN test.
+  - Merge archives sources; split uses existing creation; primary movement requires explicit remaining replacement. All edits invalidate automation reuse and audit actor/before/after.
+  - Undo uses exact snapshots/revisions; intervening edits or repeated undo conflict. Restoration uses model operations atomically under project-first serialization.
+  - Future mapping services MUST increment cluster revision when targets change, preventing Undo from erasing later mapping decisions.
+  - Next action: inspect final Task 6 implementation CI; after success record the exact SHA/run and enter Task 7 automatically.
+- Tasks 7–11: pending.
 
 ## Execution rules
 

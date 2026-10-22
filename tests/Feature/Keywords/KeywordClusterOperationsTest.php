@@ -111,6 +111,31 @@ class KeywordClusterOperationsTest extends TestCase
         app(SetKeywordClusterLock::class)->handle($outsider, $project, $a, true);
     }
 
+    public function test_lock_does_not_invalidate_completed_review(): void
+    {
+        [$actor, $project, $a] = $this->fixture();
+        $a->update(['review_state' => 'reviewed']);
+        app(SetKeywordClusterLock::class)->handle($actor, $project, $a, true);
+        $this->assertSame('reviewed', $a->fresh()->review_state->value);
+    }
+
+    public function test_unauthorized_move_is_rejected_before_membership_lookup(): void
+    {
+        [, $project, , $b] = $this->fixture();
+        $outsider = User::factory()->create();
+        $unclustered = Keyword::query()->create(['project_id' => $project->id, 'display_text' => 'دیگر', 'normalized_text' => 'دیگر', 'status' => 'review']);
+        $this->expectException(AuthorizationException::class);
+        app(MoveKeywordBetweenClusters::class)->handle($outsider, $project, $unclustered, $b);
+    }
+
+    public function test_empty_archived_merge_source_cannot_be_reactivated(): void
+    {
+        [$actor, $project, $a, $b] = $this->fixture();
+        app(MergeKeywordClusters::class)->handle($actor, $project, $a, [$b->id]);
+        $this->expectException(\DomainException::class);
+        $b->fresh()->update(['archived_at' => null]);
+    }
+
     private function fixture(): array
     {
         $actor = User::factory()->create();

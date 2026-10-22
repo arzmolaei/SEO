@@ -28,7 +28,7 @@ class KeywordClusterMember extends Model
 
     private function assertNotPrimary(): void
     {
-        if (KeywordCluster::query()->whereKey($this->getOriginal('keyword_cluster_id'))
+        if (KeywordCluster::query()->whereNull('archived_at')->whereKey($this->getOriginal('keyword_cluster_id'))
             ->where('primary_keyword_id', $this->getOriginal('keyword_id'))->exists()) {
             throw new DomainException('Replace the primary keyword before removing or moving its membership.');
         }
