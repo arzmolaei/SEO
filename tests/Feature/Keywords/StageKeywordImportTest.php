@@ -157,4 +157,45 @@ class StageKeywordImportTest extends TestCase
             $row->raw_payload,
         );
     }
+
+    public function test_blank_and_missing_keyword_values_remain_staged_as_invalid_rows(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
+        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
+
+        $response = $this->actingAs($owner)->postJson(
+            "/projects/{$project->id}/keyword-imports/stage",
+            [
+                'source' => 'generic_csv',
+                'original_filename' => 'empty-keywords.csv',
+                'mapping' => [
+                    'keyword' => 'Keyword',
+                ],
+                'rows' => [
+                    ['Keyword' => '   '],
+                    [],
+                ],
+            ],
+        );
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'staged')
+            ->assertJsonPath('data.total_rows', 2)
+            ->assertJsonPath('data.valid_rows', 0)
+            ->assertJsonPath('data.invalid_rows', 2)
+            ->assertJsonPath('data.error_count', 2);
+
+        $rows = StagedKeywordRow::query()
+            ->where('import_batch_id', $response->json('data.id'))
+            ->orderBy('row_number')
+            ->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame(['keyword_required'], $rows[0]->errors);
+        $this->assertSame(['Keyword' => '   '], $rows[0]->raw_payload);
+        $this->assertSame(['keyword_required'], $rows[1]->errors);
+        $this->assertSame([], $rows[1]->raw_payload);
+    }
 }
