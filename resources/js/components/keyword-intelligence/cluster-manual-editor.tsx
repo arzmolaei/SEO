@@ -201,12 +201,14 @@ export function ClusterManualEditor({
         null,
     );
     const [mergeSearching, setMergeSearching] = useState(false);
+    const [mergeSearched, setMergeSearched] = useState(false);
 
     const [memberQuery, setMemberQuery] = useState('');
     const [memberResults, setMemberResults] = useState<MemberSearchResult[]>(
         [],
     );
     const [memberSearching, setMemberSearching] = useState(false);
+    const [memberSearched, setMemberSearched] = useState(false);
     const [moveMember, setMoveMember] = useState<MemberSearchResult | null>(
         null,
     );
@@ -221,6 +223,7 @@ export function ClusterManualEditor({
         null,
     );
     const [targetSearching, setTargetSearching] = useState(false);
+    const [targetSearched, setTargetSearched] = useState(false);
 
     const [splitName, setSplitName] = useState('');
     const [splitMembers, setSplitMembers] = useState<MemberSearchResult[]>([]);
@@ -246,8 +249,10 @@ export function ClusterManualEditor({
         query: string,
         setter: (value: ClusterSearchResult[]) => void,
         setSearching: (value: boolean) => void,
+        setSearched: (value: boolean) => void,
     ) => {
         setSearching(true);
+        setSearched(true);
         setError(null);
         try {
             const data = await fetchData<ClusterSearchResult>(
@@ -263,6 +268,7 @@ export function ClusterManualEditor({
 
     const searchMembers = async () => {
         setMemberSearching(true);
+        setMemberSearched(true);
         setError(null);
         try {
             setMemberResults(
@@ -348,7 +354,11 @@ export function ClusterManualEditor({
                 ),
             );
             if (splitPrimaryId === member.keyword_id) setSplitPrimaryId(null);
+            if (member.is_primary) setSplitReplacement(null);
             return;
+        }
+        if (splitReplacement?.keyword_id === member.keyword_id) {
+            setSplitReplacement(null);
         }
         setSplitMembers((current) => [...current, member]);
     };
@@ -392,6 +402,7 @@ export function ClusterManualEditor({
                                         mergeQuery,
                                         setMergeResults,
                                         setMergeSearching,
+                                        setMergeSearched,
                                     );
                                 }
                             }}
@@ -404,6 +415,7 @@ export function ClusterManualEditor({
                                     mergeQuery,
                                     setMergeResults,
                                     setMergeSearching,
+                                    setMergeSearched,
                                 )
                             }
                             disabled={
@@ -414,6 +426,13 @@ export function ClusterManualEditor({
                             {mergeSearching ? copy.searching : copy.search}
                         </button>
                     </div>
+                    {mergeSearched &&
+                        !mergeSearching &&
+                        mergeResults.length === 0 && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {copy.noResults}
+                            </p>
+                        )}
                     {mergeResults.length > 0 && (
                         <div className="mt-2 max-h-40 overflow-auto rounded-md border p-1">
                             {mergeResults.map((result) => (
@@ -483,6 +502,13 @@ export function ClusterManualEditor({
                             {memberSearching ? copy.searching : copy.search}
                         </button>
                     </div>
+                    {memberSearched &&
+                        !memberSearching &&
+                        memberResults.length === 0 && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {copy.noResults}
+                            </p>
+                        )}
                     {memberResults.length > 0 && (
                         <div className="mt-2 max-h-40 overflow-auto rounded-md border p-1">
                             {memberResults.map((member) => (
@@ -567,6 +593,7 @@ export function ClusterManualEditor({
                                         targetQuery,
                                         setTargetResults,
                                         setTargetSearching,
+                                        setTargetSearched,
                                     );
                                 }
                             }}
@@ -579,6 +606,7 @@ export function ClusterManualEditor({
                                     targetQuery,
                                     setTargetResults,
                                     setTargetSearching,
+                                    setTargetSearched,
                                 )
                             }
                             disabled={
@@ -589,6 +617,13 @@ export function ClusterManualEditor({
                             {targetSearching ? copy.searching : copy.search}
                         </button>
                     </div>
+                    {targetSearched &&
+                        !targetSearching &&
+                        targetResults.length === 0 && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {copy.noResults}
+                            </p>
+                        )}
                     {targetResults.length > 0 && (
                         <div className="mt-2 max-h-36 overflow-auto rounded-md border p-1">
                             {targetResults.map((result) => (
