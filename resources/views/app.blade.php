@@ -1,14 +1,19 @@
 @php($localeContext = \App\Support\LocaleContext::from(app()->getLocale()))
 <!DOCTYPE html>
-<html lang="{{ $localeContext['locale'] }}" dir="{{ $localeContext['direction'] }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+<html lang="{{ $localeContext['locale'] }}" dir="{{ $localeContext['direction'] }}" data-font="iransansx" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- Inline script to detect system dark mode preference and apply it immediately --}}
+        {{-- Apply persisted visual preferences before styles render to avoid flashes. --}}
         <script>
             (function() {
                 const appearance = '{{ $appearance ?? "system" }}';
+                const allowedFonts = ['iransansx', 'yekan-bakh', 'vazirmatn'];
+                const storedFont = localStorage.getItem('app-font');
+                const font = allowedFonts.includes(storedFont) ? storedFont : 'iransansx';
+
+                document.documentElement.dataset.font = font;
 
                 if (appearance === 'system') {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
