@@ -2,6 +2,7 @@
 
 namespace App\Domain\Keywords;
 
+use App\Enums\KeywordStatus;
 use InvalidArgumentException;
 
 final readonly class KeywordGridQuery
@@ -21,6 +22,7 @@ final readonly class KeywordGridQuery
     public function __construct(
         public ?string $search,
         public ?string $source,
+        public ?KeywordStatus $status,
         public ?string $volumeOperator,
         public ?float $volume,
         public string $sort,
@@ -33,6 +35,13 @@ final readonly class KeywordGridQuery
     {
         $search = self::optionalString($input['q'] ?? null, 200, 'q');
         $source = self::optionalString($input['source'] ?? null, 64, 'source');
+        $statusValue = self::optionalString($input['status'] ?? null, 16, 'status');
+        $status = $statusValue === null ? null : KeywordStatus::tryFrom($statusValue);
+
+        if ($statusValue !== null && $status === null) {
+            throw new InvalidArgumentException('Unsupported keyword status.');
+        }
+
         $volumeOperator = self::optionalString($input['volume_operator'] ?? null, 8, 'volume_operator');
 
         if ($volumeOperator !== null && ! array_key_exists($volumeOperator, self::VOLUME_OPERATORS)) {
@@ -66,6 +75,7 @@ final readonly class KeywordGridQuery
         return new self(
             search: $search,
             source: $source,
+            status: $status,
             volumeOperator: $volumeOperator,
             volume: $volume,
             sort: $sort,
@@ -85,6 +95,7 @@ final readonly class KeywordGridQuery
         return [
             'q' => $this->search,
             'source' => $this->source,
+            'status' => $this->status?->value,
             'volume_operator' => $this->volumeOperator,
             'volume' => $this->volume,
             'sort' => $this->sort,
