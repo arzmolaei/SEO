@@ -2,6 +2,7 @@
 
 namespace App\Services\Keywords;
 
+use App\Domain\Keywords\ClusterLifecycleState;
 use App\Domain\Keywords\ClusterTargetType;
 use App\Domain\Pages\PageKind;
 use App\Models\ActivityEvent;
@@ -53,12 +54,18 @@ class MapClusterToTarget
                 return $target;
             }
             $before = $target?->getAttributes();
+            $readinessInvalidated = $cluster->lifecycle_state === ClusterLifecycleState::Ready;
             $target = ClusterTarget::query()->updateOrCreate(['project_id' => $project->id, 'keyword_cluster_id' => $cluster->id], ['page_id' => $page?->id, 'type' => $type, 'actor_id' => $actor->id, 'revision' => ($target instanceof ClusterTarget ? $target->revision : 0) + 1]);
-            $cluster->update(['revision' => $cluster->revision + 1]);
-            $set = ChangeSet::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'action' => 'keywords.mapping.set',
-                'changes' => [['cluster_id' => $cluster->id, 'before' => json_encode($before, JSON_THROW_ON_ERROR), 'after' => json_encode($target->getAttributes(), JSON_THROW_ON_ERROR)]]]);
+            $cluster->invalidateReadiness();
+            $cluster->revision++;
+            $cluster->save();
+            $changes = [['cluster_id' => $cluster->id, 'before' => json_encode($before, JSON_THROW_ON_ERROR), 'after' => json_encode($target->getAttributes(), JSON_THROW_ON_ERROR)]];
+            if ($readinessInvalidated) {
+                $changes[] = ['cluster_id' => $cluster->id, 'before' => ClusterLifecycleState::Ready->value, 'after' => ClusterLifecycleState::Planning->value];
+            }
+            $set = ChangeSet::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'action' => 'keywords.mapping.set', 'changes' => $changes]);
             ActivityEvent::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'change_set_id' => $set->id, 'event' => 'keywords.mapping.set',
-                'metadata' => ['cluster_id' => $cluster->id, 'target_id' => $target->id, 'source' => $source]]);
+                'metadata' => ['cluster_id' => $cluster->id, 'target_id' => $target->id, 'source' => $source, 'readiness_invalidated' => $readinessInvalidated]]);
 
             return $target;
         });
