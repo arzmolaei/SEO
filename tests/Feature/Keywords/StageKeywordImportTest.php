@@ -198,4 +198,49 @@ class StageKeywordImportTest extends TestCase
         $this->assertSame(['keyword_required'], $rows[1]->errors);
         $this->assertSame([], $rows[1]->raw_payload);
     }
+
+    public function test_conflicting_column_mapping_remains_staged_with_mapping_and_row_diagnostics(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
+        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
+
+        $response = $this->actingAs($owner)->postJson(
+            "/projects/{$project->id}/keyword-imports/stage",
+            [
+                'source' => 'generic_csv',
+                'original_filename' => 'conflicting-mapping.csv',
+                'mapping' => [
+                    'keyword' => 'Keyword',
+                    'volume' => 'Keyword',
+                ],
+                'rows' => [
+                    ['Keyword' => 'سئو سایت'],
+                ],
+            ],
+        );
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'staged')
+            ->assertJsonPath('data.total_rows', 1)
+            ->assertJsonPath('data.valid_rows', 0)
+            ->assertJsonPath('data.invalid_rows', 1)
+            ->assertJsonPath('data.error_count', 2);
+
+        $batch = ImportBatch::query()->findOrFail($response->json('data.id'));
+        $row = StagedKeywordRow::query()
+            ->where('import_batch_id', $batch->id)
+            ->where('row_number', 1)
+            ->firstOrFail();
+
+        $this->assertSame(['mapping.source_column_conflict'], $batch->errors);
+        $this->assertFalse($row->is_valid);
+        $this->assertSame(['mapping_conflict'], $row->errors);
+        $this->assertSame(['Keyword' => 'سئو سایت'], $row->raw_payload);
+        $this->assertSame(
+            ['keyword' => 'سئو سایت', 'volume' => 'سئو سایت'],
+            $row->mapped_payload,
+        );
+    }
 }
