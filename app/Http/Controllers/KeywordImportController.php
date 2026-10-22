@@ -4,14 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\ImportBatch;
 use App\Models\Project;
+use App\Models\User;
 use App\Services\Keywords\StageKeywordImport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class KeywordImportController extends Controller
 {
     public function store(Request $request, Project $project, StageKeywordImport $stageImport): JsonResponse
     {
+        Gate::authorize('update', $project);
+
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'source' => ['required', 'string', 'max:100'],
             'original_filename' => ['required', 'string', 'max:255'],
@@ -28,6 +38,7 @@ class KeywordImportController extends Controller
         $rows = $this->rawRows($request, $validatedRows);
 
         $batch = $stageImport->handle(
+            actor: $actor,
             project: $project,
             source: $validated['source'],
             originalFilename: $validated['original_filename'],
