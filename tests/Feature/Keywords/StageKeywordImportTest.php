@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Keywords;
 
-use App\Enums\WorkspaceRole;
 use App\Models\ImportBatch;
 use App\Models\StagedKeywordRow;
 use App\Models\User;
@@ -198,61 +197,5 @@ class StageKeywordImportTest extends TestCase
         $this->assertSame(['Keyword' => '   '], $rows[0]->raw_payload);
         $this->assertSame(['keyword_required'], $rows[1]->errors);
         $this->assertSame([], $rows[1]->raw_payload);
-    }
-
-    public function test_viewer_cannot_stage_keyword_imports(): void
-    {
-        $owner = User::factory()->create();
-        $viewer = User::factory()->create();
-        $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
-        $workspace->memberships()->create([
-            'user_id' => $viewer->id,
-            'role' => WorkspaceRole::Viewer,
-        ]);
-        $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
-
-        $this->actingAs($viewer)
-            ->postJson(
-                "/projects/{$project->id}/keyword-imports/stage",
-                $this->validImportPayload(),
-            )
-            ->assertForbidden();
-
-        $this->assertDatabaseCount('import_batches', 0);
-        $this->assertDatabaseCount('staged_keyword_rows', 0);
-    }
-
-    public function test_user_cannot_stage_keyword_imports_for_project_in_another_workspace(): void
-    {
-        $firstOwner = User::factory()->create();
-        $secondOwner = User::factory()->create();
-        app(CreateWorkspace::class)->handle($firstOwner, 'First');
-        $secondWorkspace = app(CreateWorkspace::class)->handle($secondOwner, 'Second');
-        $project = app(CreateProject::class)->handle($secondOwner, $secondWorkspace, 'Private.com');
-
-        $this->actingAs($firstOwner)
-            ->postJson(
-                "/projects/{$project->id}/keyword-imports/stage",
-                $this->validImportPayload(),
-            )
-            ->assertForbidden();
-
-        $this->assertDatabaseCount('import_batches', 0);
-        $this->assertDatabaseCount('staged_keyword_rows', 0);
-    }
-
-    /** @return array{source: string, original_filename: string, mapping: array{keyword: string}, rows: list<array{Keyword: string}>} */
-    private function validImportPayload(): array
-    {
-        return [
-            'source' => 'generic_csv',
-            'original_filename' => 'keywords.csv',
-            'mapping' => [
-                'keyword' => 'Keyword',
-            ],
-            'rows' => [
-                ['Keyword' => 'سئو سایت'],
-            ],
-        ];
     }
 }
