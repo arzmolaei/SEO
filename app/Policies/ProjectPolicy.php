@@ -18,6 +18,16 @@ class ProjectPolicy
 
     public function update(User $user, Project $project): bool
     {
+        return $this->canManageProject($user, $project);
+    }
+
+    public function stageKeywordImports(User $user, Project $project): bool
+    {
+        return $this->canManageProject($user, $project);
+    }
+
+    private function canManageProject(User $user, Project $project): bool
+    {
         $membership = Membership::query()
             ->where('workspace_id', $project->workspace_id)
             ->where('user_id', $user->id)
