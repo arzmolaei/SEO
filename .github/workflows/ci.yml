@@ -39,7 +39,7 @@ jobs:
       - name: Diagnose Composer lock refresh
         shell: bash
         run: |
-          composer update --lock --no-install --no-interaction --no-progress
+          composer update --lock --no-install --no-scripts --no-interaction --no-progress
           git diff -- composer.lock
           exit 1
 
