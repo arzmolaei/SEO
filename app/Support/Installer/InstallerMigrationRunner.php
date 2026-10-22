@@ -27,7 +27,7 @@ class InstallerMigrationRunner
 
             if (! $this->migrator->repositoryExists()) {
                 return [
-                    'pending' => array_values($migrationNames),
+                    'pending' => $migrationNames,
                     'complete' => $migrationNames === [],
                 ];
             }
