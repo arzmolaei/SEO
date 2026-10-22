@@ -50,6 +50,9 @@ jobs:
       - name: Install frontend dependencies
         run: timeout 180s npm ci --prefer-offline --no-audit
 
+      - name: Bundle open-source fonts
+        run: bash scripts/fonts/fetch-vazirmatn.sh
+
       - name: Generate Wayfinder types
         run: php artisan wayfinder:generate --with-form
 
