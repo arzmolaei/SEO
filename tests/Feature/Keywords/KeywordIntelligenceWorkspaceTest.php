@@ -53,9 +53,9 @@ class KeywordIntelligenceWorkspaceTest extends TestCase
     public function test_page_search_is_project_scoped_and_bounded(): void
     {
         [$actor, $project] = $this->fixture();
-        [, $foreignProject] = $this->fixture();
+        [$foreignActor, $foreignProject] = $this->fixture();
         $own = app(CreatePlannedPage::class)->handle($actor, $project, 'راهنمای کفش ورزشی');
-        app(CreatePlannedPage::class)->handle($actor, $foreignProject, 'راهنمای کفش خارجی');
+        app(CreatePlannedPage::class)->handle($foreignActor, $foreignProject, 'راهنمای کفش خارجی');
 
         $this->actingAs($actor)
             ->getJson("/projects/{$project->id}/keyword-intelligence/pages/search?q=کفش")
