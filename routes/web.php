@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\BulkKeywordStatusController;
+use App\Http\Controllers\KeywordChangeSetController;
 use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\ProjectController;
@@ -34,6 +36,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.keyword-views.update');
     Route::post('projects/{project}/keyword-views/{savedKeywordView}/default', [SavedKeywordViewController::class, 'setDefault'])
         ->name('projects.keyword-views.default');
+    Route::patch('projects/{project}/keywords/bulk-status', BulkKeywordStatusController::class)
+        ->name('projects.keywords.bulk-status');
+    Route::post('projects/{project}/keyword-change-sets/{changeSet}/undo', [KeywordChangeSetController::class, 'undo'])
+        ->name('projects.keyword-change-sets.undo');
 
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])
         ->name('projects.overview');
