@@ -2,6 +2,7 @@
 
 namespace App\Services\Keywords;
 
+use App\Domain\Keywords\ClusterReviewState;
 use App\Domain\Keywords\IntentConfidence;
 use App\Domain\Keywords\KeywordClusterCandidate;
 use App\Domain\Review\ReviewItemType;
@@ -86,7 +87,8 @@ class ApplyKeywordClusterCandidates
                     }
                     $cluster = $this->create->handle($actor, $project, $candidate->name, $primary, $candidate->keywordIds,
                         $candidate->intent, $candidate->confidence, origin: $humanApproved ? 'user' : 'lexical',
-                        automationKey: $humanApproved ? null : $candidate->fingerprint());
+                        automationKey: $humanApproved ? null : $candidate->fingerprint(),
+                        reviewState: $humanApproved ? ClusterReviewState::Reviewed : ClusterReviewState::Pending);
                     foreach ($cluster->members()->get() as $member) {
                         $members->put($member->keyword_id, $member);
                     }
