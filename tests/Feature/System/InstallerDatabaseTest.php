@@ -46,6 +46,33 @@ class InstallerDatabaseTest extends TestCase
         $this->assertStringNotContainsString('super-secret-password', $serialized);
     }
 
+    public function test_fingerprint_tracks_database_identity_but_not_credentials(): void
+    {
+        $connection = $this->connection();
+        $verifier = new DatabaseVerifier(
+            probe: static fn (array $candidate): null => null,
+            extensionLoaded: static fn (string $extension): bool => true,
+        );
+        $fingerprint = $verifier->fingerprint($connection);
+
+        $this->assertSame(
+            $fingerprint,
+            $verifier->fingerprint([
+                ...$connection,
+                'username' => 'rotated-user',
+                'password' => 'rotated-secret',
+            ]),
+        );
+        $this->assertNotSame(
+            $fingerprint,
+            $verifier->fingerprint([...$connection, 'host' => 'db.internal']),
+        );
+        $this->assertNotSame(
+            $fingerprint,
+            $verifier->fingerprint([...$connection, 'database' => 'seo_os_next']),
+        );
+    }
+
     public function test_mariadb_uses_mysql_pdo_extension_and_keeps_driver_identity(): void
     {
         $extensions = [];
