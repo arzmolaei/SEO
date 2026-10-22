@@ -8,6 +8,7 @@ enum WorkspaceRole: string
     case Admin = 'admin';
     case SeoManager = 'seo_manager';
     case SeoSpecialist = 'seo_specialist';
+    case ContentWriter = 'content_writer';
     case Viewer = 'viewer';
 
     public function canManageMembers(): bool
