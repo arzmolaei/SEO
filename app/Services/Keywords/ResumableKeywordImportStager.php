@@ -25,7 +25,7 @@ class ResumableKeywordImportStager
         }
 
         $batch->refresh();
-        $mapping = KeywordImportMapping::fromArray($batch->mapping ?? []);
+        $mapping = KeywordImportMapping::fromArray($this->mappingColumns($batch));
         $batchErrors = $this->batchErrors($mapping);
         $checkpoint = $batch->checkpoint_row;
         $rowNumber = 0;
@@ -122,8 +122,10 @@ class ResumableKeywordImportStager
 
         /** @var StagedKeywordRow $row */
         foreach ($batch->rows()->select(['id', 'warnings', 'errors'])->cursor() as $row) {
-            $warningCount += count($row->warnings ?? []);
-            $errorCount += count($row->errors ?? []);
+            $warnings = $row->warnings;
+            $errors = $row->errors;
+            $warningCount += is_array($warnings) ? count($warnings) : 0;
+            $errorCount += is_array($errors) ? count($errors) : 0;
         }
 
         $batch->update([
@@ -134,6 +136,26 @@ class ResumableKeywordImportStager
             'warning_count' => $warningCount,
             'error_count' => $errorCount,
         ]);
+    }
+
+    /** @return array<string, string> */
+    private function mappingColumns(ImportBatch $batch): array
+    {
+        $mapping = $batch->mapping;
+
+        if (! is_array($mapping)) {
+            return [];
+        }
+
+        $columns = [];
+
+        foreach ($mapping as $field => $column) {
+            if (is_string($field) && is_string($column)) {
+                $columns[$field] = $column;
+            }
+        }
+
+        return $columns;
     }
 
     /** @return list<string> */
