@@ -22,7 +22,7 @@ class DatabaseVerifier
      */
     public function __construct(?Closure $probe = null, ?Closure $extensionLoaded = null)
     {
-        $this->probe = $probe ?? fn (array $connection): mixed => $this->nativeProbe($connection);
+        $this->probe = $probe ?? fn (array $connection): null => $this->nativeProbe($connection);
         $this->extensionLoaded = $extensionLoaded ?? static fn (string $extension): bool => extension_loaded($extension);
     }
 
@@ -111,7 +111,7 @@ class DatabaseVerifier
     }
 
     /** @param array<string, mixed> $candidate */
-    private function nativeProbe(array $candidate): void
+    private function nativeProbe(array $candidate): null
     {
         $driver = (string) ($candidate['driver'] ?? '');
         $base = config("database.connections.{$driver}");
@@ -162,5 +162,7 @@ class DatabaseVerifier
             DB::purge($name);
             config(["database.connections.{$name}" => $previous]);
         }
+
+        return null;
     }
 }
