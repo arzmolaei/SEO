@@ -20,6 +20,11 @@ class StageKeywordImport
         array $rows,
     ): ImportBatch {
         return DB::transaction(function () use ($project, $source, $originalFilename, $mapping, $rows): ImportBatch {
+            $keywordColumn = trim($mapping['keyword'] ?? '');
+            $hasKeywordMapping = $keywordColumn !== '';
+            $batchErrors = $hasKeywordMapping ? [] : ['mapping.keyword_required'];
+            $rowErrorCount = $hasKeywordMapping ? 0 : count($rows);
+
             $batch = ImportBatch::query()->create([
                 'project_id' => $project->id,
                 'source' => $source,
@@ -27,19 +32,18 @@ class StageKeywordImport
                 'mapping' => $mapping,
                 'status' => 'staged',
                 'total_rows' => count($rows),
-                'valid_rows' => count($rows),
-                'invalid_rows' => 0,
+                'valid_rows' => $hasKeywordMapping ? count($rows) : 0,
+                'invalid_rows' => $hasKeywordMapping ? 0 : count($rows),
                 'warning_count' => 0,
-                'error_count' => 0,
+                'error_count' => count($batchErrors) + $rowErrorCount,
                 'warnings' => [],
-                'errors' => [],
+                'errors' => $batchErrors,
             ]);
 
-            $keywordColumn = $mapping['keyword'] ?? '';
-
             foreach ($rows as $index => $row) {
-                $keywordValue = $row[$keywordColumn] ?? null;
+                $keywordValue = $hasKeywordMapping ? ($row[$keywordColumn] ?? null) : null;
                 $keyword = is_scalar($keywordValue) ? trim((string) $keywordValue) : null;
+                $rowErrors = $hasKeywordMapping ? [] : ['keyword_mapping_missing'];
 
                 $mappedPayload = [];
 
@@ -52,9 +56,9 @@ class StageKeywordImport
                     'keyword_original' => $keyword,
                     'raw_payload' => $row,
                     'mapped_payload' => $mappedPayload,
-                    'is_valid' => true,
+                    'is_valid' => $rowErrors === [],
                     'warnings' => [],
-                    'errors' => [],
+                    'errors' => $rowErrors,
                 ]);
             }
 
