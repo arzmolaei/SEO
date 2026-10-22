@@ -1,4 +1,4 @@
-name: Installer UI diagnostic
+name: Installer UI formatter diff
 
 on:
   push:
@@ -20,25 +20,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --prefer-offline --no-audit
-      - name: Format installer page
-        run: npx vp fmt resources/js/pages/install/index.tsx --write
-      - name: Capture frontend verification
+      - name: Capture formatter diff
         shell: bash
         run: |
-          set +e
-          npm run check > check.txt 2>&1
-          echo "check_exit=$?" >> check.txt
-          npm run types:check > types.txt 2>&1
-          echo "types_exit=$?" >> types.txt
-          npm run build > build.txt 2>&1
-          echo "build_exit=$?" >> build.txt
-          exit 0
+          npx vp fmt resources/js/pages/install/index.tsx --write
+          git diff -- resources/js/pages/install/index.tsx > format.diff
       - uses: actions/upload-artifact@v5
         with:
-          name: installer-ui-diagnostics
-          path: |
-            resources/js/pages/install/index.tsx
-            check.txt
-            types.txt
-            build.txt
+          name: installer-ui-format-diff
+          path: format.diff
           if-no-files-found: error
