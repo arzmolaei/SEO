@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $failure_message
  * @property CarbonImmutable|null $started_at
  * @property CarbonImmutable|null $completed_at
+ * @property CarbonImmutable|null $committed_at
  * @property CarbonImmutable|null $failed_at
  */
 #[Fillable([
@@ -46,6 +47,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'errors',
     'started_at',
     'completed_at',
+    'committed_at',
     'failed_at',
     'failure_message',
 ])]
@@ -71,6 +73,7 @@ class ImportBatch extends Model
             'errors' => 'array',
             'started_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
+            'committed_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
         ];
     }
