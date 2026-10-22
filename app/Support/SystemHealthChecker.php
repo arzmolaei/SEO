@@ -235,7 +235,7 @@ class SystemHealthChecker
     }
 
     /**
-     * @param 'pass'|'warning'|'fail' $status
+     * @param  'pass'|'warning'|'fail'  $status
      * @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string}
      */
     private function result(string $status, bool $required, mixed $value, string $message): array
