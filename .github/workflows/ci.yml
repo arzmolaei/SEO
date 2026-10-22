@@ -8,7 +8,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -52,22 +52,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: timeout 180s npm ci --prefer-offline --no-audit
-
-      - name: Format final docs
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          npx vp check --fix docs/DELIVERY_PLAN.md docs/HANDOFF.md docs/PROJECT_STATE.md docs/release-readiness/keyword-intelligence.md
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/DELIVERY_PLAN.md docs/HANDOFF.md docs/PROJECT_STATE.md docs/release-readiness/keyword-intelligence.md
-          if git diff --cached --quiet; then
-            echo "No formatter changes required."
-            exit 0
-          fi
-          git commit -m "style: format final keyword intelligence docs"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Bundle open-source fonts
         run: bash scripts/fonts/fetch-vazirmatn.sh
