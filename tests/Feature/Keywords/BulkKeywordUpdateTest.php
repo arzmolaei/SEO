@@ -187,6 +187,8 @@ class BulkKeywordUpdateTest extends TestCase
             ->assertRedirect();
 
         $changeSetId = (int) DB::table('change_sets')->value('id');
+        $keyword->refresh();
+        $this->assertSame(KeywordStatus::Ready, $keyword->status);
         $keyword->update(['status' => KeywordStatus::Review]);
 
         $this->actingAs($owner)
