@@ -10,6 +10,10 @@ final class StagedKeywordRowValidator
      */
     public function validate(KeywordImportMapping $mapping, array $row): array
     {
+        if ($mapping->hasSourceColumnConflict()) {
+            return ['mapping_conflict'];
+        }
+
         if (! $mapping->hasKeywordColumn()) {
             return ['keyword_mapping_missing'];
         }
