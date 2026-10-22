@@ -6,6 +6,8 @@ on:
       - feature/self-host-installer
     paths:
       - tests/Feature/System/SelfHostInstallerAcceptanceTest.php
+      - app/Providers/AppServiceProvider.php
+      - routes/web.php
       - .github/workflows/installer-mariadb-diagnostic.yml
 
 permissions:
