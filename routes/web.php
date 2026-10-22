@@ -20,6 +20,9 @@ Route::post('install/environment', [InstallerController::class, 'saveEnvironment
 Route::post('install/database/verify', [InstallerController::class, 'verifyDatabase'])
     ->middleware('throttle:10,1')
     ->name('install.database.verify');
+Route::post('install/migrations/run', [InstallerController::class, 'runMigrations'])
+    ->middleware('throttle:6,1')
+    ->name('install.migrations.run');
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware('auth')->group(function () {

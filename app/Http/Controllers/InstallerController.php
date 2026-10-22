@@ -7,6 +7,7 @@ use App\Support\Installer\DatabaseVerifier;
 use App\Support\Installer\EnvironmentWriter;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Installer\InstallerJournal;
+use App\Support\Installer\InstallerMigrationRunner;
 use App\Support\Installer\InstallerMutex;
 use App\Support\Installer\InstallerPhase;
 use App\Support\Installer\InstallerPreflight;
@@ -17,6 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 class InstallerController extends Controller
 {
@@ -26,6 +28,7 @@ class InstallerController extends Controller
         private readonly InstallerEnvironment $environment,
         private readonly EnvironmentWriter $environmentWriter,
         private readonly DatabaseVerifier $databaseVerifier,
+        private readonly InstallerMigrationRunner $migrationRunner,
         private readonly InstallerJournal $journal,
         private readonly InstallerMutex $mutex,
     ) {}
@@ -38,6 +41,7 @@ class InstallerController extends Controller
         $displayPhase = $durablePhase === InstallerPhase::Preflight && $preflight['ready']
             ? InstallerPhase::Environment
             : $durablePhase;
+        $migrations = $this->migrationStatus($displayPhase);
 
         return Inertia::render('install/index', [
             'installer' => [
@@ -50,10 +54,12 @@ class InstallerController extends Controller
                     InstallerPhase::Preflight => ['refresh_preflight'],
                     InstallerPhase::Environment => ['refresh_preflight', 'save_environment'],
                     InstallerPhase::Database => ['save_environment', 'verify_database'],
+                    InstallerPhase::Migrations => ['run_migrations'],
                     default => [],
                 },
             ],
             'preflight' => $preflight,
+            'migrations' => $migrations,
         ]);
     }
 
@@ -126,16 +132,7 @@ class InstallerController extends Controller
                 );
             }
 
-            $values = $this->environment->values();
-            $connection = [
-                'driver' => $values['DB_CONNECTION'] ?? '',
-                'host' => $values['DB_HOST'] ?? '',
-                'port' => (int) ($values['DB_PORT'] ?? 0),
-                'database' => $values['DB_DATABASE'] ?? '',
-                'username' => $values['DB_USERNAME'] ?? '',
-                'password' => $values['DB_PASSWORD'] ?? '',
-            ];
-            $verification = $this->databaseVerifier->verify($connection);
+            $verification = $this->databaseVerifier->verify($this->databaseConnection());
 
             if ($verification->verified && $verification->fingerprint !== null) {
                 $this->journal->replace([
@@ -156,5 +153,108 @@ class InstallerController extends Controller
         }
 
         return redirect('/install');
+    }
+
+    public function runMigrations(): RedirectResponse
+    {
+        try {
+            $error = $this->mutex->run(function (): ?string {
+                if ($this->status->snapshot()['phase'] !== InstallerPhase::Migrations) {
+                    return 'Migrations are not available in the current installer phase.';
+                }
+
+                $journal = $this->journal->read();
+                $storedFingerprint = $journal['database_fingerprint'] ?? null;
+                $currentFingerprint = $this->databaseVerifier->fingerprint($this->databaseConnection());
+
+                if (! is_string($storedFingerprint) || ! hash_equals($storedFingerprint, $currentFingerprint)) {
+                    $replacement = [
+                        'phase' => InstallerPhase::Database->value,
+                    ];
+
+                    if (isset($journal['environment_updated_at']) && is_string($journal['environment_updated_at'])) {
+                        $replacement['environment_updated_at'] = $journal['environment_updated_at'];
+                    }
+
+                    $this->journal->replace($replacement);
+
+                    return 'Database settings changed or are no longer verified. Verify the database again before running migrations.';
+                }
+
+                try {
+                    $result = $this->migrationRunner->runPending();
+                } catch (Throwable) {
+                    return 'Database migrations could not be completed. Retrying is safe.';
+                }
+
+                $next = $journal;
+                $next['migrations_last_attempted_at'] = now()->toIso8601String();
+                unset($next['migrations_completed_at']);
+
+                if ($result['complete']) {
+                    $next['phase'] = InstallerPhase::Owner->value;
+                    $next['migrations_completed_at'] = now()->toIso8601String();
+                    unset($next['migrations_pending_count']);
+                } else {
+                    $next['phase'] = InstallerPhase::Migrations->value;
+                    $next['migrations_pending_count'] = count($result['remaining']);
+                }
+
+                $this->journal->replace($next);
+
+                return null;
+            });
+        } catch (Throwable) {
+            $error = 'Database migrations could not be completed. Retrying is safe.';
+        }
+
+        if ($error !== null) {
+            return redirect('/install')->withErrors(['migrations' => $error]);
+        }
+
+        return redirect('/install');
+    }
+
+    /**
+     * @return array{pending_count: int|null, pending: list<string>, complete: bool, available: bool}|null
+     */
+    private function migrationStatus(InstallerPhase $phase): ?array
+    {
+        if ($phase !== InstallerPhase::Migrations) {
+            return null;
+        }
+
+        try {
+            $status = $this->migrationRunner->status();
+
+            return [
+                'pending_count' => count($status['pending']),
+                'pending' => array_slice($status['pending'], 0, 20),
+                'complete' => $status['complete'],
+                'available' => true,
+            ];
+        } catch (Throwable) {
+            return [
+                'pending_count' => null,
+                'pending' => [],
+                'complete' => false,
+                'available' => false,
+            ];
+        }
+    }
+
+    /** @return array{driver: string, host: string, port: int, database: string, username: string, password: string} */
+    private function databaseConnection(): array
+    {
+        $values = $this->environment->values();
+
+        return [
+            'driver' => $values['DB_CONNECTION'] ?? '',
+            'host' => $values['DB_HOST'] ?? '',
+            'port' => (int) ($values['DB_PORT'] ?? 0),
+            'database' => $values['DB_DATABASE'] ?? '',
+            'username' => $values['DB_USERNAME'] ?? '',
+            'password' => $values['DB_PASSWORD'] ?? '',
+        ];
     }
 }

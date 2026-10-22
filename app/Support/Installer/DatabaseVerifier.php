@@ -58,9 +58,18 @@ class DatabaseVerifier
             return DatabaseVerificationResult::failure($code, $message, $facts);
         }
 
-        $fingerprint = hash('sha256', json_encode($facts, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        return DatabaseVerificationResult::success($this->fingerprint($connection), $facts);
+    }
 
-        return DatabaseVerificationResult::success($fingerprint, $facts);
+    /**
+     * @param  array{driver: string, host: string, port: int, database: string, username: string, password: string}  $connection
+     */
+    public function fingerprint(array $connection): string
+    {
+        return hash(
+            'sha256',
+            json_encode($this->facts($connection), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+        );
     }
 
     /**
