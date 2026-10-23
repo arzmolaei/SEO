@@ -1,30 +1,31 @@
 # Backup + Restore Design
 
 Date: 2026-10-23
-Status: Draft for written-design review
-Base: `main@a6924d77b3a9b7f74b484f7e303c8168905c520c`
+Status: Awaiting written-spec review
+Branch: `feature/backup-restore`
+Base product tree: `main@a6924d77b3a9b7f74b484f7e303c8168905c520c`
 
 ## 1. Purpose
 
 Backup + Restore gives the self-hosted installation a browser-driven, offline-capable way to capture the durable state of the whole SEO OS instance and restore it into a clean compatible installation without Composer, Node, npm, SSH, shell commands, `mysqldump`, external APIs, or international network access.
 
-This is an instance-level lifecycle capability, not a project export. A successful restore must reproduce users, workspaces, memberships, projects, keyword/import/intelligence state, durable application settings, authentication state that is safe to preserve, and private/public uploaded files that are part of the application’s durable data.
+This is an instance-level lifecycle capability, not a project export. A successful restore must reproduce users, workspaces, memberships, projects, keyword/import/intelligence state, durable application settings, authentication data that is safe to preserve, and application-managed durable files.
 
 ## 2. Goals
 
 V1 must:
 
-- create one downloadable versioned backup bundle through the browser;
+- create one downloadable, versioned backup bundle through the browser;
 - work on the packaged self-host runtime with ordinary PHP filesystem/database APIs only;
-- include durable application database state and application-managed files;
-- exclude volatile runtime data such as cache, sessions and pending queue state;
-- preserve the application encryption key needed to interpret encrypted durable database fields without copying database credentials;
-- verify every bundle entry by size and SHA-256 before restore mutates destination state;
-- restore only into a clean, compatible installed instance;
+- include durable application database state and allowlisted application-managed files;
+- exclude volatile runtime data such as cache, sessions, pending/failed queue state and password-reset tokens;
+- preserve the source APP_KEY required to interpret encrypted durable database fields without copying database credentials;
+- verify every bundle entry by declared size and SHA-256 before restore mutates destination state;
+- restore only into a clean installation running the exact compatible product/schema version;
 - be interruption-safe and retry-safe;
-- never report a successful restore if database or file restoration is partial;
-- leave a recovery path if restore is interrupted after mutations begin;
-- support MariaDB 10.11 connected backup/clean-restore acceptance;
+- never report a successful restore if database, settings or files are partial;
+- recover automatically to the clean destination safety snapshot after an interrupted destructive phase;
+- support MariaDB 10.11 connected backup/clean-restore/recovery acceptance;
 - remain usable if international internet is unavailable.
 
 ## 3. Explicit Non-goals
@@ -32,51 +33,83 @@ V1 must:
 V1 does not:
 
 - back up operating-system, cPanel, web-server or PHP configuration;
-- store database host/user/password credentials;
-- preserve active browser sessions, cache rows, queued jobs, failed jobs or scheduler probe artifacts;
-- preserve password-reset tokens;
+- store database host, port, database name, username or password from `.env`;
+- preserve active browser sessions, cache rows, queued jobs, failed jobs, batches, scheduler probe artifacts or password-reset tokens;
 - act as a generic database dump/import tool;
-- restore into a non-empty production instance by merging records;
+- restore by merging into a non-clean production instance;
 - support selective project restore;
 - support remote/cloud backup destinations;
 - encrypt the backup bundle with a user passphrase in V1;
-- create scheduled/automatic backups in V1;
-- depend on ZIP, Phar, shell archivers or native dump binaries.
+- create scheduled/automatic user backups in V1;
+- perform cross-version data migration during restore;
+- depend on ZIP, Phar, shell archivers or native database dump binaries.
 
-Because the bundle contains password hashes, APP_KEY and potentially encrypted authentication data, it is sensitive material and the UI must say so clearly.
+Because the bundle contains password hashes, the source APP_KEY and potentially encrypted authentication data, it is sensitive material. The UI and documentation must say this clearly.
 
 ## 4. Approaches Considered
 
 ### A. Shell/native database dump + filesystem archive
 
-Use `mysqldump` plus zip/tar. This is rejected for V1 because shared hosting may not expose those binaries or shell execution, and it violates the browser-only/offline installation contract.
+Use `mysqldump` plus zip/tar. Rejected because shared hosting may not expose those binaries or shell execution, and it violates the browser-only/offline runtime contract.
 
 ### B. Standard ZIP/Phar archive generated by PHP
 
-This is familiar and inspectable but makes restore depend on extensions/configuration that are not currently part of the runtime contract. Long-path, partial-write and portability behavior also becomes coupled to host configuration. It remains a possible future export/import wrapper.
+Familiar and inspectable, but it would make the lifecycle depend on archive extensions/configuration that are not part of the current runtime contract. It also delegates partial-write and path-safety behavior to host-specific extension behavior. A standard wrapper can be added later without changing the logical backup schema.
 
 ### C. Versioned application bundle written/read by SEO OS itself — selected
 
-Use a small binary container with a fixed magic/version, a JSON manifest and a deterministic sequence of length-delimited entries. The application owns streaming, checksum verification and compatibility rules, so no archive extension or shell binary is required. The trade-off is that the bundle is application-specific; a documented manifest plus an optional future extractor CLI can address external inspection later.
+Use a small binary container with fixed magic/version, a JSON manifest and deterministic length-delimited entries. SEO OS owns streaming, checksums, parser limits and compatibility rules, so no archive extension or shell binary is required.
 
-## 5. Authorization and UX
+The trade-off is an application-specific container. The manifest and binary framing are documented and versioned so a future standalone extractor can be built without changing V1 backups.
 
-Backup/Restore is system-level and exposes all instance data. It must not reuse ordinary project permissions.
+## 5. System Owner and Authorization
 
-V1 authorizes only the original installer-created system owner. The installer must therefore persist `owner_user_id` as non-secret `.installed` metadata in new installations. Existing installations created before this field exists derive the system owner deterministically from the single oldest workspace-owner membership created at installation time, then persist the resolved id before allowing backup.
+Backup/Restore exposes the entire instance and must not reuse ordinary project permissions.
 
-The System/Health area gains a Persian-first `پشتیبان‌گیری و بازیابی` section. It contains:
+V1 authorizes only the original installer-created **system owner** and requires authenticated, verified access plus recent password confirmation (`RequirePassword` or the equivalent Laravel middleware).
 
-- `دانلود فایل پشتیبان` for the system owner;
-- a warning that the file contains sensitive instance data and APP_KEY;
-- restore upload on a clean compatible installation only;
-- manifest/compatibility preview before destructive restore starts;
-- an explicit confirmation step naming the installation id and backup timestamp;
-- progress/state based on server-side restore journal, not a fake progress bar.
+### Installation metadata upgrade
 
-No other role sees the actions.
+The current installer already validates `owner_user_id` in its journal before finalization. New installations must carry that exact validated user id into `.installed` as non-secret metadata.
 
-## 6. Bundle Format
+The installation-lock metadata schema is upgraded to support:
+
+- `owner_user_id`;
+- `restored_from_installation_id` (nullable/optional);
+- `restored_at` (nullable/optional).
+
+`InstallationState` therefore needs an atomic metadata-rewrite API for an existing lock. It must preserve immutable/local identity fields unless an operation explicitly owns them.
+
+For legacy installation locks without `owner_user_id`, `SystemOwner` resolves the earliest user id that has an Owner membership, verifies the user and membership still exist, and persists that id once. If no unambiguous valid candidate exists, backup/restore fails closed instead of granting another administrator instance-wide access.
+
+## 6. User Experience and Routes
+
+There is no existing System Health settings page. V1 adds a real Persian-first settings surface:
+
+`GET /settings/backup`
+
+The Settings navigation gains `پشتیبان‌گیری و بازیابی` only for the system owner.
+
+The page provides:
+
+- `دانلود فایل پشتیبان`;
+- a prominent warning that the file contains sensitive instance data and APP_KEY;
+- restore upload/verification;
+- manifest/compatibility preview before destructive work;
+- explicit confirmation showing backup timestamp, source installation id and bundle digest;
+- a recovery action/status when the restore journal is `recovery_required`;
+- server-derived phases rather than a fake progress percentage.
+
+Proposed endpoints, all under authenticated + verified + recent-password + system-owner authorization:
+
+- `GET /settings/backup/download` — create/download backup;
+- `POST /settings/backup/restore/verify` — upload privately, fully verify, persist non-secret preview evidence;
+- `POST /settings/backup/restore/confirm` — require exact verified bundle digest and begin restore;
+- `POST /settings/backup/restore/recover` — recover an interrupted destructive restore before any new restore can begin.
+
+Restore upload remains private and is never exposed through `storage/app/public`.
+
+## 7. Bundle Format
 
 Schema id: `seo-backup/1`.
 
@@ -95,7 +128,7 @@ Binary layout:
    - unsigned 64-bit big-endian payload byte length;
    - raw payload bytes.
 
-The manifest is written after entries are staged in a private temporary stream so that exact sizes and hashes are known before the downloadable bundle is finalized. V1 may use private `php://temp`/OS temp files outside the web root; no user-addressable backup artifact remains after the response closes.
+Entries are first captured into a private rewindable temporary stream so exact sizes and hashes are known before the final manifest is written. The finished response is assembled from private temporary storage and no user-addressable backup artifact remains after the response closes.
 
 Manifest fields include:
 
@@ -103,126 +136,225 @@ Manifest fields include:
 - `created_at_utc`;
 - `product_version`;
 - `installer_schema_version`;
-- `installation_id`;
+- `source_installation_id`;
+- `source_owner_user_id`;
 - `source_database_driver`;
 - `source_database_server_version`;
 - `application_schema_fingerprint`;
+- ordered durable table metadata, including restore order and column types;
 - `entries`: ordered list of `{path, size, sha256, media_type, record_count?}`;
 - `excluded_runtime_tables`;
-- `bundle_sha256` over the canonical entry metadata/payload sequence, not recursively over the final header containing itself.
+- `content_digest_sha256`, calculated over canonical entry metadata and payload bytes rather than recursively over a header containing itself.
 
-Unknown required manifest fields or unknown schema versions fail closed.
+Unknown required fields, duplicate paths, duplicate logical table entries, unsupported schemas or extra bytes after the declared final entry fail closed.
 
-## 7. What Is Backed Up
+### Parser limits
 
-### 7.1 Database
+Defaults live in `config/backup.php` and may be lowered by hosting constraints:
 
-V1 exports durable application tables as newline-delimited canonical JSON records (`database/<table>.ndjson`) ordered by each table’s primary key(s).
+- manifest: 4 MiB maximum;
+- path: 1024 bytes maximum;
+- entry count: 100,000 maximum;
+- single entry: 1 GiB maximum;
+- complete uploaded bundle: 2 GiB maximum, additionally bounded by PHP upload/post limits and available disk space.
 
-The table allowlist is derived from application ownership, not from `SHOW TABLES` alone. It includes durable domain/auth tables such as users, passkeys, workspaces, memberships, projects, keyword/import/intelligence/page/review/audit/saved-view tables and other durable application tables added before release.
+The parser uses declared lengths defensively and never preallocates an attacker-declared payload in memory.
 
-Explicitly excluded volatile tables:
+## 8. Durable Database Catalog
 
+V1 backs up an explicit application-owned allowlist rather than trusting every table returned by the server.
+
+Current durable table catalog:
+
+1. `users`
+2. `passkeys`
+3. `workspaces`
+4. `memberships`
+5. `projects`
+6. `keyword_import_batches`
+7. `staged_keyword_rows`
+8. `keywords`
+9. `keyword_sources`
+10. `keyword_metrics`
+11. `saved_keyword_views`
+12. `change_sets`
+13. `activity_events`
+14. `keyword_intent_assignments`
+15. `keyword_clusters`
+16. `keyword_cluster_members`
+17. `pages`
+18. `cluster_targets`
+19. `review_items`
+
+The implementation plan must verify this catalog against the actual migrations and define parent-first insert order plus child-first delete order. Adding a new durable application table in the future requires an explicit catalog decision and tests; it must never silently disappear from backups.
+
+Explicitly excluded volatile/framework tables:
+
+- `migrations` — destination migrations establish schema;
+- `password_reset_tokens`;
+- `sessions`;
 - `cache`;
 - `cache_locks`;
-- `sessions`;
 - `jobs`;
 - `job_batches`;
-- `failed_jobs`;
-- `password_reset_tokens`;
-- migration bookkeeping is not restored as row data; destination migrations establish schema.
+- `failed_jobs`.
 
-Rows are encoded with typed column metadata in the manifest so null, integer, decimal, string, JSON, boolean/binary and timestamp values can be restored without locale ambiguity. Binary payloads are base64 tagged.
+### Row encoding
 
-Database reads use a repeatable-read transaction on MySQL/MariaDB and bounded `chunkById`/ordered cursor reads. The transaction ends before HTTP download starts.
+Each durable table is an NDJSON entry at `database/<table>.ndjson`, deterministically ordered by the catalog’s primary key/cursor definition.
 
-### 7.2 APP_KEY and safe runtime settings
+To avoid locale and floating-point loss, every non-null ordinary database scalar is serialized as its exact database string representation. Binary values use an explicit base64-tagged representation. Null remains JSON null. The manifest records the destination column family/type needed to convert validated strings back during restore.
 
-The bundle includes `settings/runtime.json` containing:
+JSON database columns are preserved as database strings; restore does not decode/re-encode them merely for formatting.
 
-- APP_KEY;
-- locale/timezone/product-level self-host flags required to interpret durable data;
-- filesystem disk selection only when it points to supported local disks.
+Database reads use a repeatable-read transaction on MySQL/MariaDB and bounded ordered batches. The transaction ends before HTTP download begins.
 
-It never includes DB host, port, database name, username, password, mail credentials, S3 credentials, external API keys or other `.env` secrets.
+## 9. Runtime Settings in the Bundle
 
-APP_KEY is included because encrypted durable database fields must remain decryptable after restore. The UI and documentation classify every backup as sensitive and suitable only for protected storage.
+`settings/runtime.json` includes only the allowlisted values required to make restored durable data usable:
 
-### 7.3 Files
+- source `APP_KEY`;
+- application locale/fallback locale when explicitly configured;
+- `SELF_HOST_REGISTRATION` state.
 
-V1 includes application-managed durable files from allowlisted roots:
+It does **not** include or overwrite destination:
+
+- `APP_URL`;
+- `APP_ENV` / `APP_DEBUG` production safeguards;
+- DB host/port/database/username/password;
+- mail credentials;
+- S3/storage credentials;
+- external API keys;
+- queue/cache/session connection credentials.
+
+The destination database fingerprint and destination installation id remain local destination identity and are never replaced by source values.
+
+## 10. Durable Files
+
+V1 includes application-managed durable files only from explicit roots:
 
 - `storage/app/private/uploads/**` when present;
-- `storage/app/public/uploads/**` when present;
-- any future durable upload root must be added explicitly to the backup allowlist.
+- `storage/app/public/uploads/**` when present.
 
 It excludes:
 
 - logs;
-- framework/session/cache directories;
-- installer temporary/journal/probe files;
-- backup/restore temp files;
-- built frontend assets (they belong to the release package);
+- framework/cache/session/queue files;
+- installer journal/runtime-key/probe artifacts;
+- lifecycle/backup/restore temporary and recovery files;
+- built frontend assets;
+- `.env` itself;
 - proprietary font binaries unless a later licensed-backup policy explicitly opts them in.
 
-Paths are normalized as relative POSIX paths. Absolute paths, `..`, NUL/control bytes, symlink traversal and entries outside allowlisted roots are rejected.
+Paths are normalized as relative POSIX paths. Absolute paths, Windows drive roots, `..`, empty traversal segments, NUL/control bytes and paths outside allowlisted roots are rejected. Symlinks are neither followed nor archived in V1.
 
-Symlinks are not followed or archived in V1.
+**Cross-feature invariant:** every future application mutation that creates/replaces/deletes a file under a durable upload root must acquire `LifecycleMutex`. This, not maintenance mode alone, is what makes DB+file operations serializable against backup/restore/update.
 
-## 8. Database Schema Compatibility
+## 11. Compatibility Rules
 
-Restore target is a clean installed release, not an empty raw database.
+V1 restore is intentionally **same product version + same application schema fingerprint only**.
 
-The destination first runs its own normal migrations to the release schema. Restore then checks:
+Restore requires:
 
-- bundle schema is supported;
-- backup product/schema version is not newer than the running restore code unless an explicit compatibility adapter exists;
-- required destination tables/columns exist;
-- source table/column metadata can map losslessly to destination schema;
-- target contains only the installer bootstrap data allowed by the clean-restore contract.
+- supported backup schema `seo-backup/1`;
+- exact `product_version` match;
+- exact application schema fingerprint match;
+- all catalog tables/columns/types present as declared;
+- production database engine MySQL/MariaDB with transactional application tables;
+- destination migrations fully current.
 
-V1 does not merge arbitrary destination data.
+V1 does not attempt an older-backup-to-newer-code transformation. Future cross-version adapters must be explicit and separately accepted.
 
-For a restore into the same version, every backed-up durable row must be reproduced exactly except documented environment-derived values.
+This is compatible with the next Update/Rollback subsystem: an interrupted/failed update first rolls the application package/schema back to the previous release, then restores the pre-update backup created by that same release.
 
-The backup manifest stores an application schema fingerprint based on ordered durable table/column/type metadata to detect accidental incompatibility.
+## 12. Clean Restore Contract
 
-## 9. Clean Restore Contract
-
-A restore is allowed only when the destination is in `restore-ready` state:
+Restore is allowed only when the destination is `restore-ready`:
 
 - installer is complete and `.installed` exists;
-- DB migrations are current;
+- migrations are current;
+- destination product/schema exactly matches the bundle;
 - no project/domain data exists;
-- only the temporary/bootstrap owner/workspace/membership created by the clean installer may exist;
+- only the installer bootstrap user/workspace/Owner membership and their permitted auth records exist;
 - no unrecognized durable upload files exist;
-- no restore is already active.
+- no backup/restore/update lifecycle operation is active;
+- no unresolved `recovery_required` journal exists.
 
-The restore flow verifies the complete uploaded bundle before mutation:
+A second restore into already-restored/non-clean data is rejected; V1 never merges instances.
 
-1. save upload to a private bounded path outside web root;
-2. parse magic/manifest with strict size limits;
-3. validate every path and declared length;
-4. stream every entry and verify SHA-256/size;
-5. validate DB/schema compatibility;
-6. show a preview and require explicit confirmation;
-7. acquire a global restore mutex and write restore journal;
-8. create an automatic pre-restore safety snapshot of the clean destination state;
-9. enter maintenance/restore mode;
-10. replace database durable tables in dependency-safe order inside a database transaction when the engine allows it;
-11. stage restored files into sibling temporary directories;
-12. atomically swap staged file roots into place;
-13. atomically persist restored APP_KEY and safe settings while preserving destination DB credentials;
-14. clear cache/session/queue runtime state;
-15. revalidate row counts, hashes, owner/workspace/project relationships, APP_KEY usability and file checksums;
-16. rewrite `.installed` metadata with the restored installation id/product metadata and resolved system owner id;
-17. mark restore complete, remove temporary/safety artifacts after bounded retention, leave maintenance mode and require a fresh login.
+## 13. Restore Flow
 
-The browser session that launched restore is intentionally invalidated when APP_KEY/session state changes.
+The complete uploaded bundle is verified **before any mutation**:
 
-## 10. Interruption and Recovery
+1. save upload to `storage/app/lifecycle/restore/uploads/<random>.seobak` with restrictive permissions;
+2. parse magic/manifest under strict size/count/path limits;
+3. validate schema/version/fingerprint/catalog;
+4. stream every entry to verify declared length and SHA-256;
+5. recompute `content_digest_sha256`;
+6. evaluate clean-target state;
+7. persist only non-secret preview evidence (upload id, digest, source installation id/time/version, counts) in restore journal;
+8. show preview and require explicit confirmation containing the exact verified digest;
+9. acquire the global lifecycle mutex;
+10. create an internal clean-destination safety snapshot using the same capture primitives while the mutex is already held;
+11. enter Laravel maintenance mode and keep it active through destructive validation;
+12. clear destination durable tables child-first and insert restored rows parent-first inside one database transaction;
+13. stage durable files into sibling private temporary roots;
+14. atomically swap staged file roots into place;
+15. atomically write the restored APP_KEY and allowlisted runtime settings while preserving every destination environment value outside that allowlist;
+16. clear volatile session/cache/queue/password-reset state rather than restoring source volatile rows;
+17. revalidate row counts, entry hashes, Owner relationships, project isolation and representative encrypted data using an isolated encrypter constructed with the restored key;
+18. atomically update `.installed` metadata;
+19. mark restore complete, remove uploaded/staging/safety files, leave maintenance mode and require a fresh login.
 
-Restore is a state machine with journal phases:
+### Installation identity after restore
+
+Restore **preserves the destination `installation_id` and database fingerprint**. It sets:
+
+- `owner_user_id` to the restored source system owner user id;
+- `restored_from_installation_id` to the source id from the bundle;
+- `restored_at` to the completion timestamp;
+- current local installer/product schema metadata.
+
+This prevents two active installations from silently sharing one local installation identity.
+
+The source APP_KEY becomes the destination APP_KEY because encrypted durable source values require it. All active destination/source sessions are intentionally invalidated.
+
+## 14. Lifecycle Mutex, Maintenance and Consistency
+
+`LifecycleMutex` is a filesystem-backed exclusive lock shared by Backup, Restore and the future Updater. Proposed lock path:
+
+`storage/app/lifecycle/lifecycle.lock`
+
+The low-level capture primitive can run when its caller already owns the mutex, so restore can create its safety snapshot without deadlocking on a nested lock.
+
+### Backup
+
+1. system owner request acquires `LifecycleMutex`;
+2. Laravel maintenance mode is activated for a short capture window;
+3. the DB repeatable-read snapshot starts;
+4. durable database entries are captured in bounded batches;
+5. durable files are captured while file-mutating features are excluded by the same lifecycle mutex;
+6. DB transaction ends;
+7. bundle metadata/final stream is finalized;
+8. maintenance mode is deactivated;
+9. mutex is released;
+10. only then does the HTTP response stream the already-completed bundle to the browser.
+
+Maintenance is a quiescence/UX safeguard, not the sole correctness primitive. Existing in-flight DB-only writes are handled by repeatable-read semantics; any operation that couples DB state to durable files must obey the lifecycle mutex invariant.
+
+Queue workers or scheduled commands explicitly forced to run in Laravel maintenance mode are unsupported for consistent lifecycle operations; official SEO OS operational instructions must never use such a force option.
+
+### Restore
+
+Restore holds `LifecycleMutex` and maintenance mode through all destructive work and final validation. If the request dies, the durable journal and recovery snapshot—not the browser session—are the recovery source of truth.
+
+## 15. Interruption and Recovery
+
+Restore journal path:
+
+`storage/app/lifecycle/restore/state.json`
+
+It contains no APP_KEY, DB credential, password hash or bundle payload. Phases:
 
 - `uploaded`;
 - `verified`;
@@ -235,60 +367,34 @@ Restore is a state machine with journal phases:
 - `complete`;
 - `recovery_required`.
 
-A filesystem mutex prevents concurrent backup/restore/update operations.
+Safety snapshots live under a private lifecycle recovery root with restrictive permissions and are never downloadable through public storage.
 
-Before mutation, restore has a safety snapshot of the clean destination. If interruption occurs:
+Interruption rules:
 
-- before database mutation: discard temp state and restart safely;
-- during database transaction before commit: rollback DB and discard staged files;
-- after DB commit but before file/environment completion: journal enters `recovery_required`; next request offers/executes automatic recovery to the clean safety snapshot before another restore can start;
-- after APP_KEY replacement: recovery code reads required state from protected filesystem files rather than depending on the old authenticated session.
+- before mutation: discard/re-verify and restart safely;
+- during DB transaction before commit: roll back DB and discard staged files;
+- after DB commit but before file/key completion: mark `recovery_required`; no new backup/restore/update starts;
+- after APP_KEY replacement: recovery reads its journal/safety material directly from protected filesystem and does not require the old authenticated session;
+- recovery restores the clean destination DB, file roots, APP_KEY-safe settings and installation metadata from the safety snapshot, clears volatile state, then removes recovery-required status;
+- ambiguous partial state is never guessed through.
 
-V1 never tries to "continue guessing" after an ambiguous partial state.
+The safety snapshot uses the same low-level `CaptureSystemState`/bundle primitives as normal backup but is an internal protected artifact. It is deleted after successful restore or successful recovery; update/rollback may later apply a separate bounded retention policy to its pre-update backups.
 
-## 11. Backup Consistency and Concurrency
+## 16. Security
 
-Backup generation and restore/update are mutually exclusive through one lifecycle filesystem mutex shared by future updater code.
+- All UI/actions require authenticated, verified, recent-password-confirmed system owner.
+- Known failures return stable Persian operator copy; raw SQL, server paths, APP_KEY and credentials never reach browser/log context.
+- Download uses `private, no-store`, `Pragma: no-cache` and `nosniff` headers.
+- Restore verifies the entire bundle before mutation.
+- Entry paths are allowlisted and normalized before staging.
+- Parser never invokes PHP deserialization, `eval`, Phar metadata execution, shell commands or dynamic class loading based on bundle data.
+- Restore never trusts manifest counts/hashes without recomputing them.
+- APP_KEY is never displayed in UI.
+- Uploaded/safety/temp artifacts use random filenames, restrictive permissions and are outside web root.
+- Bundle filename is ASCII-safe.
+- CSRF remains required on state-changing routes; restore verify/confirm/recover endpoints receive conservative endpoint-scoped throttles.
 
-Backup database rows come from one repeatable-read snapshot. File capture occurs while lifecycle writes are blocked by the mutex, but normal user DB writes could still happen unless the application is briefly placed into backup maintenance mode.
-
-Selected V1 behavior: backup enters a short **write maintenance window** for the instance while the database snapshot and durable file inventory are captured. Read-only application access may continue only if it cannot create sessions/cache writes that affect the backup; implementation should prefer a simple maintenance barrier over a falsely consistent mixed DB/file backup.
-
-The window ends before the user downloads the completed bundle.
-
-## 12. Security
-
-- Backup/restore routes require authenticated, verified system owner.
-- Restore upload size is bounded by configured application and PHP limits and validated before parsing.
-- Entry counts, path lengths, manifest size and per-entry sizes have explicit maximums to prevent parser exhaustion.
-- No archive path may escape its allowlisted destination root.
-- Backup download uses private/no-store headers.
-- Backup filename is ASCII-safe.
-- Known errors have stable Persian operator messages; raw SQL, server paths and secrets are logged only in sanitized form.
-- Bundle parsing never invokes PHP deserialization, shell commands, eval, Phar metadata execution or dynamic class loading.
-- APP_KEY is never displayed in UI or logs.
-- Restore does not trust manifest row counts/checksums without recomputing them.
-
-## 13. Components
-
-Proposed boundaries:
-
-- `app/Support/Lifecycle/LifecycleMutex.php` — shared exclusive mutex for backup/restore/update.
-- `app/Support/Backup/BackupBundleWriter.php` — binary container writer/checksums.
-- `app/Support/Backup/BackupBundleReader.php` — strict parser and verifier.
-- `app/Services/Backup/BackupManifest.php` — schema/manifest validation.
-- `app/Services/Backup/ApplicationTableCatalog.php` — durable/volatile table allowlist and dependency restore order.
-- `app/Services/Backup/CreateSystemBackup.php` — consistent DB/settings/file capture coordinator.
-- `app/Services/Backup/RestoreSystemBackup.php` — journaled restore/recovery coordinator.
-- `app/Services/Backup/RestoreJournal.php` — non-secret durable phase/evidence state.
-- `app/Support/SystemOwner.php` — resolves/authorizes system owner.
-- `app/Http/Controllers/SystemBackupController.php` — download endpoint.
-- `app/Http/Controllers/SystemRestoreController.php` — upload/verify/confirm/recover endpoints.
-- System UI integrated into existing system-health/settings surface rather than a dead standalone page.
-
-## 14. Failure Semantics
-
-Stable codes/messages include at least:
+Stable failure codes/messages include at least:
 
 - `backup_not_authorized`;
 - `backup_temp_unavailable`;
@@ -302,50 +408,93 @@ Stable codes/messages include at least:
 - `restore_interrupted_recovery_required`;
 - `restore_validation_failed`.
 
-Known failures never return raw internal exception text to the browser.
+## 17. Components and Boundaries
 
-## 15. Acceptance
+### Shared lifecycle
+
+- `app/Support/Lifecycle/LifecycleMutex.php` — exclusive backup/restore/update lock.
+- `app/Support/Lifecycle/MaintenanceWindow.php` — activate/deactivate Laravel maintenance mode safely and recover stale lifecycle ownership.
+- `app/Support/SystemOwner.php` — resolve, persist and authorize system owner.
+
+### Backup format/capture
+
+- `config/backup.php` — parser/bundle/temp limits and allowlisted roots.
+- `app/Support/Backup/BackupBundleWriter.php` — deterministic binary framing and incremental entry hashes.
+- `app/Support/Backup/BackupBundleReader.php` — strict bounded parser/verifier.
+- `app/Services/Backup/BackupManifest.php` — `seo-backup/1` schema and compatibility validation.
+- `app/Services/Backup/ApplicationTableCatalog.php` — exact durable catalog, type metadata and restore dependency order.
+- `app/Services/Backup/CaptureSystemState.php` — low-level consistent DB/settings/file capture; assumes lifecycle ownership is supplied by caller.
+- `app/Services/Backup/CreateSystemBackup.php` — system-owner lifecycle wrapper producing downloadable result.
+
+### Restore/recovery
+
+- `app/Services/Backup/RestoreJournal.php` — atomic non-secret state machine.
+- `app/Services/Backup/VerifyRestoreBundle.php` — private upload parsing, full checksum verification and preview.
+- `app/Services/Backup/RestoreSystemBackup.php` — clean-target check, safety capture and destructive restore coordinator.
+- `app/Services/Backup/RecoverInterruptedRestore.php` — mandatory safety rollback from `recovery_required`.
+- `app/Http/Controllers/Settings/SystemBackupController.php` — settings page + download.
+- `app/Http/Controllers/Settings/SystemRestoreController.php` — verify/confirm/recover endpoints.
+
+### Existing installer/state changes
+
+- `app/Actions/Installer/FinalizeInstallation.php` — persist validated `owner_user_id` in new installation lock.
+- `app/Support/InstallationState.php` — lock metadata schema upgrade + atomic update API for legacy-owner resolution and restore metadata.
+
+## 18. Acceptance Contract
 
 Fast tests cover:
 
-- system-owner authorization and denial for other roles/users;
-- bundle magic/version/parser bounds/path traversal rejection;
-- checksum/size mismatch rejection before mutation;
-- durable vs volatile table catalog;
-- APP_KEY included but DB credentials excluded;
-- Persian/JSON/decimal/null/binary DB round-trip;
+- system-owner resolution/legacy persistence and denial for all other roles/users;
+- new installer finalization persists owner id;
+- bundle magic/version/parser bounds/trailing-data/duplicate-entry/path traversal rejection;
+- checksum/size/content-digest mismatch rejection before mutation;
+- exact durable vs volatile table catalog;
+- database scalar/null/decimal/JSON/binary round-trip without float loss;
+- APP_KEY included while all DB/mail/external credentials are excluded;
 - file round-trip and symlink rejection;
-- clean-target enforcement;
-- retry/interruption state transitions;
-- session invalidation after APP_KEY swap;
-- no durable temp artifacts after success/failure.
+- clean-target enforcement and second-restore rejection;
+- destination installation id/database fingerprint preservation;
+- restored owner id/source installation provenance update;
+- journal retry/interruption transitions;
+- safety recovery after simulated post-DB-commit failure;
+- fresh-login requirement after APP_KEY/session replacement;
+- no durable temp artifacts after success/failure/recovery;
+- no shell/archive extension dependency.
 
-Connected MariaDB 10.11 acceptance must:
+### Connected MariaDB 10.11 acceptance
 
-1. install/migrate a clean source instance schema;
-2. create real users/workspaces/projects and a Persian keyword/intelligence workflow;
-3. create representative private/public upload files;
-4. create a backup through the real coordinator;
-5. provision a separate clean destination database/filesystem using the packaged application schema;
-6. restore the backup with destination DB credentials preserved;
-7. boot the restored app with restored APP_KEY;
-8. verify login password hashes/auth ownership, memberships, project isolation, Persian data, cluster/mapping/priority-related data, uploaded file bytes and backup manifest checksums;
-9. assert cache/session/queue/password-reset volatile state was not restored;
-10. run a second restore attempt and prove non-clean destination is rejected rather than merged;
-11. simulate interruption after DB commit and verify recovery returns the destination to its clean safety snapshot.
+The permanent CI gate must:
 
-Release-tree acceptance must prove backup/restore core code and UI are present in the no-dev runtime package and require no Composer/Node/shell tooling on the production host.
+1. provision source and destination databases separately;
+2. migrate both with the same packaged application schema;
+3. create real source users/workspaces/projects and a Persian keyword/intelligence workflow;
+4. create representative allowlisted durable upload files;
+5. create a source backup through the real capture/bundle coordinator;
+6. verify source volatile rows exist but are absent from the bundle contract;
+7. verify/preview the bundle against the clean destination;
+8. restore while preserving destination DB credentials, installation id and DB fingerprint;
+9. boot/read restored data with the restored source APP_KEY;
+10. verify password hashes/auth owner, memberships, project isolation, Persian/half-space data, intent/cluster/mapping/review data and uploaded file bytes;
+11. verify volatile session/cache/queue/password-reset state was not restored;
+12. reject a second restore because the destination is no longer clean;
+13. reset a fresh destination, inject interruption after DB commit, observe `recovery_required`, run recovery and prove the original clean bootstrap state/files/key/installation metadata return;
+14. confirm no lifecycle temp/recovery artifact survives successful completion/recovery.
 
-## 16. Release Boundary
+### Release-tree acceptance
+
+Runtime package acceptance must prove backup/restore controllers, bundle parser/writer, lifecycle services and settings UI are included after `composer install --no-dev`, and production execution requires no Composer/Node/npm/shell/archive utility on the host.
+
+## 19. Release Boundary
 
 Backup + Restore is complete only after:
 
-- TDD implementation tasks are complete;
-- fast/full CI passes on PHP 8.4/8.5;
-- dedicated MariaDB connected backup/restore acceptance passes;
+- written spec and implementation plan gates are approved;
+- every implementation task follows RED -> correct GREEN -> focused verification -> semantic commit;
+- full permanent CI passes on PHP 8.4 and 8.5;
+- dedicated MariaDB 10.11 backup/restore/recovery acceptance passes;
 - whole-branch review has no open Critical/Important finding;
 - exact-head PR CI passes;
-- PR is merged;
+- PR merges with an expected-head guard;
 - post-merge `main` CI passes.
 
-After that, the next lifecycle subsystem is Update + Interrupted Recovery/Rollback, which must reuse `LifecycleMutex` and automatic backup rather than invent parallel mechanisms.
+After that, the next subsystem is Update + Interrupted Recovery/Rollback. It must reuse `LifecycleMutex`, capture/bundle primitives, safety backup and recovery semantics rather than inventing parallel mechanisms.
