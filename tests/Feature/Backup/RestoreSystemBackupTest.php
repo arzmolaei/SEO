@@ -109,6 +109,8 @@ class RestoreSystemBackupTest extends TestCase
 
     public function test_restore_confirm_and_recovery_endpoints_require_authentication(): void
     {
+        (new InstallationState)->markInstalled();
+
         $this->post('/settings/backup/restore/confirm')->assertRedirect('/login');
         $this->post('/settings/backup/restore/recover')->assertRedirect('/login');
     }
@@ -270,9 +272,15 @@ class RestoreSystemBackupTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('status', 'complete')
             ->assertJsonPath('login_required', true)
-            ->assertHeader('cache-control', 'no-cache, private, no-store')
             ->assertHeader('pragma', 'no-cache')
             ->assertHeader('x-content-type-options', 'nosniff');
+        $cacheControl = array_map(
+            'trim',
+            explode(',', (string) $response->headers->get('cache-control')),
+        );
+        $this->assertContains('no-cache', $cacheControl);
+        $this->assertContains('private', $cacheControl);
+        $this->assertContains('no-store', $cacheControl);
         $this->assertGuest();
 
         $this->assertDatabaseHas('users', ['email' => 'source-owner@example.test']);
