@@ -5,11 +5,15 @@ namespace App\Providers;
 use App\Contracts\SystemProbe;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
+use App\Services\Update\UpdateJournal;
+use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Lifecycle\RuntimeReleaseAdmission;
+use App\Support\Queue\LifecycleDatabaseConnector;
 use App\Support\NativeSystemProbe;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -26,6 +30,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
         $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
         $this->app->bind(RuntimeReleaseAdmission::class, static fn () => new RuntimeReleaseAdmission);
+        $this->callAfterResolving('queue', function (QueueManager $queue): void {
+            $queue->addConnector('database', fn () => new LifecycleDatabaseConnector(
+                $this->app->make('db'),
+                $this->app->make(LifecycleMutex::class),
+                $this->app->make(UpdateJournal::class),
+            ));
+        });
     }
 
     /**

@@ -41,7 +41,7 @@ class LifecycleDatabaseQueueTest extends TestCase
         $ownership = (new LifecycleMutex)->acquire('update');
         try {
             $this->app->make(UpdateQuiescence::class)->assertReady();
-            $this->assertNull(Queue::connection('database')->pop());
+            $this->assertTrue(Queue::connection('database')->pop() === null, 'Reservation admission must return no job.');
             $this->assertNull(DB::table('jobs')->where('id', $id)->value('reserved_at'));
         } finally {
             $ownership->release();
@@ -63,7 +63,7 @@ class LifecycleDatabaseQueueTest extends TestCase
     {
         $id = Queue::connection('database')->pushRaw('{"job":"probe"}');
         File::put($this->directory.'/state.json', json_encode(['phase' => 'migrating'], JSON_THROW_ON_ERROR));
-        $this->assertNull(Queue::connection('database')->pop());
+        $this->assertTrue(Queue::connection('database')->pop() === null, 'Reservation admission must return no job.');
         $this->assertNull(DB::table('jobs')->where('id', $id)->value('reserved_at'));
         File::delete($this->directory.'/state.json');
         $this->assertInstanceOf(DatabaseJob::class, Queue::connection('database')->pop());
