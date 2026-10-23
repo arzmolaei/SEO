@@ -106,6 +106,25 @@ class BuildSystemUpdatePackageTest extends TestCase
         }
     }
 
+    public function test_rejects_build_host_config_route_and_event_caches_before_publishing(): void
+    {
+        foreach (['config.php', 'routes-v7.php', 'events.php'] as $name) {
+            File::ensureDirectoryExists($this->release.'/bootstrap/cache');
+            $cache = $this->release.'/bootstrap/cache/'.$name;
+            File::put($cache, "<?php return ['app_key' => 'build-host-secret', 'database' => 'build-host-db'];");
+            $output = $this->root.'/cached-'.$name.'.seoupdate';
+            try {
+                $this->app->make(BuildSystemUpdatePackage::class)->build($this->release, $output, $this->compatibility());
+                $this->fail('Build-host caches must never be distributable.');
+            } catch (UpdateException) {
+                $this->assertFileDoesNotExist($output);
+                $this->assertFileDoesNotExist($output.'.tmp');
+            } finally {
+                File::delete($cache);
+            }
+        }
+    }
+
     public function test_rejects_dirty_release_and_preserves_existing_output(): void
     {
         File::put($this->release.'/.env', 'APP_KEY=secret');
