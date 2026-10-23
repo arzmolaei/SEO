@@ -111,6 +111,7 @@ class ReleasePackageContractTest extends TestCase
     private function seedRequiredRuntimeFiles(array $except = []): void
     {
         foreach ([
+            'VERSION',
             'artisan',
             'bootstrap/app.php',
             'vendor/autoload.php',
