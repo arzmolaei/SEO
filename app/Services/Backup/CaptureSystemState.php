@@ -162,6 +162,9 @@ final class CaptureSystemState
                     if ($family === 'decimal' || $family === 'float') {
                         $wrapped = $connection->getQueryGrammar()->wrap($name);
                         $castType = $connection->getDriverName() === 'sqlite' ? 'TEXT' : 'CHAR';
+                        // The identifier comes only from schema introspection and is grammar-wrapped;
+                        // PHPStan cannot prove that this generated expression has no user input.
+                        // @phpstan-ignore argument.type
                         $query->addSelect(new Expression("CAST({$wrapped} AS {$castType}) AS {$wrapped}"));
                     } else {
                         $query->addSelect($name);
