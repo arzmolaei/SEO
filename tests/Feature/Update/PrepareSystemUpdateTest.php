@@ -34,18 +34,31 @@ class PrepareSystemUpdateTest extends TestCase
     use RefreshDatabase;
 
     private string $directory;
+
     private string $installationRoot;
+
     private string $releaseRoot;
+
     private string $publicRoot;
+
     private string $uploadRoot;
+
     private string $safetyRoot;
+
     private string $updateJournalPath;
+
     private string $restoreJournalPath;
+
     private string $privateDurableRoot;
+
     private string $publicDurableRoot;
+
     private UpdateJournal $journal;
+
     private RestoreJournal $restoreJournal;
+
     private ProductVersion $productVersion;
+
     private ActiveReleasePointer $pointer;
 
     protected function setUp(): void
