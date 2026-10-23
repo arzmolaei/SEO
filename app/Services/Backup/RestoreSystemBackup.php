@@ -66,11 +66,19 @@ final class RestoreSystemBackup
         $this->verifiedState($expectedDigest);
         $this->cleanRestoreTarget->assertReadyForRestore($uploadId, $ownership);
 
-        $this->journal->transition('verified', 'confirmed', [
-            'confirmed_digest' => $expectedDigest,
-        ]);
-
         [$safetyBundlePath, $safetyMetadataPath] = $this->captureSafetySnapshot($ownership, $uploadId);
+
+        try {
+            $this->journal->transition('verified', 'confirmed', [
+                'confirmed_digest' => $expectedDigest,
+            ]);
+        } catch (Throwable $exception) {
+            $this->cleanupPath($safetyBundlePath);
+            $this->cleanupPath($safetyMetadataPath);
+
+            throw $exception;
+        }
+
         $stagingRoot = null;
         $databaseCommitted = false;
 
