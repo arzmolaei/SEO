@@ -85,7 +85,7 @@ final class BackupBundleFormat
         }
 
         if (! $invalid) {
-            $invalid = !self::isAllowlistedPath($path);
+            $invalid = ! self::isAllowlistedPath($path);
         }
 
         if (! $invalid) {
@@ -112,7 +112,7 @@ final class BackupBundleFormat
         }
 
         if (str_starts_with($path, 'database/') && str_ends_with($path, '.ndjson')) {
-            $table = substr($path, strlen('database/'), -strlen('.ndjson'));
+            $table = substr($path, strlen('database/'), - strlen('.ndjson'));
 
             return in_array($table, ApplicationTableCatalog::TABLES, true)
                 && $path === "database/{$table}.ndjson";
