@@ -42,7 +42,14 @@ final class SeoOsUpdateMaintenanceGate
         }
 
         $path = parse_url($path, PHP_URL_PATH) ?: '/';
-        foreach (['/settings/update', '/login', '/logout', '/confirm-password'] as $allowed) {
+        foreach ([
+            '/settings/update',
+            '/login',
+            '/logout',
+            '/confirm-password',
+            '/user/confirm-password',
+            '/two-factor-challenge',
+        ] as $allowed) {
             if ($path === $allowed || ($allowed === '/settings/update' && str_starts_with($path, '/settings/update/'))) {
                 return false;
             }

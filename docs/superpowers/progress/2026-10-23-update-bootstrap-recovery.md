@@ -20,3 +20,12 @@ Base: active feature head `1debca14082f5a3bfad2d3167c35784de11ab42d`. Existing s
 ## Status
 
 Implementation is under exact-head CI and requires independent review before integration. The owner-only, recent-password confirm endpoint now prepares verified packages or resumes staged ones, then returns an explicit reload instruction; it never runs target code in the source request. A conflicting Restore journal is rechecked under the shared switch lock. Confirm/auth/stale-digest/restore-conflict regressions observed RED on `494451f4`, CI `40021566898` (4 failed, 474 passed). Target continuation/migrations, UI and connected acceptance remain Tasks 8–13. Package tooling is independently implemented in PR #10; its no-dev source -> target slot -> source runtime smoke passed all six gates on `8fd35c7`, CI `40019999023`.
+
+
+## Verified intermediate boundary and authentication correction
+
+Implementation head `662cac538c1e7d4470be6f9ee18453286163fcc7`, CI `40021758794`: all six permanent jobs passed, including 478 backend tests on both PHP versions, connected MariaDB regressions and the ordinary no-dev release-tree boot.
+
+Actual-router recovery coverage then exposed a pre-existing maintenance allowlist bug: Fortify's registered password confirmation is `/user/confirm-password`, not only `/confirm-password`. RED on `d73e582e`, CI `40021902513`: one failure, 478 passing. The narrow allowlist now includes the real password-confirmation and two-factor challenge paths. Registration, password changes and two-factor configuration stay blocked. This is required so the persisted system owner can authenticate/reconfirm during recovery.
+
+Final exact-head CI and integration remain pending; no main/subsystem completion claim is made.
