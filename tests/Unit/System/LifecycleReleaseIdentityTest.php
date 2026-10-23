@@ -76,6 +76,7 @@ class LifecycleReleaseIdentityTest extends TestCase
             '.env.example' => 'APP_ENV=production',
             'app/Foo.php' => '<?php',
             'bootstrap/app.php' => '<?php',
+            'bootstrap/runtime-release.php' => '<?php',
             'config/app.php' => '<?php return [];',
             'database/migrations/0001_example.php' => '<?php',
             'public/index.php' => '<?php',
