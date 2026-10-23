@@ -4,51 +4,49 @@ Last checkpoint: 2026-10-23
 
 This file is the durable source of truth for continuing SEO OS across agent sessions. **Current Git heads + exact-head CI override stale chat, stale hashes and stale prose.** Never force-push over unexpected movement and never recreate a subsystem that is already verified.
 
-## Stable baseline
+## Stable integrated baseline
 
 - Repository: `arzmolaei/SEO`.
 - Stable branch: `main`.
-- Current stable `main` at this checkpoint: `fabf2bf02d18c4e14f4aa97b6ab819da8620b174`.
-- Current `main` CI: run `39913391652`, success.
 - Foundation + Keyword Core: integrated through PR #1.
 - Keyword Intelligence: integrated through PR #2.
 - Self-host Installer: integrated through PR #4.
 - Persian Export: integrated through PR #5; merge commit `a6924d77b3a9b7f74b484f7e303c8168905c520c`.
-- Active integration branch: `feature/backup-restore`, PR #7.
-- Backup/Restore implementation head before final documentation: `35ee01a108ef5a9df31fce829378756e850e8565`.
-- Permanent implementation CI on that exact head: run `39976140240`, success across all six jobs, including the dedicated `backup-restore-mariadb` gate.
-- `main` reconciliation commit on the feature branch: `0f857c313dfe5256764bbd55f33e562e9576db66`; it makes `main` an ancestor while deliberately retaining the reviewed Backup/Restore design required by the implementation plan.
+- Backup + Restore: integrated through PR #7; merge commit `761aede4927dd21ba6384b4d714cc80f2292019e`.
+- Independent post-merge `main` CI for Backup + Restore: run `39978951778`, success across all six permanent jobs.
 - Runtime floor: PHP `>= 8.4.1`; permanent compatibility gates remain PHP 8.4 and 8.5.
 
-Always fetch the actual `main`, active branch head, PR status and latest CI before changing code. Recorded hashes are evidence, not permission to assume Git has not moved.
+Always fetch actual `main`, any active feature branch/PR and current CI before changing code. Recorded hashes are evidence, not permission to assume Git has not moved.
 
-## Completed integrated product slices
+## Integrated product slices
 
 ### Foundation + Keyword Core
 
-Integrated. Includes Laravel 13 + Inertia/React/TypeScript, Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation, Persian keyword normalization preserving original source text, resumable import, canonical keyword/provenance/metric history, server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo and allowlist-first runtime packaging.
+Integrated. Laravel 13 + Inertia/React/TypeScript, Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation, Persian keyword normalization preserving original source text, resumable import, canonical keyword/provenance/metric history, server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo and allowlist-first runtime packaging.
 
 Evidence: `docs/release-readiness/foundation-keyword-core.md`.
 
 ### Keyword Intelligence
 
-Integrated. Includes deterministic intent history/classification, project-scoped Review Queue, relational/reversible clusters, manual merge/split/move/lock, existing/planned Pages, mapping history/conflict review, explainable local priority and connected Grid/Intent/Clusters/Mapping workspace.
+Integrated. Deterministic intent history/classification, project-scoped Review Queue, reversible clusters, manual merge/split/move/lock, existing/planned Pages, mapping history/conflict review, explainable local priority and connected Grid/Intent/Clusters/Mapping workspace.
 
 Evidence: `docs/release-readiness/keyword-intelligence.md`.
 
 ### Self-host Installer
 
-Integrated. Provides browser-driven offline-capable installation with DB-independent preflight, protected persistent APP_KEY, MySQL/MariaDB verification, resumable migrations, first owner/workspace, scheduler/queue evidence, lock-last finalization, authenticated handoff and permanent MariaDB 10.11 acceptance.
+Integrated. Browser-driven offline-capable install with DB-independent preflight, protected persistent APP_KEY, MySQL/MariaDB verification, resumable migrations, first owner/workspace, scheduler/queue evidence, lock-last finalization, authenticated handoff and permanent MariaDB 10.11 acceptance.
 
 Evidence: `docs/release-readiness/self-host-installer.md`.
 
 ### Persian Export
 
-Integrated through PR #5. Provides the versioned `seo-plan/1` CSV contract with exact Persian/ZWNJ preservation, spreadsheet injection defense, project-scoped intelligence state, bounded generation, repeatable-read MariaDB snapshot semantics, strict export authorization and permanent connected MariaDB acceptance.
+Integrated through PR #5. Versioned `seo-plan/1` CSV with exact Persian/ZWNJ preservation, spreadsheet-injection defense, project-scoped intelligence state, bounded generation, repeatable-read MariaDB semantics, strict export authorization and permanent connected MariaDB acceptance.
 
 Evidence: `docs/release-readiness/persian-export.md`.
 
-## Active slice — Backup + Restore
+### Backup + Restore
+
+Integrated through PR #7.
 
 Design: `docs/superpowers/specs/2026-10-23-backup-restore-design.md`  
 Written-spec review: `docs/superpowers/specs/2026-10-23-backup-restore-review.md`  
@@ -56,47 +54,52 @@ Plan: `docs/superpowers/plans/2026-10-23-backup-restore.md`
 Release evidence: `docs/release-readiness/backup-restore.md`  
 Operator notes: `docs/backup-restore-operations.md`
 
-Tasks 1–10 implementation is complete. The slice is at the final documentation / exact-head CI / merge / post-merge verification boundary.
-
-Implemented boundary:
+Verified boundary:
 
 1. stable distributable `VERSION` and release-tree identity;
 2. persistent system-owner identity and safe installation metadata upgrades;
-3. shared lifecycle mutex and maintenance window primitives for Backup/Restore and future Update/Rollback;
+3. shared `LifecycleMutex` and `MaintenanceWindow` primitives;
 4. explicit 19-table durable catalog, schema fingerprint, canonical manifest and lossless row codec;
-5. deterministic bounded `seo-backup/1` binary bundle reader/writer with strict path, size, duplicate, checksum and trailing-data rejection;
-6. owner-only full backup download with no-store headers and private temporary storage;
+5. deterministic bounded `seo-backup/1` bundle with strict path, size, duplicate, checksum and trailing-data rejection;
+6. owner-only full backup download with no-store/private temporary storage;
 7. private restore upload, full pre-mutation verification, clean-target gate and non-secret durable restore journal;
-8. destructive restore with destination DB identity preserved, source APP_KEY applied only with restored durable state, volatile state cleared and protected safety-snapshot recovery after post-commit interruption;
-9. Persian-first owner-only settings UI with verified digest confirmation, real server phases and explicit recovery-required handling;
-10. permanent connected MariaDB 10.11 backup/restore/recovery acceptance plus release-tree verification.
+8. destructive restore preserving destination DB credentials/local installation identity while restoring source APP_KEY only with durable state;
+9. fail-closed `recovery_required` plus protected safety-snapshot recovery after destructive interruption;
+10. Persian-first owner-only settings UI with exact digest confirmation and real server phases;
+11. permanent connected MariaDB 10.11 round-trip/recovery acceptance and release-tree verification.
 
-Exact implementation evidence:
+Verification evidence:
 
-- feature implementation head: `35ee01a108ef5a9df31fce829378756e850e8565`;
-- permanent CI run `39976140240`: success;
-- jobs green: `verify`, PHP 8.4, PHP 8.5, self-host Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB;
-- `verify` includes frontend check, TypeScript, production build, Pint, PHPStan/Larastan, backend tests, dependency audits, runtime-only Composer install and production release-tree smoke;
-- connected Backup/Restore gate proves separate source/destination MariaDB databases, Persian + ZWNJ domain data, owner/password/passkey/membership state, upload bytes, destination DB credential/installation identity preservation, source APP_KEY usability, volatile-state exclusion, second-restore rejection, injected post-DB-commit failure, `recovery_required`, exact clean-state recovery and lifecycle artifact cleanup.
+- final documentation-complete feature head: `4c7b8e313902f3524b738634208a105b37b291ce`;
+- exact-head PR CI run `39978231749`: success across all six permanent jobs;
+- PR #7 merged with expected-head protection into `main` as `761aede4927dd21ba6384b4d714cc80f2292019e`;
+- independent post-merge `main` CI run `39978951778`: success;
+- post-merge jobs green: `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB.
 
-The branch was one commit behind `main` because `main` intentionally removed an early design draft. Commit `0f857c313dfe5256764bbd55f33e562e9576db66` reconciles `main` into the feature branch while retaining the reviewed final design required by the feature plan. Any newer documentation-complete head must receive fresh permanent PR CI before merge.
+**Do not restart or recreate Backup/Restore Tasks 1–10.** Any future work must reuse these lifecycle primitives.
 
-## Merge boundary for PR #7
+## Active lifecycle slice — Update + Interrupted Recovery/Rollback
 
-Backup + Restore is not integrated merely because implementation CI is green. Before calling it integrated:
+This is now the exact next subsystem. Product implementation has not started at this checkpoint.
 
-1. final documentation/release evidence is committed;
-2. whole-branch review has no open Critical/Important finding;
-3. exact current PR head CI is green across all permanent jobs;
-4. PR #7 is merged with expected-head protection;
-5. the resulting `main` merge commit receives independent permanent CI success;
-6. this state file is updated on `main` with the merged SHA and post-merge CI evidence.
+Required architecture direction:
 
-## Exact next lifecycle work
+- reuse `ProductVersion` for release compatibility and installed-version identity;
+- reuse `LifecycleMutex` for Backup/Restore/Update serialization;
+- require a successful pre-update backup/safety snapshot before destructive update work;
+- define explicit durable update journal phases and fail-closed interruption semantics;
+- preserve destination/local installation identity and environment secrets;
+- perform version/schema compatibility checks before mutation;
+- perform code/release switch, migrations and health validation as explicit phases;
+- rollback to the pre-update release/data state when health validation or an interrupted destructive phase cannot safely complete;
+- prove success and recovery on real MariaDB fixtures and runtime-only release trees;
+- remain browser-driven/offline-capable on ordinary self-host/shared-host environments without requiring Composer, Node/npm, SSH or shell access at runtime.
 
-After PR #7 is merged and post-merge `main` CI is green, start **Update + Interrupted Recovery/Rollback** as the next separate subsystem. Reuse `ProductVersion`, `LifecycleMutex`, backup capture/bundle, safety snapshot and recovery primitives; do not build a parallel lifecycle stack.
+Because Update/Rollback is a new subsystem, follow the mandatory sequence before product code: existing-lifecycle audit -> brainstorming/architecture -> approved design -> written-spec review -> implementation-plan review -> RED/GREEN task execution.
 
-Then complete **Final end-to-end lifecycle acceptance**:
+## After Update/Rollback
+
+Complete **Final end-to-end lifecycle acceptance**:
 
 clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
 
@@ -109,8 +112,8 @@ Only after that first usable self-host lifecycle gate is trustworthy should the 
 - Preserve original keyword text, provenance/metric history and explicit human intent/cluster/mapping decisions.
 - Every project resource query/mutation/export remains project-scoped and authorized.
 - `.env`, credentials, private fonts and local fixtures stay out of Git/release artifacts.
-- Backup bundles are highly sensitive because they contain durable instance data and APP_KEY; they must never be uploaded to public storage, email or support tickets.
-- Destination DB credentials, APP_URL, mail/storage/external secrets and local installation identity are never overwritten by restore.
+- Backup bundles are highly sensitive because they contain durable instance data and APP_KEY.
+- Destination DB credentials, APP_URL, mail/storage/external secrets and local installation identity are never overwritten by restore/update recovery.
 - Any future durable-file mutator must acquire the shared `LifecycleMutex`.
 
 ## Mandatory continuation protocol
@@ -123,8 +126,8 @@ Only after that first usable self-host lifecycle gate is trustworthy should the 
 6. Never force-push or infer success from stale/cancelled/pending runs.
 7. Update durable state at verified subsystem boundaries.
 8. Continue autonomously through approved plans without routine confirmation.
-9. A genuinely new architecture still follows brainstorming -> design approval -> written spec review -> implementation plan review.
+9. A genuinely new architecture follows brainstorming -> design approval -> written spec review -> implementation plan review before product code.
 
 ## Definition of trustworthy progress
 
-Code existence is not completion. Applicable frontend check/TypeScript/build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits, project isolation, connected MariaDB acceptance and release/runtime smoke must be green on the current head. Subsystem integration additionally requires the merge commit on `main` to receive its own permanent CI success.
+Code existence is not completion. Applicable frontend check/TypeScript/build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits, project isolation, connected MariaDB acceptance and release/runtime smoke must be green on the current head. Subsystem integration additionally requires its merge commit on `main` to receive independent permanent CI success.

@@ -12,22 +12,15 @@ Complete one bounded task with RED/GREEN, relevant verification, semantic commit
 - Keyword Intelligence — integrated through PR #2.
 - Self-host Installer — integrated through PR #4 with permanent MariaDB 10.11 acceptance and runtime-only release smoke.
 - Persian Export — integrated through PR #5 at merge commit `a6924d77b3a9b7f74b484f7e303c8168905c520c`, with exact `seo-plan/1` contract and permanent MariaDB 10.11 acceptance.
+- Backup + Restore — integrated through PR #7 at merge commit `761aede4927dd21ba6384b4d714cc80f2292019e`, with permanent connected MariaDB 10.11 round-trip/recovery acceptance and runtime release-tree verification.
 
-Current stable `main` at this checkpoint is `fabf2bf02d18c4e14f4aa97b6ab819da8620b174`; permanent `main` CI `39913391652` is green.
+Backup + Restore post-merge `main` CI run `39978951778` is green across all six permanent jobs: `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB.
 
 ## First usable self-host release gate — active lifecycle phase
 
-### Backup + Restore — implementation complete, integration boundary active
+### Completed: Backup + Restore
 
-Active branch / PR: `feature/backup-restore` / PR #7.
-
-Tasks 1–10 product implementation and permanent connected acceptance are complete. Exact implementation evidence before final documentation:
-
-- head `35ee01a108ef5a9df31fce829378756e850e8565`;
-- CI `39976140240`, success;
-- six permanent green jobs: `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB, Backup/Restore MariaDB.
-
-The slice includes:
+Integrated capabilities include:
 
 - stable ProductVersion + release-tree identity;
 - system-owner identity and owner-only lifecycle access;
@@ -43,32 +36,42 @@ The slice includes:
 - connected MariaDB 10.11 full round-trip + interruption/recovery acceptance;
 - runtime release-tree verification containing VERSION, lifecycle code, routes/controllers and built UI.
 
-The feature branch has reconciled current `main` through merge commit `0f857c313dfe5256764bbd55f33e562e9576db66` while retaining the reviewed feature design required by its plan.
+Do not rebuild this slice. Reuse its lifecycle primitives for Update/Rollback.
 
-Backup + Restore is integrated only after:
+### Active next slice: Update + Interrupted Recovery/Rollback
 
-1. final docs/release-readiness/operator notes are committed;
-2. whole-branch review has no open Critical/Important finding;
-3. fresh exact-head PR CI is green across all six jobs;
-4. PR #7 merges with expected-head protection;
-5. independent post-merge `main` CI is green;
-6. `PROJECT_STATE` records the exact merged state.
+This is the next separate subsystem and must not be collapsed with final end-to-end acceptance.
 
-### Remaining lifecycle work before first usable self-host release
+Required delivery boundary:
 
-1. **Update + Interrupted Recovery/Rollback** — compatibility checks, mandatory pre-update backup, migrations/code transition, health validation, interrupted/failed update recovery and rollback on real fixtures. It must reuse ProductVersion, LifecycleMutex and Backup/Restore safety primitives.
-2. **Final end-to-end lifecycle acceptance** — clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
+1. explicit ProductVersion/source-target compatibility rules;
+2. mandatory verified pre-update backup/safety state before destructive work;
+3. shared `LifecycleMutex` serialization with Backup/Restore;
+4. browser-driven/offline-capable release staging and switch suitable for packaged/shared-host runtime;
+5. migration execution with explicit compatibility and ordering semantics;
+6. durable update journal with interruption-safe phases;
+7. post-switch application/database health validation;
+8. safe rollback/recovery behavior for pre-switch, migration, post-switch and health-check failures;
+9. preservation of destination-local secrets and installation identity;
+10. Persian-first operator status/recovery UI without fake progress or secret leakage;
+11. permanent connected MariaDB acceptance covering successful update plus interruption/failure recovery/rollback;
+12. runtime-only release-tree acceptance with no production-host Composer/Node/npm/SSH/shell dependency;
+13. exact-head PR CI, expected-head merge and independent post-merge `main` CI.
 
-Already satisfied before those two slices:
+Because this is a new architecture-bearing subsystem, follow the required flow: existing-system audit -> brainstorming/architecture -> approved design -> written-spec review -> implementation-plan review -> RED/GREEN execution.
+
+### Remaining lifecycle work after Update/Rollback
+
+**Final end-to-end lifecycle acceptance** — clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
+
+Already satisfied before that final slice:
 
 - runtime-only package and supported host preflight;
 - browser installation, owner creation, installer lock and authenticated entry;
 - real MariaDB 10.11 installer acceptance;
 - complete keyword/import/intelligence core;
 - Persian project handoff export;
-- versioned full-instance backup, clean restore and interruption recovery implementation with connected acceptance.
-
-Do not collapse Update/Rollback and final lifecycle acceptance into one oversized task. Each gets an explicit design/plan where required, RED contract, connected acceptance and exact-head CI.
+- versioned full-instance backup, clean restore and interruption recovery with connected acceptance.
 
 ## Subsequent full-product scope
 
