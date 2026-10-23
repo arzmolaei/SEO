@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,13 @@ import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
-const sidebarNavItems: NavItem[] = [
+type PageProps = {
+    systemBackup?: {
+        canManage: boolean;
+    };
+};
+
+const accountNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: edit(),
@@ -30,6 +36,17 @@ const sidebarNavItems: NavItem[] = [
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { systemBackup } = usePage<PageProps>().props;
+    const sidebarNavItems: NavItem[] = systemBackup?.canManage
+        ? [
+              ...accountNavItems,
+              {
+                  title: 'پشتیبان‌گیری و بازیابی',
+                  href: '/settings/backup',
+                  icon: null,
+              },
+          ]
+        : accountNavItems;
 
     return (
         <div className="px-4 py-6">

@@ -12,6 +12,7 @@ use App\Support\Installer\EnvironmentWriter;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Installer\InstallerJournal;
 use App\Support\Installer\InstallerMutex;
+use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -54,7 +55,6 @@ class SelfHostInstallerAcceptanceTest extends TestCase
             'installer.runtime_key_path' => $this->directory.'/runtime-app-key',
             'installer.scheduler_heartbeat_path' => $this->directory.'/scheduler-heartbeat.json',
             'installer.queue_probe_path' => $this->directory.'/queue-probes',
-            'installer.product_version' => 'connected-acceptance',
         ]);
 
         $this->journal = new InstallerJournal($this->directory.'/journal.json');
@@ -189,8 +189,9 @@ class SelfHostInstallerAcceptanceTest extends TestCase
 
         $details = (new InstallationState($this->lockPath, false))->details();
         $this->assertIsArray($details);
-        $this->assertSame('connected-acceptance', $details['product_version']);
+        $this->assertSame((new ProductVersion)->current(), $details['product_version']);
         $this->assertSame(2, $details['installer_schema_version']);
+        $this->assertSame($owner->id, $details['owner_user_id']);
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/', (string) $details['installation_id']);
 
         $this->get('/dashboard')->assertOk();
@@ -242,33 +243,35 @@ class SelfHostInstallerAcceptanceTest extends TestCase
         ]);
 
         DB::purge('mariadb');
+        DB::setDefaultConnection('mariadb');
     }
 
     private function resetConnectedDatabase(): void
     {
-        if (getenv('SELF_HOST_INSTALLER_CONNECTED') !== '1') {
+        if (config('database.default') !== 'mariadb') {
             return;
         }
 
-        $connection = DB::connection('mariadb');
-        $schema = $connection->getSchemaBuilder();
-        $connection->statement('SET FOREIGN_KEY_CHECKS=0');
+        $schema = DB::connection('mariadb')->getSchemaBuilder();
+        $schema->disableForeignKeyConstraints();
 
-        try {
-            foreach ($schema->getTableListing() as $table) {
-                $schema->drop($table);
+        foreach ($schema->getTableListing() as $table) {
+            if (str_contains((string) $table, '.')) {
+                $table = substr((string) $table, strrpos((string) $table, '.') + 1);
             }
-        } finally {
-            $connection->statement('SET FOREIGN_KEY_CHECKS=1');
+
+            $schema->drop((string) $table);
         }
+
+        $schema->enableForeignKeyConstraints();
     }
 
     private function connectedValue(string $key): string
     {
-        $value = getenv('INSTALLER_CONNECTED_DB_'.$key);
+        $value = (string) getenv('INSTALLER_CONNECTED_DB_'.$key);
 
-        if (! is_string($value) || trim($value) === '') {
-            $this->fail('Missing connected installer database environment: INSTALLER_CONNECTED_DB_'.$key);
+        if ($value === '') {
+            $this->fail("Missing INSTALLER_CONNECTED_DB_{$key} for connected installer acceptance.");
         }
 
         return $value;
@@ -305,7 +308,7 @@ class SelfHostInstallerAcceptanceTest extends TestCase
 
             public function queueConnection(): string
             {
-                return 'database';
+                return 'sync';
             }
 
             public function schedulerSupported(): bool

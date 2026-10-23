@@ -12,6 +12,7 @@ use App\Support\Installer\DatabaseVerifier;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Installer\InstallerJournal;
 use App\Support\Installer\InstallerMigrationRunner;
+use App\Support\Lifecycle\ProductVersion;
 use App\Support\Operations\OperationalHealth;
 use App\Support\Operations\QueueProbe;
 use App\Support\Operations\SchedulerHeartbeat;
@@ -48,6 +49,7 @@ class InstallerFinalizationTest extends TestCase
         $this->environmentPath = $this->directory.'/.env';
         $this->runtimeKeyPath = $this->directory.'/runtime-app-key';
         File::ensureDirectoryExists($this->directory);
+        File::put($this->directory.'/VERSION', "0.1.0-test\n");
 
         config([
             'app.key' => self::APP_KEY,
@@ -58,10 +60,10 @@ class InstallerFinalizationTest extends TestCase
             'installer.runtime_key_path' => $this->runtimeKeyPath,
             'installer.scheduler_heartbeat_path' => $this->directory.'/scheduler-heartbeat.json',
             'installer.queue_probe_path' => $this->directory.'/queue-probes',
-            'installer.product_version' => '0.1.0-test',
         ]);
 
         $this->app->bind(SystemProbe::class, fn () => $this->probe());
+        $this->app->instance(ProductVersion::class, new ProductVersion($this->directory.'/VERSION'));
         $this->writeEnvironment(self::APP_KEY);
         $this->app->instance(InstallerEnvironment::class, new InstallerEnvironment($this->environmentPath));
 
@@ -248,6 +250,7 @@ class InstallerFinalizationTest extends TestCase
         $this->assertIsArray($details);
         $this->assertSame(2, $details['installer_schema_version']);
         $this->assertSame('0.1.0-test', $details['product_version']);
+        $this->assertSame($this->owner->id, $details['owner_user_id']);
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/', (string) $details['installation_id']);
     }
 

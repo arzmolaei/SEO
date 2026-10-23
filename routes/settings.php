@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\SystemBackupController;
+use App\Http\Controllers\Settings\SystemRestoreController;
+use App\Http\Middleware\EnsureSystemOwner;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +21,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/security', [SecurityController::class, 'edit'])
         ->middleware(RequirePassword::class)
         ->name('security.edit');
+
+    Route::get('settings/backup', [SystemBackupController::class, 'edit'])
+        ->middleware(EnsureSystemOwner::class)
+        ->name('settings.backup.edit');
+
+    Route::get('settings/backup/download', [SystemBackupController::class, 'download'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class])
+        ->name('settings.backup.download');
+
+    Route::post('settings/backup/restore/verify', [SystemRestoreController::class, 'verify'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
+        ->name('settings.backup.restore.verify');
+
+    Route::post('settings/backup/restore/confirm', [SystemRestoreController::class, 'confirm'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
+        ->name('settings.backup.restore.confirm');
+
+    Route::post('settings/backup/restore/recover', [SystemRestoreController::class, 'recover'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
+        ->name('settings.backup.restore.recover');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')

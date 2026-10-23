@@ -20,6 +20,7 @@ class ReleasePackageBuilderTest extends TestCase
         $this->source = sys_get_temp_dir()."/seo-os-release-source-{$suffix}";
         $this->destination = sys_get_temp_dir()."/seo-os-release-output-{$suffix}";
 
+        $this->writeFixture('VERSION', "0.1.0-alpha.1\n");
         $this->writeFixture('artisan', '#!/usr/bin/env php');
         $this->writeFixture('composer.json', '{}');
         $this->writeFixture('composer.lock', '{}');
@@ -61,6 +62,7 @@ class ReleasePackageBuilderTest extends TestCase
     {
         (new ReleasePackageBuilder)->build($this->source, $this->destination);
 
+        $this->assertFileExists($this->destination.'/VERSION');
         $this->assertFileExists($this->destination.'/artisan');
         $this->assertFileExists($this->destination.'/vendor/autoload.php');
         $this->assertFileExists($this->destination.'/public/build/manifest.json');

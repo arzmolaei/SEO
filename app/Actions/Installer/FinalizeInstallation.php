@@ -12,6 +12,7 @@ use App\Support\Installer\InstallerJournal;
 use App\Support\Installer\InstallerMigrationRunner;
 use App\Support\Installer\InstallerMutex;
 use App\Support\Installer\InstallerPreflight;
+use App\Support\Lifecycle\ProductVersion;
 use App\Support\Operations\OperationalHealth;
 use App\Support\RuntimeApplicationKey;
 use RuntimeException;
@@ -29,6 +30,7 @@ class FinalizeInstallation
         private readonly OperationalHealth $operationalHealth,
         private readonly InstallationState $installationState,
         private readonly RuntimeApplicationKey $runtimeApplicationKey,
+        private readonly ProductVersion $productVersion,
     ) {}
 
     public function handle(): User
@@ -86,9 +88,10 @@ class FinalizeInstallation
 
         $this->installationState->markInstalled([
             'installer_schema_version' => 2,
-            'product_version' => $this->productVersion(),
+            'product_version' => $this->productVersion->current(),
             'installation_id' => bin2hex(random_bytes(16)),
             'database_fingerprint' => $verification->fingerprint,
+            'owner_user_id' => $owner->id,
         ]);
 
         $this->cleanupTransientInstallerState($persistentKey);
@@ -179,13 +182,6 @@ class FinalizeInstallation
             'username' => $username,
             'password' => (string) $environment['DB_PASSWORD'],
         ];
-    }
-
-    private function productVersion(): string
-    {
-        $version = trim((string) config('installer.product_version', 'dev'));
-
-        return $version !== '' ? $version : 'dev';
     }
 
     private function cleanupTransientInstallerState(string $persistentKey): void

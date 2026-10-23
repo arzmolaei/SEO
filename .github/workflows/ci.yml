@@ -99,8 +99,18 @@ jobs:
           test ! -e "$RELEASE_ROOT/.env"
           test ! -e "$RELEASE_ROOT/node_modules"
           test ! -e "$RELEASE_ROOT/tests"
+          test -f "$RELEASE_ROOT/VERSION"
           test -f "$RELEASE_ROOT/public/build/manifest.json"
           test -f "$RELEASE_ROOT/app/Http/Controllers/InstallerController.php"
+          test -f "$RELEASE_ROOT/app/Http/Controllers/Settings/SystemBackupController.php"
+          test -f "$RELEASE_ROOT/app/Http/Controllers/Settings/SystemRestoreController.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/CreateSystemBackup.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/RestoreSystemBackup.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/RecoverInterruptedRestore.php"
+          test -f "$RELEASE_ROOT/app/Support/Lifecycle/LifecycleMutex.php"
+          test -f "$RELEASE_ROOT/config/backup.php"
+          test -f "$RELEASE_ROOT/routes/settings.php"
+          grep -q 'backup-restore' "$RELEASE_ROOT/public/build/manifest.json"
           (
             cd "$RELEASE_ROOT"
             php artisan --version
@@ -271,3 +281,73 @@ jobs:
           tests/Feature/Exports/ProjectSeoExportLargeDatasetTest.php
           tests/Feature/Acceptance/PersianExportMariaDbAcceptanceTest.php
           --fail-on-skipped
+
+  backup-restore-mariadb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      source-db:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: source-root-secret
+          MARIADB_DATABASE: seo_backup_source
+          MARIADB_USER: seo_backup_source
+          MARIADB_PASSWORD: source-db-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      destination-db:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: destination-root-secret
+          MARIADB_DATABASE: seo_backup_destination
+          MARIADB_USER: seo_backup_destination
+          MARIADB_PASSWORD: destination-db-secret
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      BACKUP_RESTORE_CONNECTED: '1'
+      BACKUP_SOURCE_DB_HOST: 127.0.0.1
+      BACKUP_SOURCE_DB_PORT: '3306'
+      BACKUP_SOURCE_DB_DATABASE: seo_backup_source
+      BACKUP_SOURCE_DB_USERNAME: seo_backup_source
+      BACKUP_SOURCE_DB_PASSWORD: source-db-secret
+      BACKUP_DESTINATION_DB_HOST: 127.0.0.1
+      BACKUP_DESTINATION_DB_PORT: '3307'
+      BACKUP_DESTINATION_DB_DATABASE: seo_backup_destination
+      BACKUP_DESTINATION_DB_USERNAME: seo_backup_destination
+      BACKUP_DESTINATION_DB_PASSWORD: destination-db-secret
+      INSTALLER_ASSUME_INSTALLED: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application key
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Run connected backup restore acceptance
+        run: php artisan test tests/Feature/Acceptance/BackupRestoreMariaDbAcceptanceTest.php --fail-on-skipped
