@@ -1,8 +1,18 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, Download, RotateCcw, ShieldAlert, Upload } from 'lucide-react';
+import {
+    AlertTriangle,
+    Download,
+    RotateCcw,
+    ShieldAlert,
+    Upload,
+} from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import Heading from '@/components/heading';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -81,9 +91,11 @@ const copy = {
             'سیستم یک شکست پس از شروع تغییرات مخرب ثبت کرده است. تا بازگردانی snapshot ایمنی، دانلود پشتیبان یا شروع بازیابی جدید مجاز نیست.',
         recover: 'بازگردانی وضعیت امن قبل از بازیابی',
         recovering: 'در حال بازگردانی…',
-        genericError: 'عملیات انجام نشد. وضعیت سرور را دوباره بررسی کنید و تلاش مجدد انجام دهید.',
+        genericError:
+            'عملیات انجام نشد. وضعیت سرور را دوباره بررسی کنید و تلاش مجدد انجام دهید.',
         fileRequired: 'یک فایل .seobak انتخاب کنید.',
-        digestMismatch: 'SHA-256 واردشده دقیقاً با فایل تأییدشده برابر نیست.',
+        digestMismatch:
+            'SHA-256 واردشده دقیقاً با فایل تأییدشده برابر نیست.',
         phaseIdle: 'آماده',
         phaseUploaded: 'فایل بارگذاری شده',
         phaseVerified: 'فایل تأیید شده؛ منتظر تأیید نهایی',
@@ -129,14 +141,17 @@ const copy = {
         confirmPlaceholder: 'Enter the exact SHA-256',
         restore: 'Start destructive restore',
         restoring: 'Restoring…',
-        recoveryTitle: 'Restore is interrupted and ordinary actions are blocked',
+        recoveryTitle:
+            'Restore is interrupted and ordinary actions are blocked',
         recoveryDescription:
             'The server recorded a failure after destructive progress started. Restore the protected safety snapshot before starting another lifecycle operation.',
         recover: 'Recover pre-restore safe state',
         recovering: 'Recovering…',
-        genericError: 'The operation failed. Refresh server state and try again.',
+        genericError:
+            'The operation failed. Refresh server state and try again.',
         fileRequired: 'Choose a .seobak file first.',
-        digestMismatch: 'The entered SHA-256 does not exactly match the verified bundle.',
+        digestMismatch:
+            'The entered SHA-256 does not exactly match the verified bundle.',
         phaseIdle: 'Ready',
         phaseUploaded: 'Bundle uploaded',
         phaseVerified: 'Bundle verified; awaiting confirmation',
@@ -193,7 +208,9 @@ export default function BackupRestore({ restore }: Props) {
     const fileInput = useRef<HTMLInputElement>(null);
     const [file, setFile] = useState<File | null>(null);
     const [confirmationDigest, setConfirmationDigest] = useState('');
-    const [busy, setBusy] = useState<'verify' | 'restore' | 'recover' | null>(null);
+    const [busy, setBusy] = useState<
+        'verify' | 'restore' | 'recover' | null
+    >(null);
     const [error, setError] = useState<string | null>(null);
 
     const phaseLabel = useMemo(() => {
@@ -284,10 +301,13 @@ export default function BackupRestore({ restore }: Props) {
         try {
             const data = new FormData();
             data.append('backup', file);
-            const response = await request('/settings/backup/restore/verify', {
-                method: 'POST',
-                body: data,
-            });
+            const response = await request(
+                '/settings/backup/restore/verify',
+                {
+                    method: 'POST',
+                    body: data,
+                },
+            );
             if (response) {
                 setConfirmationDigest('');
                 refreshRestoreState();
@@ -311,15 +331,18 @@ export default function BackupRestore({ restore }: Props) {
         setError(null);
 
         try {
-            const response = await request('/settings/backup/restore/confirm', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await request(
+                '/settings/backup/restore/confirm',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content_digest_sha256: confirmationDigest,
+                    }),
                 },
-                body: JSON.stringify({
-                    content_digest_sha256: confirmationDigest,
-                }),
-            });
+            );
             if (response) {
                 window.location.assign('/login');
             }
@@ -354,18 +377,30 @@ export default function BackupRestore({ restore }: Props) {
         <>
             <Head title={t.title} />
 
-            <div className="space-y-6" dir={locale === 'fa' ? 'rtl' : 'ltr'}>
-                <Heading variant="small" title={t.title} description={t.description} />
+            <div
+                className="space-y-6"
+                dir={locale === 'fa' ? 'rtl' : 'ltr'}
+            >
+                <Heading
+                    variant="small"
+                    title={t.title}
+                    description={t.description}
+                />
 
                 <Alert variant="destructive">
                     <ShieldAlert />
                     <AlertTitle>{t.warningTitle}</AlertTitle>
-                    <AlertDescription>{t.warningDescription}</AlertDescription>
+                    <AlertDescription>
+                        {t.warningDescription}
+                    </AlertDescription>
                 </Alert>
 
                 <div className="rounded-lg border px-4 py-3 text-sm">
                     <div className="font-medium">{t.status}</div>
-                    <div className="text-muted-foreground mt-1" data-test="restore-phase">
+                    <div
+                        className="text-muted-foreground mt-1"
+                        data-test="restore-phase"
+                    >
                         {phaseLabel}
                     </div>
                 </div>
@@ -381,7 +416,9 @@ export default function BackupRestore({ restore }: Props) {
                     <Card>
                         <CardHeader>
                             <CardTitle>{t.recoveryTitle}</CardTitle>
-                            <CardDescription>{t.recoveryDescription}</CardDescription>
+                            <CardDescription>
+                                {t.recoveryDescription}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Button
@@ -391,7 +428,9 @@ export default function BackupRestore({ restore }: Props) {
                                 data-test="recover-restore"
                             >
                                 <RotateCcw />
-                                {busy === 'recover' ? t.recovering : t.recover}
+                                {busy === 'recover'
+                                    ? t.recovering
+                                    : t.recover}
                             </Button>
                         </CardContent>
                     </Card>
@@ -401,11 +440,16 @@ export default function BackupRestore({ restore }: Props) {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>{t.downloadTitle}</CardTitle>
-                                    <CardDescription>{t.downloadDescription}</CardDescription>
+                                    <CardDescription>
+                                        {t.downloadDescription}
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <Button asChild>
-                                        <a href="/settings/backup/download" data-test="download-backup">
+                                        <a
+                                            href="/settings/backup/download"
+                                            data-test="download-backup"
+                                        >
                                             <Download />
                                             {t.download}
                                         </a>
@@ -418,18 +462,25 @@ export default function BackupRestore({ restore }: Props) {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>{t.restoreTitle}</CardTitle>
-                                    <CardDescription>{t.restoreDescription}</CardDescription>
+                                    <CardDescription>
+                                        {t.restoreDescription}
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="restore-backup">{t.chooseFile}</Label>
+                                        <Label htmlFor="restore-backup">
+                                            {t.chooseFile}
+                                        </Label>
                                         <Input
                                             ref={fileInput}
                                             id="restore-backup"
                                             type="file"
                                             accept=".seobak,application/octet-stream"
                                             onChange={(event) => {
-                                                setFile(event.target.files?.[0] ?? null);
+                                                setFile(
+                                                    event.target.files?.[0] ??
+                                                        null,
+                                                );
                                                 setError(null);
                                             }}
                                         />
@@ -441,7 +492,9 @@ export default function BackupRestore({ restore }: Props) {
                                         data-test="verify-backup"
                                     >
                                         <Upload />
-                                        {busy === 'verify' ? t.verifying : t.verify}
+                                        {busy === 'verify'
+                                            ? t.verifying
+                                            : t.verify}
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -451,41 +504,86 @@ export default function BackupRestore({ restore }: Props) {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>{t.previewTitle}</CardTitle>
-                                    <CardDescription>{t.previewDescription}</CardDescription>
+                                    <CardDescription>
+                                        {t.previewDescription}
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-5">
                                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
                                         <div>
-                                            <dt className="text-muted-foreground">{t.sourceVersion}</dt>
-                                            <dd className="font-medium">{restore.preview.source_product_version}</dd>
+                                            <dt className="text-muted-foreground">
+                                                {t.sourceVersion}
+                                            </dt>
+                                            <dd className="font-medium">
+                                                {
+                                                    restore.preview
+                                                        .source_product_version
+                                                }
+                                            </dd>
                                         </div>
                                         <div>
-                                            <dt className="text-muted-foreground">{t.createdAt}</dt>
-                                            <dd className="font-medium">{restore.preview.source_created_at_utc}</dd>
+                                            <dt className="text-muted-foreground">
+                                                {t.createdAt}
+                                            </dt>
+                                            <dd className="font-medium">
+                                                {
+                                                    restore.preview
+                                                        .source_created_at_utc
+                                                }
+                                            </dd>
                                         </div>
                                         <div>
-                                            <dt className="text-muted-foreground">{t.records}</dt>
-                                            <dd className="font-medium">{restore.preview.table_record_count}</dd>
+                                            <dt className="text-muted-foreground">
+                                                {t.records}
+                                            </dt>
+                                            <dd className="font-medium">
+                                                {
+                                                    restore.preview
+                                                        .table_record_count
+                                                }
+                                            </dd>
                                         </div>
                                         <div>
-                                            <dt className="text-muted-foreground">{t.files}</dt>
-                                            <dd className="font-medium">{restore.preview.durable_file_count}</dd>
+                                            <dt className="text-muted-foreground">
+                                                {t.files}
+                                            </dt>
+                                            <dd className="font-medium">
+                                                {
+                                                    restore.preview
+                                                        .durable_file_count
+                                                }
+                                            </dd>
                                         </div>
                                         <div>
-                                            <dt className="text-muted-foreground">{t.size}</dt>
-                                            <dd className="font-medium">{formatBytes(restore.preview.bundle_bytes, locale)}</dd>
+                                            <dt className="text-muted-foreground">
+                                                {t.size}
+                                            </dt>
+                                            <dd className="font-medium">
+                                                {formatBytes(
+                                                    restore.preview
+                                                        .bundle_bytes,
+                                                    locale,
+                                                )}
+                                            </dd>
                                         </div>
                                     </dl>
 
                                     <div className="space-y-2">
-                                        <div className="text-muted-foreground text-sm">{t.digest}</div>
-                                        <code className="bg-muted block overflow-x-auto rounded-md p-3 text-xs" dir="ltr">
+                                        <div className="text-muted-foreground text-sm">
+                                            {t.digest}
+                                        </div>
+                                        <code
+                                            className="bg-muted block overflow-x-auto rounded-md p-3 text-xs"
+                                            dir="ltr"
+                                        >
                                             {restore.preview.digest}
                                         </code>
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="restore-digest">{t.confirmLabel}</Label>
+                                        <Label htmlFor="restore-digest">
+                                            {t.confirmLabel}
+                                        </Label>
                                         <Input
                                             id="restore-digest"
                                             dir="ltr"
@@ -493,7 +591,9 @@ export default function BackupRestore({ restore }: Props) {
                                             spellCheck={false}
                                             value={confirmationDigest}
                                             onChange={(event) => {
-                                                setConfirmationDigest(event.target.value.trim());
+                                                setConfirmationDigest(
+                                                    event.target.value.trim(),
+                                                );
                                                 setError(null);
                                             }}
                                             placeholder={t.confirmPlaceholder}
@@ -506,12 +606,15 @@ export default function BackupRestore({ restore }: Props) {
                                         onClick={confirmRestore}
                                         disabled={
                                             busy !== null ||
-                                            confirmationDigest !== restore.preview.digest
+                                            confirmationDigest !==
+                                                restore.preview.digest
                                         }
                                         data-test="confirm-restore"
                                     >
                                         <AlertTriangle />
-                                        {busy === 'restore' ? t.restoring : t.restore}
+                                        {busy === 'restore'
+                                            ? t.restoring
+                                            : t.restore}
                                     </Button>
                                 </CardContent>
                             </Card>
