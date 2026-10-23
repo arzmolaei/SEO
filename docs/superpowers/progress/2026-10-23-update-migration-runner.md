@@ -14,7 +14,14 @@ Base: `feature/update-recovery-rollback@eea234dcbed29cf263ac794aab061f487a8ae5a6
 
 ## Status
 
-Tests first. Implementation and current-head CI/review remain required. Tasks 9–11 and 13 remain incomplete; no full-product or lifecycle-release claim.
+Implementation/review in PR #12. Correct observed REDs: initial missing API CI `40023385360`; trigger/reverse completion regressions CI `40024824838` (2 failed, 491 passed); missing durable-attempt API CI `40025238250`; unpublished forward completion CI `40025795507` (1 failed, 495 passed). Final current-head CI remains required.
+
+Review corrections implemented:
+
+- SQLite fingerprints canonical `sqlite_master` definitions; MySQL/MariaDB hashes full table/view definitions and stable trigger metadata. CHECK constraints, engine/collation, view security/check options and quoted defaults are structural evidence. A quote-aware scanner removes only the mutable table-level AUTO_INCREMENT counter. Routines, events and non-table/view objects are unsupported and fail closed rather than being omitted.
+- A private durable `migration-attempt.json` is atomically written before invoking any up/down. An unresolved attempt blocks retries even when history/schema look unchanged: data-only work may have committed. A thrown migration therefore conservatively requires recovery unless a fully completed checkpoint was written; unchanged DDL alone is not sufficient proof for automatic rollback. Task 9/10 must preserve this boundary, not silently retry or clear this marker.
+- Completed markers contain exact before/after DTOs and direction. If publication was interrupted, forward continuation republishes the completed checkpoint before clearing it. Reverse continuation matches only a recorded remaining prefix, publishes each verified down and resumes without executing completed downs again.
+- Permanent connected tests run after existing Backup/Restore acceptance in the same MariaDB job with `--fail-on-skipped`: reversible FK-ordered DDL, mutable-counter stability, unlogged trigger/CHECK/engine drift, quoted-default/view-check drift and separate PHP process exits during committed data-only up/down. This is focused Task 8 acceptance, not the still-required full Task 13 Update/Rollback gate. Tasks 9–11 and 13 remain incomplete; no full-product or lifecycle-release claim.
 
 
 ## Mandatory lifecycle acceptance corrections discovered during review

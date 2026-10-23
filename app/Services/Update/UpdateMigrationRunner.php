@@ -40,7 +40,19 @@ final class UpdateMigrationRunner
     /** @param callable(UpdateMigrationState): void $afterEachCompleted */
     public function runPending(UpdateMigrationState $before, callable $afterEachCompleted): UpdateMigrationState
     {
-        $this->resolveCompletedAttempt();
+        $completed = $this->completedAttempt();
+        if ($completed !== null) {
+            if ($completed['direction'] !== 'up') {
+                throw $this->recoveryRequired();
+            }
+            if ($before->toArray() === $completed['before']->toArray()) {
+                $before = $completed['after'];
+                $afterEachCompleted($before);
+            } elseif ($before->toArray() !== $completed['after']->toArray()) {
+                throw $this->recoveryRequired();
+            }
+            $this->clearAttempt();
+        }
         $this->assertCheckpoint($before);
         $files = $this->migrationFiles();
         $cursor = $before;
@@ -50,7 +62,7 @@ final class UpdateMigrationRunner
                 continue;
             }
             $this->assertCheckpoint($cursor);
-            $this->startAttempt('up', $name);
+            $this->startAttempt('up', $name, $cursor);
             try {
                 $this->migrator->usingConnection($this->connection, fn () => $this->migrator->run([$file], ['pretend' => false, 'step' => true]));
             } catch (Throwable $exception) {
@@ -67,8 +79,9 @@ final class UpdateMigrationRunner
             }
             $row = $after->ran[array_key_last($after->ran)];
             $suffix[] = [...$row, 'schema_fingerprint_sha256' => $after->schemaFingerprintSha256];
+            $completedBefore = $cursor;
             $cursor = new UpdateMigrationState($after->ran, $after->schemaFingerprintSha256, $suffix);
-            $this->completeAttempt($cursor);
+            $this->completeAttempt('up', $completedBefore, $cursor);
             $afterEachCompleted($cursor);
             $this->clearAttempt();
         }
@@ -82,7 +95,10 @@ final class UpdateMigrationRunner
      */
     public function rollbackExactSuffix(UpdateMigrationState $before, array $expectedAppliedSuffix, ?callable $afterEachCompleted = null): void
     {
-        $this->resolveCompletedAttempt();
+        $completed = $this->completedAttempt();
+        if ($completed !== null && $completed['direction'] !== 'down') {
+            throw $this->recoveryRequired();
+        }
         $suffix = $expectedAppliedSuffix;
         $files = $this->migrationFiles();
         $rows = array_map(static fn (array $row): array => ['migration' => $row['migration'], 'batch' => $row['batch']], $suffix);
@@ -100,13 +116,22 @@ final class UpdateMigrationRunner
             array_pop($suffix);
             array_pop($rows);
         }
+        if ($completed !== null) {
+            if ($completed['after']->toArray() !== $expected->toArray()) {
+                throw $this->recoveryRequired();
+            }
+            if ($afterEachCompleted !== null) {
+                $afterEachCompleted($expected);
+            }
+            $this->clearAttempt();
+        }
         foreach (array_reverse($suffix) as $row) {
             $this->assertCheckpoint($expected);
             $file = $files[$row['migration']] ?? null;
             if (! is_string($file)) {
                 throw $this->recoveryRequired();
             }
-            $this->startAttempt('down', $row['migration']);
+            $this->startAttempt('down', $row['migration'], $expected);
             try {
                 // Only this proven file is available to Migrator; no broad batch rollback.
                 $this->migrator->usingConnection($this->connection, fn () => $this->migrator->rollback([$file], ['pretend' => false, 'step' => 1]));
@@ -115,9 +140,10 @@ final class UpdateMigrationRunner
             }
             array_pop($suffix);
             array_pop($rows);
+            $completedBefore = $expected;
             $expected = $this->reverseCheckpoint($before, $rows, $suffix);
             $this->assertCheckpoint($expected);
-            $this->completeAttempt($expected);
+            $this->completeAttempt('down', $completedBefore, $expected);
             if ($afterEachCompleted !== null) {
                 $afterEachCompleted($expected);
             }
@@ -163,10 +189,11 @@ final class UpdateMigrationRunner
         return $files;
     }
 
-    private function resolveCompletedAttempt(): void
+    /** @return array{direction:string,before:UpdateMigrationState,after:UpdateMigrationState}|null */
+    private function completedAttempt(): ?array
     {
         if (! file_exists($this->attemptPath) && ! is_link($this->attemptPath)) {
-            return;
+            return null;
         }
         if (is_link($this->attemptPath) || ! is_file($this->attemptPath)) {
             throw $this->recoveryRequired();
@@ -180,22 +207,27 @@ final class UpdateMigrationRunner
         } catch (Throwable $exception) {
             throw $this->recoveryRequired($exception);
         }
-        if (! is_array($attempt) || ($attempt['schema'] ?? null) !== 'seo-update-migration-attempt/1' || ($attempt['phase'] ?? null) !== 'complete' || ! is_array($attempt['checkpoint'] ?? null)) {
+        if (! is_array($attempt) || ($attempt['schema'] ?? null) !== 'seo-update-migration-attempt/1' || ($attempt['phase'] ?? null) !== 'complete' || ! is_array($attempt['checkpoint'] ?? null) || ! is_array($attempt['before_checkpoint'] ?? null) || ! in_array($attempt['direction'] ?? null, ['up', 'down'], true)) {
             throw $this->recoveryRequired();
         }
-        $this->assertCheckpoint(UpdateMigrationState::fromArray($attempt['checkpoint']));
-        $this->clearAttempt();
+        $after = UpdateMigrationState::fromArray($attempt['checkpoint']);
+        $before = UpdateMigrationState::fromArray($attempt['before_checkpoint']);
+        $this->assertCheckpoint($after);
+
+        return ['direction' => $attempt['direction'], 'before' => $before, 'after' => $after];
     }
 
-    private function startAttempt(string $direction, string $migration): void
+    private function startAttempt(string $direction, string $migration, UpdateMigrationState $before): void
     {
-        $this->resolveCompletedAttempt();
-        $this->writeAttempt(['phase' => 'started', 'direction' => $direction, 'migration' => $migration]);
+        if (file_exists($this->attemptPath) || is_link($this->attemptPath)) {
+            throw $this->recoveryRequired();
+        }
+        $this->writeAttempt(['phase' => 'started', 'direction' => $direction, 'migration' => $migration, 'before_checkpoint' => $before->toArray()]);
     }
 
-    private function completeAttempt(UpdateMigrationState $state): void
+    private function completeAttempt(string $direction, UpdateMigrationState $before, UpdateMigrationState $after): void
     {
-        $this->writeAttempt(['phase' => 'complete', 'checkpoint' => $state->toArray()]);
+        $this->writeAttempt(['phase' => 'complete', 'direction' => $direction, 'before_checkpoint' => $before->toArray(), 'checkpoint' => $after->toArray()]);
     }
 
     /** @param array<string, mixed> $data */
@@ -277,11 +309,13 @@ final class UpdateMigrationRunner
             $character = $sql[$index];
             if ($quote !== null) {
                 $result .= $character;
-                if ($character === "\\" && $index + 1 < $length) {
-                    $result .= $sql[++$index];
+                if ($character === '\\' && $index + 1 < $length) {
+                    $index++;
+                    $result .= $sql[$index];
                 } elseif ($character === $quote) {
                     if ($index + 1 < $length && $sql[$index + 1] === $quote) {
-                        $result .= $sql[++$index];
+                        $index++;
+                        $result .= $sql[$index];
                     } else {
                         $quote = null;
                     }
