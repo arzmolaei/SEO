@@ -96,6 +96,20 @@ class UpdateMaintenanceGateTest extends TestCase
         }
     }
 
+    public function test_actual_password_confirmation_and_two_factor_login_routes_remain_reachable_for_recovery(): void
+    {
+        $this->writeJournal(['phase' => 'recovery_required', 'upload_id' => str_repeat('d', 32)]);
+        $gate = $this->gate();
+        foreach (['login', 'logout', 'password.confirm', 'password.confirm.store', 'two-factor.login', 'two-factor.login.store'] as $name) {
+            $path = parse_url(route($name), PHP_URL_PATH);
+            $this->assertIsString($path);
+            $this->assertFalse($gate->shouldBlockHttp($path), 'Recovery authentication blocked: '.$path);
+        }
+        foreach (['/register', '/settings/password', '/user/two-factor-authentication'] as $path) {
+            $this->assertTrue($gate->shouldBlockHttp($path));
+        }
+    }
+
     public function test_launcher_maintenance_phases_cannot_drift_from_application_journal(): void
     {
         require_once dirname(__DIR__, 3).'/bootstrap/runtime-release.php';

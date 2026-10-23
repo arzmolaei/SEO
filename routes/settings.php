@@ -57,6 +57,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ])
         ->name('settings.update.verify');
 
+    Route::post('settings/update/confirm', [SystemUpdateController::class, 'confirm'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-verify'])
+        ->name('settings.update.confirm');
+
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');

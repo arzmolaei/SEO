@@ -3,6 +3,7 @@
 namespace Tests\Feature\Update;
 
 use App\Services\Update\UpdateJournal;
+use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -139,15 +140,77 @@ class TargetBootstrapFailureTest extends TestCase
         $this->assertStringNotContainsString($this->directory, $encoded);
     }
 
+    public function test_fatal_target_bootstrap_has_sanitized_shutdown_recovery(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        File::put(
+            $this->releaseRoot.'/'.$this->targetReleaseId.'/vendor/autoload.php',
+            "<?php ini_set('memory_limit', '16M'); str_repeat('x', 32 * 1024 * 1024);",
+        );
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        [$exitCode, $output] = $this->runPublicLauncher();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertSame('Application update recovery is required.', trim($output));
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertStringNotContainsString($this->directory, $output);
+    }
+
+    public function test_target_journal_mismatch_never_reverts_an_unproven_release(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $state = $this->journal->state();
+        $state['target_release_id'] = 'unrelated-release';
+        File::put($this->journalPath, json_encode($state, JSON_THROW_ON_ERROR));
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $this->runPublicLauncher();
+
+        $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+        $this->assertSame('recovery_required', $this->journal->state()['phase']);
+        $this->assertFalse($this->journal->state()['recovery_reverted_to_source']);
+    }
+
+    public function test_custom_mutex_configuration_requires_manual_recovery_instead_of_using_another_lock(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $state = $this->journal->state();
+        $state['lifecycle_mutex_path_sha256'] = hash('sha256', '/custom/lifecycle.lock');
+        File::put($this->journalPath, json_encode($state, JSON_THROW_ON_ERROR));
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $this->runPublicLauncher();
+
+        $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+        $this->assertSame('target_active', $this->journal->state()['phase']);
+    }
+
+    public function test_another_lifecycle_owner_blocks_pointer_and_journal_recovery_writes(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $ownership = (new LifecycleMutex($this->installationRoot.'/storage/app/lifecycle/lifecycle.lock'))->acquire('restore');
+        try {
+            $this->runPublicLauncher();
+            $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+            $this->assertSame('target_active', $this->journal->state()['phase']);
+        } finally {
+            $ownership->release();
+        }
+    }
+
     private function seedJournal(string $sourceKind, ?string $sourceReleaseId, string $sourceVersion): void
     {
         $uploadId = str_repeat('c', 32);
+        $lock = $this->installationRoot.'/storage/app/lifecycle/lifecycle.lock';
+        File::ensureDirectoryExists(dirname($lock));
+        File::put($lock, '');
+        chmod($lock, 0600);
         $this->journal->startUpload($uploadId);
         $this->journal->transition('uploaded', 'verified', [
             'package_digest_sha256' => $this->targetDigest,
             'target_product_version' => '0.1.0-alpha.2',
         ]);
         $this->journal->transition('verified', 'preparing', [
+            'lifecycle_mutex_path_sha256' => hash('sha256', $this->installationRoot.'/storage/app/lifecycle/lifecycle.lock'),
             'source_release_kind' => $sourceKind,
             'source_release_id' => $sourceReleaseId,
             'source_product_version' => $sourceVersion,
