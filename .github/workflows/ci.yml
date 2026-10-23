@@ -99,8 +99,18 @@ jobs:
           test ! -e "$RELEASE_ROOT/.env"
           test ! -e "$RELEASE_ROOT/node_modules"
           test ! -e "$RELEASE_ROOT/tests"
+          test -f "$RELEASE_ROOT/VERSION"
           test -f "$RELEASE_ROOT/public/build/manifest.json"
           test -f "$RELEASE_ROOT/app/Http/Controllers/InstallerController.php"
+          test -f "$RELEASE_ROOT/app/Http/Controllers/Settings/SystemBackupController.php"
+          test -f "$RELEASE_ROOT/app/Http/Controllers/Settings/SystemRestoreController.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/CreateSystemBackup.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/RestoreSystemBackup.php"
+          test -f "$RELEASE_ROOT/app/Services/Backup/RecoverInterruptedRestore.php"
+          test -f "$RELEASE_ROOT/app/Support/Lifecycle/LifecycleMutex.php"
+          test -f "$RELEASE_ROOT/config/backup.php"
+          test -f "$RELEASE_ROOT/routes/settings.php"
+          grep -q 'backup-restore' "$RELEASE_ROOT/public/build/manifest.json"
           (
             cd "$RELEASE_ROOT"
             php artisan --version
