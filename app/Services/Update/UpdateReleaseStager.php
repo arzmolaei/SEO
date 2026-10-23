@@ -140,7 +140,7 @@ final class UpdateReleaseStager
             $this->writeJsonFile($temporary.'/release.json', $marker);
 
             if (! @rename($temporary, $slot)) {
-                if (file_exists($slot) && ! is_link($slot)) {
+                if (file_exists($slot)) {
                     $this->assertExistingSlot($slot, $releaseId, $targetVersion, $packageDigest, $launcherSchema);
                     $this->removeTree($temporary);
                 } else {
@@ -152,7 +152,7 @@ final class UpdateReleaseStager
 
             return ['release_id' => $releaseId, 'release_root' => $slot];
         } catch (Throwable $exception) {
-            if (file_exists($temporary) && ! is_link($temporary)) {
+            if (file_exists($temporary)) {
                 try {
                     $this->removeTree($temporary);
                 } catch (Throwable) {
