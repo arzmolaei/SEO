@@ -200,7 +200,7 @@ class VerifyRestoreBundleTest extends TestCase
         }
     }
 
-    public function test_verify_endpoint_enforces_owner_recent_password_throttle_and_failed_upload_cleanup(): void
+    public function test_verify_endpoint_enforces_owner_recent_password_and_failed_upload_cleanup(): void
     {
         $this->post('/settings/backup/restore/verify')->assertRedirect('/login');
 
@@ -229,6 +229,18 @@ class VerifyRestoreBundleTest extends TestCase
             ])
             ->assertRedirect(route('password.confirm'));
 
+        $this->actingAs($this->owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->post('/settings/backup/restore/verify', [
+                'backup' => UploadedFile::fake()->createWithContent('bad-owner.seobak', 'bad'),
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame([], File::files($this->restoreUploads));
+    }
+
+    public function test_verify_endpoint_throttles_after_three_owner_attempts(): void
+    {
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             $this->actingAs($this->owner)
                 ->withSession(['auth.password_confirmed_at' => time()])
