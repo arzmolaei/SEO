@@ -124,6 +124,7 @@ final class PrepareSystemUpdate
         }
 
         $this->journal->transition('verified', 'preparing', [
+            'lifecycle_mutex_path_sha256' => $ownership->pathFingerprint(),
             'source_release_kind' => $sourceKind,
             'source_release_id' => $sourceReleaseId,
             'source_product_version' => $currentVersion,

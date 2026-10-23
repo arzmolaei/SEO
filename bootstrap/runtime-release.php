@@ -182,6 +182,148 @@ final class SeoOsRuntimeReleaseLocator
         ];
     }
 
+    /**
+     * This path runs without Composer, under the same OS lock as application lifecycle work.
+     *
+     * @param  array<string, mixed>  $failedRelease
+     */
+    public function recoverPreMigrationBootstrapFailure(array $failedRelease): bool
+    {
+        $lock = null;
+        try {
+            $journalPath = $this->path('storage/app/lifecycle/update/state.json');
+            $this->assertCanonicalPrivateFile($journalPath);
+            $state = $this->readMetadata($journalPath, 65536);
+            $lockPath = $this->path('storage/app/lifecycle/lifecycle.lock');
+            if (($state['lifecycle_mutex_path_sha256'] ?? null) !== hash('sha256', $lockPath)) {
+                return false;
+            }
+            $this->assertCanonicalPrivateFile($lockPath);
+            $lock = @fopen($lockPath, 'r+');
+            if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+                return false;
+            }
+
+            $state = $this->readMetadata($journalPath, 65536);
+            $phase = $state['phase'] ?? null;
+            if (
+                ($state['lifecycle_mutex_path_sha256'] ?? null) !== hash('sha256', $lockPath)
+                || ! in_array($phase, ['switch_pending', 'target_active', 'migrating', 'validating'], true)
+                || ($failedRelease['kind'] ?? null) !== 'slot'
+                || $this->resolve() !== $failedRelease
+            ) {
+                return false;
+            }
+
+            $targetMatches = ($state['target_release_id'] ?? null) === $failedRelease['release_id']
+                && ($state['target_product_version'] ?? null) === $failedRelease['product_version']
+                && ($state['package_digest_sha256'] ?? null) === $failedRelease['package_digest_sha256'];
+            $beforeMigration = ($phase === 'target_active' && ($state['migration_started'] ?? null) === false)
+                || ($phase === 'switch_pending' && (! array_key_exists('migration_started', $state) || $state['migration_started'] === false));
+            $reverted = false;
+            if ($targetMatches && $beforeMigration) {
+                try {
+                    $this->restoreRecordedSourcePointer($state);
+                    $reverted = true;
+                } catch (Throwable) {
+                    // A missing/unprovable source is retained for manual recovery, never guessed.
+                }
+            }
+            $this->writeRecoveryMetadata($journalPath, [
+                ...$state,
+                'phase' => 'recovery_required',
+                'recovery_code' => 'update_target_bootstrap_failed',
+                'recovery_reverted_to_source' => $reverted,
+            ]);
+
+            return $reverted;
+        } catch (Throwable) {
+            return false;
+        } finally {
+            if (is_resource($lock)) {
+                @flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $state */
+    private function restoreRecordedSourcePointer(array $state): void
+    {
+        $version = $this->validatedVersion($state['source_product_version'] ?? null);
+        $pointerPath = $this->path(self::POINTER_RELATIVE_PATH);
+        if (($state['source_release_kind'] ?? null) === 'root') {
+            if (
+                ($state['source_release_id'] ?? null) !== null
+                || $this->readVersion($this->path('VERSION')) !== $version
+                || ! @unlink($pointerPath)
+            ) {
+                throw $this->invalidState();
+            }
+
+            return;
+        }
+        if (($state['source_release_kind'] ?? null) !== 'slot') {
+            throw $this->invalidState();
+        }
+        $releaseId = $this->validatedReleaseId($state['source_release_id'] ?? null);
+        $releasesRoot = $this->canonicalDirectory($this->path(self::RELEASES_RELATIVE_PATH));
+        $slot = $this->canonicalDirectory($releasesRoot.'/'.$releaseId);
+        if (dirname($slot) !== $releasesRoot) {
+            throw $this->invalidState();
+        }
+        $markerPath = $slot.'/release.json';
+        $this->assertCanonicalPrivateFile($markerPath);
+        $marker = $this->readMetadata($markerPath);
+        $this->assertExactKeys($marker, ['schema', 'release_id', 'product_version', 'package_digest_sha256', 'launcher_schema']);
+        if (
+            ($marker['schema'] ?? null) !== self::SLOT_SCHEMA
+            || ($marker['release_id'] ?? null) !== $releaseId
+            || ($marker['product_version'] ?? null) !== $version
+            || ($marker['launcher_schema'] ?? null) !== self::LAUNCHER_SCHEMA
+            || $this->readVersion($slot.'/VERSION') !== $version
+        ) {
+            throw $this->invalidState();
+        }
+        $digest = $this->validatedDigest($marker['package_digest_sha256'] ?? null);
+        $this->writeRecoveryMetadata($pointerPath, [
+            'schema' => self::POINTER_SCHEMA,
+            'release_id' => $releaseId,
+            'product_version' => $version,
+            'package_digest_sha256' => $digest,
+            'launcher_schema' => self::LAUNCHER_SCHEMA,
+        ]);
+    }
+
+    /** @param array<string, mixed> $metadata */
+    private function writeRecoveryMetadata(string $path, array $metadata): void
+    {
+        $this->canonicalDirectory(dirname($path));
+        $json = json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (strlen($json) > 65536) {
+            throw $this->invalidState();
+        }
+        $temporary = $path.'.'.bin2hex(random_bytes(8)).'.tmp';
+        $stream = @fopen($temporary, 'xb');
+        if ($stream === false) {
+            throw $this->invalidState();
+        }
+        try {
+            if (! chmod($temporary, 0600) || fwrite($stream, $json) !== strlen($json) || ! fflush($stream)) {
+                throw $this->invalidState();
+            }
+            fclose($stream);
+            if (! rename($temporary, $path)) {
+                throw $this->invalidState();
+            }
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            @unlink($temporary);
+        }
+    }
+
     private function path(string $relative): string
     {
         return $this->installationRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
@@ -222,11 +364,11 @@ final class SeoOsRuntimeReleaseLocator
     }
 
     /** @return array<string, mixed> */
-    private function readMetadata(string $path): array
+    private function readMetadata(string $path, int $maximumBytes = self::MAX_METADATA_BYTES): array
     {
         clearstatcache(true, $path);
         $size = filesize($path);
-        if (! is_int($size) || $size < 2 || $size > self::MAX_METADATA_BYTES) {
+        if (! is_int($size) || $size < 2 || $size > $maximumBytes) {
             throw $this->invalidState();
         }
 

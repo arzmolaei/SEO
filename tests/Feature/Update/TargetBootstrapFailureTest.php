@@ -200,6 +200,10 @@ class TargetBootstrapFailureTest extends TestCase
     private function seedJournal(string $sourceKind, ?string $sourceReleaseId, string $sourceVersion): void
     {
         $uploadId = str_repeat('c', 32);
+        $lock = $this->installationRoot.'/storage/app/lifecycle/lifecycle.lock';
+        File::ensureDirectoryExists(dirname($lock));
+        File::put($lock, '');
+        chmod($lock, 0600);
         $this->journal->startUpload($uploadId);
         $this->journal->transition('uploaded', 'verified', [
             'package_digest_sha256' => $this->targetDigest,
