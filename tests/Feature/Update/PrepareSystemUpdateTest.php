@@ -264,7 +264,7 @@ class PrepareSystemUpdateTest extends TestCase
 
         $this->productVersion = new ProductVersion($sourceSlot.'/VERSION');
         $this->app->instance(ProductVersion::class, $this->productVersion);
-        (new InstallationState)->updateInstalledMetadata(['product_version' => '0.1.0-alpha.2']);
+        (new InstallationState)->updateMetadata(['product_version' => '0.1.0-alpha.2']);
         $this->resetUpdateArtifacts(keepReleases: true);
 
         [$preview] = $this->verifyPackage('0.1.0-alpha.3');
@@ -335,6 +335,7 @@ class PrepareSystemUpdateTest extends TestCase
             'resources/views/app.blade.php' => '<!doctype html>',
             '.env.example' => "APP_ENV=production\n",
         ];
+        ksort($entryContents, SORT_STRING);
 
         $entries = [];
         $streams = [];
