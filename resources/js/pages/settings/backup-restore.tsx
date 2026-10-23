@@ -238,11 +238,7 @@ export default function BackupRestore({ restore }: Props) {
     }, [restore.phase, t]);
 
     const refreshRestoreState = () => {
-        router.reload({
-            only: ['restore'],
-            preserveScroll: true,
-            preserveState: true,
-        });
+        router.reload({ only: ['restore'] });
     };
 
     const request = async (url: string, init: RequestInit) => {
