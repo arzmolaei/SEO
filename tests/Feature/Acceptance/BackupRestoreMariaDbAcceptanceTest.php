@@ -27,10 +27,12 @@ use App\Services\Backup\CreateSystemBackup;
 use App\Services\Backup\EnvironmentSettingsUpdater;
 use App\Services\Backup\RecoverInterruptedRestore;
 use App\Services\Backup\RestoreJournal;
+use App\Services\Backup\RestorePreview;
 use App\Services\Backup\RestoreSystemBackup;
 use App\Services\Backup\VerifyRestoreBundle;
 use App\Services\Keywords\CommitKeywordImportBatch;
 use App\Services\Keywords\CreateKeywordCluster;
+use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\StageKeywordImport;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
@@ -242,7 +244,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             ClusterReviewState::Reviewed,
         );
         $page = app(CreatePlannedPage::class)->handle($sourceOwner, $sourceProject, 'صفحه خدمات سئو');
-        app(\App\Services\Keywords\MapClusterToTarget::class)->handle(
+        app(MapClusterToTarget::class)->handle(
             $sourceOwner,
             $sourceProject,
             $cluster,
@@ -533,7 +535,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         ];
     }
 
-    private function verifyBundle(string $bundlePath): \App\Services\Backup\RestorePreview
+    private function verifyBundle(string $bundlePath): RestorePreview
     {
         return $this->app->make(VerifyRestoreBundle::class)->handle(
             new UploadedFile($bundlePath, 'source.seobak', 'application/octet-stream', null, true),
@@ -668,7 +670,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         config(['database.default' => $connection]);
         DB::purge($connection);
         DB::setDefaultConnection($connection);
-        $this->assertSame('mysql', DB::connection()->getDriverName());
+        $this->assertSame('mariadb', DB::connection()->getDriverName());
     }
 
     private function dropAllTables(string $connection): void
