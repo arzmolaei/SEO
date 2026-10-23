@@ -27,8 +27,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('settings.backup.download');
 
     Route::post('settings/backup/restore/verify', [SystemRestoreController::class, 'verify'])
-        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:3,1'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
         ->name('settings.backup.restore.verify');
+
+    Route::post('settings/backup/restore/confirm', [SystemRestoreController::class, 'confirm'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
+        ->name('settings.backup.restore.confirm');
+
+    Route::post('settings/backup/restore/recover', [SystemRestoreController::class, 'recover'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
+        ->name('settings.backup.restore.recover');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
