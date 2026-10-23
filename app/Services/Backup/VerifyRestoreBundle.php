@@ -261,8 +261,8 @@ final class VerifyRestoreBundle
      * Canonicalize only associative key order while preserving list order and scalar types.
      * This keeps restore-contract comparison strict without rejecting canonicalized manifest JSON.
      *
-     * @param array<array-key, mixed> $actual
-     * @param array<array-key, mixed> $expected
+     * @param  array<array-key, mixed>  $actual
+     * @param  array<array-key, mixed>  $expected
      */
     private function sameContract(array $actual, array $expected): bool
     {
