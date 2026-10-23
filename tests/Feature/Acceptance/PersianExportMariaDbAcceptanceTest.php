@@ -14,8 +14,10 @@ use App\Models\KeywordSource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Exports\ProjectSeoExportSchema;
+use App\Services\Keywords\CommitKeywordImportBatch;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Keywords\MapClusterToTarget;
+use App\Services\Keywords\StageKeywordImport;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
 use App\Services\Workspaces\CreateWorkspace;
@@ -42,10 +44,9 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
         $workspace = app(CreateWorkspace::class)->handle($owner, 'فضای صادرات');
         $project = app(CreateProject::class)->handle($owner, $workspace, '=پروژه فارسی');
 
-        $primary = $this->keyword($project, '+سئو\u{200C}سایت', '+سئو سایت');
-        $secondary = $this->keyword($project, 'خدمات سئو', 'خدمات سئو');
-        $this->metricHistory($primary, 'connected-primary', '1000.0000', '2500.0000', '18.5000');
-        $this->metricHistory($secondary, 'connected-secondary', '50.0000', '75.0000', '45.0000');
+        [$primary, $secondary] = $this->importKeywords($owner, $project);
+        $this->addLatestMetrics($primary, '2500.0000', '18.5000');
+        $this->addLatestMetrics($secondary, '75.0000', '45.0000');
 
         KeywordIntentAssignment::query()->create([
             'project_id' => $project->id,
@@ -101,6 +102,7 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
         $this->assertSame(hash('sha256', $body), $response->headers->get('x-seo-export-sha256'));
         $this->assertStringStartsWith("\xEF\xBB\xBF", $body);
         $this->assertStringNotContainsString('نباید در خروجی باشد', $body);
+        $this->assertStringNotContainsString('secret_should_not_export', $body);
         $this->assertSame(0, DB::connection()->transactionLevel());
 
         $rows = $this->csvRows($body);
@@ -125,12 +127,41 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
 
         $exact = json_decode($primaryRow['exact_text_json'], true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('=پروژه فارسی', $exact['project_name']);
-        $this->assertSame('+سئو\u{200C}سایت', $exact['keyword_display_text']);
+        $this->assertSame("+سئو\u{200C}سایت", $exact['keyword_display_text']);
         $this->assertSame('=خوشه سئو', $exact['cluster_name']);
 
         $this->actingAs($viewer)
             ->get("/projects/{$project->id}/exports/seo-plan.csv")
             ->assertForbidden();
+    }
+
+    /** @return array{Keyword,Keyword} */
+    private function importKeywords(User $owner, Project $project): array
+    {
+        $primaryText = "+سئو\u{200C}سایت";
+        $batch = app(StageKeywordImport::class)->handle(
+            actor: $owner,
+            project: $project,
+            source: 'connected-import',
+            originalFilename: 'connected.csv',
+            mapping: ['keyword' => 'Keyword', 'volume' => 'Volume'],
+            rows: [
+                ['Keyword' => $primaryText, 'Volume' => '1000'],
+                ['Keyword' => 'خدمات سئو', 'Volume' => '50'],
+            ],
+        );
+        app(CommitKeywordImportBatch::class)->handle($owner, $batch);
+
+        $primary = Keyword::query()
+            ->where('project_id', $project->id)
+            ->where('display_text', $primaryText)
+            ->firstOrFail();
+        $secondary = Keyword::query()
+            ->where('project_id', $project->id)
+            ->where('display_text', 'خدمات سئو')
+            ->firstOrFail();
+
+        return [$primary, $secondary];
     }
 
     private function keyword(Project $project, string $display, string $normalized): Keyword
@@ -143,39 +174,29 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
         ]);
     }
 
-    private function metricHistory(
-        Keyword $keyword,
-        string $sourceLabel,
-        string $oldVolume,
-        string $latestVolume,
-        string $difficulty,
-    ): void {
-        $source = KeywordSource::query()->create([
-            'keyword_id' => $keyword->id,
-            'source' => $sourceLabel,
-            'original_text' => $keyword->display_text,
-            'raw_payload' => ['secret_should_not_export' => 'hidden'],
-        ]);
-        KeywordMetric::query()->create([
-            'keyword_id' => $keyword->id,
-            'keyword_source_id' => $source->id,
-            'metric' => 'volume',
-            'value' => $oldVolume,
-            'observed_at' => now()->subDay(),
-        ]);
+    private function addLatestMetrics(Keyword $keyword, string $latestVolume, string $difficulty): void
+    {
+        $source = KeywordSource::query()->where('keyword_id', $keyword->id)->firstOrFail();
+        $rawPayload = is_array($source->raw_payload) ? $source->raw_payload : [];
+        $source->update(['raw_payload' => [
+            ...$rawPayload,
+            'secret_should_not_export' => 'hidden',
+        ]]);
+        $observedAt = now()->addMinute();
+
         KeywordMetric::query()->create([
             'keyword_id' => $keyword->id,
             'keyword_source_id' => $source->id,
             'metric' => 'volume',
             'value' => $latestVolume,
-            'observed_at' => now(),
+            'observed_at' => $observedAt,
         ]);
         KeywordMetric::query()->create([
             'keyword_id' => $keyword->id,
             'keyword_source_id' => $source->id,
             'metric' => 'difficulty',
             'value' => $difficulty,
-            'observed_at' => now(),
+            'observed_at' => $observedAt,
         ]);
     }
 
