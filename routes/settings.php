@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SystemBackupController;
+use App\Http\Controllers\Settings\SystemRestoreController;
 use App\Http\Middleware\EnsureSystemOwner;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/backup/download', [SystemBackupController::class, 'download'])
         ->middleware([RequirePassword::class, EnsureSystemOwner::class])
         ->name('settings.backup.download');
+
+    Route::post('settings/backup/restore/verify', [SystemRestoreController::class, 'verify'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:3,1'])
+        ->name('settings.backup.restore.verify');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')

@@ -18,6 +18,11 @@ return [
         'temp_memory_bytes' => 2 * 1024 * 1024,
     ],
 
+    'restore' => [
+        'upload_path' => storage_path('app/lifecycle/restore/uploads'),
+        'journal_path' => storage_path('app/lifecycle/restore/state.json'),
+    ],
+
     'durable_file_roots' => [
         'storage/app/private/uploads' => storage_path('app/private/uploads'),
         'storage/app/public/uploads' => storage_path('app/public/uploads'),
