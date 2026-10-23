@@ -3,7 +3,6 @@
 namespace Tests\Feature\Exports;
 
 use App\Models\Keyword;
-use App\Models\Project;
 use App\Models\User;
 use App\Services\Exports\ExportProjectSeoPlan;
 use App\Services\Exports\ProjectSeoExportSchema;
