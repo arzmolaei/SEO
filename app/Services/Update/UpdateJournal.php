@@ -67,7 +67,11 @@ final class UpdateJournal
             throw $this->invalidState();
         }
 
-        if (! is_array($state) || ! isset($state['phase']) || ! is_string($state['phase'])) {
+        if (
+            ! is_array($state)
+            || ! is_string($state['phase'] ?? null)
+            || ! array_key_exists($state['phase'], self::TRANSITIONS)
+        ) {
             throw $this->invalidState();
         }
 

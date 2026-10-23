@@ -38,11 +38,13 @@ class UpdateMaintenanceGateTest extends TestCase
         $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
         $this->assertFalse($gate->shouldBlockCli());
 
-        $this->writeJournal(['phase' => 'verified', 'upload_id' => str_repeat('a', 32)]);
-        $gate = $this->gate();
+        foreach (['uploaded', 'verified', 'complete'] as $phase) {
+            $this->writeJournal(['phase' => $phase, 'upload_id' => str_repeat('a', 32)]);
+            $gate = $this->gate();
 
-        $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
-        $this->assertFalse($gate->shouldBlockCli());
+            $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
+            $this->assertFalse($gate->shouldBlockCli());
+        }
     }
 
     public function test_destructive_phase_blocks_ordinary_http_but_allows_narrow_update_and_auth_continuation_paths(): void
@@ -80,6 +82,18 @@ class UpdateMaintenanceGateTest extends TestCase
         $this->assertTrue($gate->shouldBlockHttp('/dashboard'));
         $this->assertTrue($gate->shouldBlockHttp('/settings/update'));
         $this->assertTrue($gate->shouldBlockCli());
+    }
+
+    public function test_unknown_persisted_phase_fails_closed_for_http_recovery_and_cli(): void
+    {
+        foreach (['unknown', 'Migrating', '', ' migration', 'uploaded '] as $phase) {
+            $this->writeJournal(['phase' => $phase, 'upload_id' => str_repeat('c', 32)]);
+            $gate = $this->gate();
+
+            $this->assertTrue($gate->shouldBlockHttp('/dashboard'));
+            $this->assertTrue($gate->shouldBlockHttp('/settings/update'));
+            $this->assertTrue($gate->shouldBlockCli());
+        }
     }
 
     public function test_launcher_maintenance_phases_cannot_drift_from_application_journal(): void
