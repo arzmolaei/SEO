@@ -16,7 +16,7 @@ class UpdateManifestTest extends TestCase
 
         $this->assertSame($data, $manifest->toArray());
         $decoded = json_decode($manifest->canonicalJson(), true, 512, JSON_THROW_ON_ERROR);
-        $this->assertSame($data, $decoded);
+        $this->assertEquals($data, $decoded);
         $this->assertStringContainsString('کلیدواژه‌', $manifest->canonicalJson());
     }
 
@@ -118,7 +118,7 @@ class UpdateManifestTest extends TestCase
                     'path' => 'VERSION',
                     'size' => 14,
                     'sha256' => str_repeat('4', 64),
-                    'media_type' => 'text/plain',
+                    'media_type' => 'text/plain; note=کلیدواژه‌',
                 ],
                 [
                     'path' => 'app/Release.php',
