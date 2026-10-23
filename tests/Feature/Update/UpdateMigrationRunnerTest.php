@@ -26,7 +26,7 @@ class UpdateMigrationRunnerTest extends TestCase
         parent::setUp();
         $this->directory = sys_get_temp_dir().'/seo-update-migrations-'.bin2hex(random_bytes(6));
         File::ensureDirectoryExists($this->directory);
-        $this->runner = new UpdateMigrationRunner($this->app->make(Migrator::class), migrationPath: $this->directory);
+        $this->runner = new UpdateMigrationRunner($this->app->make(Migrator::class), migrationPath: $this->directory, attemptPath: $this->directory.'/attempt.json');
     }
 
     protected function tearDown(): void
@@ -161,6 +161,24 @@ class UpdateMigrationRunnerTest extends TestCase
         $this->assertFalse(Schema::hasTable('update_probe_second'));
         $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
         $this->assertSame($before->toArray(), $this->runner->snapshot()->toArray());
+    }
+
+    public function test_unlogged_data_mutation_is_never_retried_from_an_unchanged_schema_checkpoint(): void
+    {
+        $owner = User::factory()->create(['name' => 'source']);
+        $before = $this->runner->snapshot();
+        $up = "\\Illuminate\\Support\\Facades\\DB::table('users')->update(['name' => 'changed']); throw new \\RuntimeException('private failure');";
+        $this->writeMigration('2099_01_01_000001_data', $up, '');
+        foreach ([1, 2] as $attempt) {
+            try {
+                $this->runner->runPending($before, static function (): void {});
+                $this->fail('An ambiguous data mutation must not run again.');
+            } catch (UpdateException $exception) {
+                $this->assertSame('update_recovery_required', $exception->codeName());
+            }
+            $this->assertSame('changed', $owner->fresh()->name);
+            $this->assertFileExists($this->directory.'/attempt.json');
+        }
     }
 
     private function writeMigration(string $name, string $up, string $down): void
