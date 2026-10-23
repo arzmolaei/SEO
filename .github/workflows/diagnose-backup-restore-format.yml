@@ -1,0 +1,35 @@
+name: Diagnose backup restore format
+
+on:
+  push:
+    branches:
+      - feature/backup-restore
+    paths:
+      - .github/workflows/diagnose-backup-restore-format.yml
+
+permissions:
+  contents: read
+
+jobs:
+  formatter-diff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Apply repository formatter in runner
+        run: npm run check:fix
+
+      - name: Show exact backup restore formatter diff
+        run: git diff -- resources/js/pages/settings/backup-restore.tsx
