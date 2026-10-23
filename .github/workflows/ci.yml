@@ -136,6 +136,9 @@ jobs:
             trap - EXIT
           )
 
+      - name: Verify update package and runtime release-slot boot
+        run: php scripts/release/smoke-update-runtime.php "$RUNNER_TEMP/seo-os-release"
+
   php-compatibility:
     runs-on: ubuntu-latest
     timeout-minutes: 12

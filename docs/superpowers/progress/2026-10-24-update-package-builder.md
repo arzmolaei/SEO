@@ -17,4 +17,10 @@ Baseline: `f38d10468f5c90f36da760eb023adec83dc5ad3f`, containing PR #9's indepen
 
 ## Current status
 
-Tests first; implementation and permanent runtime smoke verification remain pending. Local PHP/Composer are unavailable; observed RED/GREEN must come from exact-head CI.
+RED observed on `02f444173dd23bccab19bef66105a80e318c8844`, CI `40018469864`: missing builder and unsupported lazy streams failed as intended. The merge test tree additionally contained the other execution's active switch regression; it was not modified here.
+
+Builder, explicit-metadata CLI, lazy/file writer inputs and canonical path families are implemented. On `c5cb3a8808a77f468c2a7a8f783eee7b4bab86eb`, CI `40019053065` passed this branch's builder/CLI/writer tests and static analysis. Its merged PR test tree still had three active Task 7 `TargetBootstrapFailureTest` failures; these belong to the other execution and must turn green before integration. No gate was disabled.
+
+Real-process runtime-only smoke is being added to the permanent verify gate: build a complete update package from the no-dev runtime tree, stage it with the actual stager, boot source -> target slot -> source across separate HTTP requests, verify stable env/storage and both content-addressed assets. This does not claim migration/rollback-coordinator acceptance (Task 13).
+
+Local PHP/Composer are unavailable; final exact-head full CI and independent review remain required.
