@@ -2,132 +2,138 @@
 
 namespace App\Services\Backup;
 
-use JsonException;
-
 final class DatabaseRowCodec
 {
+    private const BINARY_TAG = '__seo_backup_binary_base64';
+
     /**
      * @param  array<string, mixed>  $row
      * @param  array<string, string>  $families
+     * @return array<string, mixed>
      */
-    public static function encodeRow(array $row, array $families): string
+    public function encodeRow(array $row, array $families): array
     {
-        ksort($row, SORT_STRING);
-
+        $this->assertSameColumns($row, $families, true);
         $encoded = [];
 
-        foreach ($row as $column => $value) {
-            $family = $families[$column] ?? 'text';
-            $encoded[$column] = self::encodeValue($column, $value, $family);
+        foreach ($families as $column => $family) {
+            $value = $row[$column];
+
+            if ($value === null) {
+                $encoded[$column] = null;
+
+                continue;
+            }
+
+            if ($family === 'binary') {
+                if (! is_string($value)) {
+                    throw $this->integrityFailure();
+                }
+
+                $encoded[$column] = [self::BINARY_TAG => base64_encode($value)];
+
+                continue;
+            }
+
+            if (is_float($value) || is_array($value) || is_object($value) || is_resource($value)) {
+                throw $this->integrityFailure();
+            }
+
+            if (is_bool($value)) {
+                $encoded[$column] = $value ? '1' : '0';
+
+                continue;
+            }
+
+            if (is_int($value) || is_string($value)) {
+                $encoded[$column] = (string) $value;
+
+                continue;
+            }
+
+            throw $this->integrityFailure();
         }
 
-        try {
-            return json_encode(
-                $encoded,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
-            );
-        } catch (JsonException $exception) {
-            throw new BackupException('Unable to encode database row.', previous: $exception);
-        }
+        return $encoded;
     }
 
     /**
+     * @param  array<string, mixed>  $encoded
      * @param  array<string, string>  $families
      * @return array<string, mixed>
      */
-    public static function decodeRow(string $encoded, array $families): array
+    public function decodeRow(array $encoded, array $families): array
     {
-        try {
-            $row = json_decode($encoded, true, flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new BackupException('Unable to decode database row.', previous: $exception);
-        }
+        $this->assertSameColumns($encoded, $families, false);
+        $decoded = [];
 
-        if (! is_array($row) || array_is_list($row)) {
-            throw new BackupException('Database row payload must be a JSON object.');
-        }
+        foreach ($families as $column => $family) {
+            $value = $encoded[$column];
 
-        foreach ($row as $column => $value) {
-            if (! is_string($column)) {
-                throw new BackupException('Database row column name is invalid.');
+            if ($value === null) {
+                $decoded[$column] = null;
+
+                continue;
             }
 
-            $family = $families[$column] ?? 'text';
-            $row[$column] = self::decodeValue($column, $value, $family);
-        }
+            if ($family === 'binary') {
+                if (! is_array($value) || array_keys($value) !== [self::BINARY_TAG]) {
+                    throw $this->invalidBundle();
+                }
 
-        return $row;
-    }
+                $base64 = $value[self::BINARY_TAG] ?? null;
+                if (! is_string($base64)) {
+                    throw $this->invalidBundle();
+                }
 
-    private static function encodeValue(string $column, mixed $value, string $family): mixed
-    {
-        if ($value === null) {
-            return null;
-        }
+                $binary = base64_decode($base64, true);
+                if ($binary === false) {
+                    throw $this->invalidBundle();
+                }
 
-        return match ($family) {
-            'binary' => self::encodeBinary($column, $value),
-            'text', 'json' => self::encodeTextual($column, $value),
-            default => throw new BackupException("Unsupported database column family for {$column}: {$family}"),
-        };
-    }
+                $decoded[$column] = $binary;
 
-    private static function decodeValue(string $column, mixed $value, string $family): mixed
-    {
-        if ($value === null) {
-            return null;
-        }
+                continue;
+            }
 
-        return match ($family) {
-            'binary' => self::decodeBinary($column, $value),
-            'text', 'json' => self::decodeTextual($column, $value),
-            default => throw new BackupException("Unsupported database column family for {$column}: {$family}"),
-        };
-    }
+            if (! is_string($value)) {
+                throw $this->invalidBundle();
+            }
 
-    private static function encodeBinary(string $column, mixed $value): string
-    {
-        if (! is_string($value)) {
-            throw new BackupException("Binary database value must be a string: {$column}");
-        }
-
-        return 'base64:'.base64_encode($value);
-    }
-
-    private static function decodeBinary(string $column, mixed $value): string
-    {
-        if (! is_string($value) || ! str_starts_with($value, 'base64:')) {
-            throw new BackupException("Invalid base64 database value: {$column}");
-        }
-
-        $decoded = base64_decode(substr($value, 7), true);
-
-        if ($decoded === false) {
-            throw new BackupException("Invalid base64 database value: {$column}");
+            $decoded[$column] = $value;
         }
 
         return $decoded;
     }
 
-    private static function encodeTextual(string $column, mixed $value): string|int|bool
+    /** @param array<string, mixed> $values @param array<string, string> $families */
+    private function assertSameColumns(array $values, array $families, bool $capturing): void
     {
-        if (is_float($value)) {
-            throw new BackupException("Floating-point database values are not allowed: {$column}");
+        $valueKeys = array_keys($values);
+        $familyKeys = array_keys($families);
+        sort($valueKeys, SORT_STRING);
+        sort($familyKeys, SORT_STRING);
+
+        if ($valueKeys === $familyKeys) {
+            return;
         }
 
-        if (! is_string($value) && ! is_int($value) && ! is_bool($value)) {
-            throw new BackupException("Unsupported database scalar value: {$column}");
-        }
-
-        return $value;
+        throw $capturing ? $this->integrityFailure() : $this->invalidBundle();
     }
 
-    private static function decodeTextual(string $column, mixed $value): string|int|bool
+    private function integrityFailure(): BackupException
     {
-        if (! is_string($value) && ! is_int($value) && ! is_bool($value)) {
-            throw new BackupException("Unsupported database scalar value: {$column}");
-        }
+        return new BackupException(
+            'backup_integrity_failed',
+            'اعتبارسنجی داده‌های پشتیبان ناموفق بود.',
+        );
+    }
 
-        return $value;
+    private function invalidBundle(): BackupException
+    {
+        return new BackupException(
+            'restore_invalid_bundle',
+            'فایل پشتیبان معتبر نیست.',
+        );
     }
 }

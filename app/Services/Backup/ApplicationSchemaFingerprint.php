@@ -2,160 +2,110 @@
 
 namespace App\Services\Backup;
 
-use Illuminate\Support\Facades\Schema;
-use JsonException;
+use Illuminate\Database\Connection;
 
 final class ApplicationSchemaFingerprint
 {
-    public function fingerprint(): string
+    public function __construct(private readonly ApplicationTableCatalog $catalog) {}
+
+    public function forConnection(Connection $connection): string
     {
-        try {
-            $json = json_encode(
-                $this->metadata(),
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
-            );
-        } catch (JsonException $exception) {
-            throw new BackupException('Unable to encode application schema metadata.', previous: $exception);
-        }
+        $this->catalog->assertNoDrift($connection);
+        $schema = $connection->getSchemaBuilder();
+        $tables = [];
 
-        return hash('sha256', $json);
-    }
-
-    /** @return array<string, array<string, mixed>> */
-    public function metadata(): array
-    {
-        $this->assertCatalogMatchesDatabase();
-
-        $metadata = [];
-
-        foreach (ApplicationTableCatalog::TABLES as $table) {
+        foreach ($this->catalog->tableNames() as $table) {
             $columns = [];
 
-            foreach (Schema::getColumns($table) as $column) {
+            foreach ($schema->getColumns($table) as $column) {
                 $columns[] = [
-                    'name' => (string) $column['name'],
-                    'type' => (string) $column['type'],
-                    'type_name' => (string) $column['type_name'],
-                    'family' => $this->columnFamily((string) $column['type_name'], (string) $column['type']),
-                    'nullable' => (bool) $column['nullable'],
-                    'auto_increment' => (bool) $column['auto_increment'],
+                    'name' => (string) ($column['name'] ?? ''),
+                    'type' => $this->normalizeType((string) ($column['type'] ?? '')),
+                    'type_name' => $this->normalizeType((string) ($column['type_name'] ?? '')),
+                    'nullable' => (bool) ($column['nullable'] ?? false),
+                    'auto_increment' => (bool) ($column['auto_increment'] ?? false),
                 ];
             }
 
+            /** @var list<array{name: string, columns: list<string>, type: string, unique: bool, primary: bool}> $indexes */
             $indexes = [];
-            $primaryKey = [];
-
-            foreach (Schema::getIndexes($table) as $index) {
-                $normalized = [
-                    'columns' => array_values(array_map('strval', $index['columns'])),
-                    'type' => strtolower((string) $index['type']),
-                    'unique' => (bool) $index['unique'],
-                    'primary' => (bool) $index['primary'],
+            foreach ($schema->getIndexes($table) as $index) {
+                $index = (array) $index;
+                $indexes[] = [
+                    'name' => strtolower((string) ($index['name'] ?? '')),
+                    'columns' => $this->stringList($index['columns'] ?? []),
+                    'type' => strtolower((string) ($index['type'] ?? '')),
+                    'unique' => (bool) ($index['unique'] ?? false),
+                    'primary' => (bool) ($index['primary'] ?? false),
                 ];
-
-                if ($normalized['primary']) {
-                    $primaryKey = $normalized['columns'];
-                }
-
-                $indexes[] = $normalized;
             }
-
             usort($indexes, static fn (array $left, array $right): int => strcmp(
-                json_encode($left, JSON_UNESCAPED_SLASHES) ?: '',
-                json_encode($right, JSON_UNESCAPED_SLASHES) ?: '',
+                $left['name'].'|'.implode(',', $left['columns']),
+                $right['name'].'|'.implode(',', $right['columns']),
             ));
 
+            /** @var list<array{name: string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: ?string, on_delete: ?string}> $foreignKeys */
             $foreignKeys = [];
-            foreach (Schema::getForeignKeys($table) as $foreignKey) {
+            foreach ($schema->getForeignKeys($table) as $foreignKey) {
+                $foreignKey = (array) $foreignKey;
                 $foreignKeys[] = [
-                    'columns' => array_values(array_map('strval', $foreignKey['columns'])),
-                    'foreign_table' => (string) $foreignKey['foreign_table'],
-                    'foreign_columns' => array_values(array_map('strval', $foreignKey['foreign_columns'])),
-                    'on_update' => $foreignKey['on_update'] === null ? null : strtolower((string) $foreignKey['on_update']),
-                    'on_delete' => $foreignKey['on_delete'] === null ? null : strtolower((string) $foreignKey['on_delete']),
+                    'name' => strtolower((string) ($foreignKey['name'] ?? '')),
+                    'columns' => $this->stringList($foreignKey['columns'] ?? []),
+                    'foreign_table' => strtolower((string) ($foreignKey['foreign_table'] ?? '')),
+                    'foreign_columns' => $this->stringList($foreignKey['foreign_columns'] ?? []),
+                    'on_update' => $this->nullableString($foreignKey['on_update'] ?? null),
+                    'on_delete' => $this->nullableString($foreignKey['on_delete'] ?? null),
                 ];
             }
-
             usort($foreignKeys, static fn (array $left, array $right): int => strcmp(
-                json_encode($left, JSON_UNESCAPED_SLASHES) ?: '',
-                json_encode($right, JSON_UNESCAPED_SLASHES) ?: '',
+                $left['name'].'|'.implode(',', $left['columns']).'|'.$left['foreign_table'],
+                $right['name'].'|'.implode(',', $right['columns']).'|'.$right['foreign_table'],
             ));
 
-            $metadata[$table] = [
+            $tables[] = [
+                'name' => $table,
                 'columns' => $columns,
-                'primary_key' => $primaryKey,
                 'indexes' => $indexes,
                 'foreign_keys' => $foreignKeys,
             ];
         }
 
-        return $metadata;
+        return hash('sha256', json_encode(
+            ['tables' => $tables],
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
+        ));
     }
 
-    public function assertCatalogMatchesDatabase(): void
+    private function normalizeType(string $type): string
     {
-        $actual = [];
+        $normalized = preg_replace('/\s+/', ' ', strtolower(trim($type)));
 
-        foreach (Schema::getTableListing(null, false) as $table) {
-            $table = $this->normalizeTableName((string) $table);
-
-            if ($table === '' || str_starts_with($table, 'sqlite_')) {
-                continue;
-            }
-
-            $actual[] = $table;
-        }
-
-        $actual = array_values(array_unique($actual));
-        sort($actual, SORT_STRING);
-
-        $expected = array_merge(
-            ApplicationTableCatalog::TABLES,
-            ApplicationTableCatalog::excludedTables(),
-        );
-        sort($expected, SORT_STRING);
-
-        $missing = array_values(array_diff($expected, $actual));
-        $unexpected = array_values(array_diff($actual, $expected));
-
-        if ($missing !== [] || $unexpected !== []) {
-            $parts = [];
-
-            if ($missing !== []) {
-                $parts[] = 'missing: '.implode(', ', $missing);
-            }
-
-            if ($unexpected !== []) {
-                $parts[] = 'unexpected: '.implode(', ', $unexpected);
-            }
-
-            throw new BackupException('Backup table catalog does not match the database ('.implode('; ', $parts).').');
-        }
+        return is_string($normalized) ? $normalized : strtolower(trim($type));
     }
 
-    private function columnFamily(string $typeName, string $type): string
+    /** @return list<string> */
+    private function stringList(mixed $value): array
     {
-        $normalized = strtolower($typeName.' '.$type);
-
-        if (str_contains($normalized, 'binary') || str_contains($normalized, 'blob')) {
-            return 'binary';
+        if (! is_array($value)) {
+            return [];
         }
 
-        if (str_contains($normalized, 'json')) {
-            return 'json';
+        $result = [];
+        foreach ($value as $item) {
+            if (is_scalar($item)) {
+                $result[] = strtolower((string) $item);
+            }
         }
 
-        return 'text';
+        return $result;
     }
 
-    private function normalizeTableName(string $table): string
+    private function nullableString(mixed $value): ?string
     {
-        $table = trim($table, "`\" ");
-
-        if (str_contains($table, '.')) {
-            $table = substr($table, strrpos($table, '.') + 1);
+        if ($value === null) {
+            return null;
         }
 
-        return trim($table, "`\" ");
+        return strtolower((string) $value);
     }
 }
