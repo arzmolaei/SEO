@@ -96,6 +96,7 @@ class CaptureSystemStateTest extends TestCase
         File::put($this->privateUploads.'/persian.txt', 'فایل پایدار');
         File::put($this->publicUploads.'/public.txt', 'public durable');
 
+        $baselineTransactionLevel = DB::connection()->transactionLevel();
         $handle = (new LifecycleMutex)->acquire('backup');
 
         try {
@@ -105,7 +106,7 @@ class CaptureSystemStateTest extends TestCase
         }
 
         try {
-            $this->assertSame(0, DB::connection()->transactionLevel());
+            $this->assertSame($baselineTransactionLevel, DB::connection()->transactionLevel());
             $captured->rewind();
             $entries = [];
             $manifest = (new BackupBundleReader)->read(
@@ -138,7 +139,7 @@ class CaptureSystemStateTest extends TestCase
         }
     }
 
-    public function test_capture_fails_closed_on_symlink_and_leaves_no_open_database_transaction(): void
+    public function test_capture_fails_closed_on_symlink_and_preserves_caller_transaction_level(): void
     {
         $owner = User::factory()->create();
         (new InstallationState)->markInstalled([
@@ -155,6 +156,7 @@ class CaptureSystemStateTest extends TestCase
             $this->markTestSkipped('Filesystem does not permit symlink creation.');
         }
 
+        $baselineTransactionLevel = DB::connection()->transactionLevel();
         $handle = (new LifecycleMutex)->acquire('backup');
 
         try {
@@ -168,6 +170,6 @@ class CaptureSystemStateTest extends TestCase
             $handle->release();
         }
 
-        $this->assertSame(0, DB::connection()->transactionLevel());
+        $this->assertSame($baselineTransactionLevel, DB::connection()->transactionLevel());
     }
 }
