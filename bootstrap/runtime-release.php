@@ -78,6 +78,10 @@ final class SeoOsUpdateMaintenanceGate
             return self::INVALID_PHASE;
         }
 
+        if (! in_array($state['phase'], [...self::PHASES, 'uploaded', 'verified', 'complete'], true)) {
+            return self::INVALID_PHASE;
+        }
+
         return $state['phase'];
     }
 }

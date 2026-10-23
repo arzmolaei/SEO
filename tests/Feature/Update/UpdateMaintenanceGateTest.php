@@ -38,11 +38,13 @@ class UpdateMaintenanceGateTest extends TestCase
         $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
         $this->assertFalse($gate->shouldBlockCli());
 
-        $this->writeJournal(['phase' => 'verified', 'upload_id' => str_repeat('a', 32)]);
-        $gate = $this->gate();
+        foreach (['uploaded', 'verified', 'complete'] as $phase) {
+            $this->writeJournal(['phase' => $phase, 'upload_id' => str_repeat('a', 32)]);
+            $gate = $this->gate();
 
-        $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
-        $this->assertFalse($gate->shouldBlockCli());
+            $this->assertFalse($gate->shouldBlockHttp('/dashboard'));
+            $this->assertFalse($gate->shouldBlockCli());
+        }
     }
 
     public function test_destructive_phase_blocks_ordinary_http_but_allows_narrow_update_and_auth_continuation_paths(): void
