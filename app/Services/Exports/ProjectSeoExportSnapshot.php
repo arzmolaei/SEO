@@ -97,7 +97,7 @@ final class ProjectSeoExportSnapshot
         }
 
         $currentIntents = $this->currentIntents($project, $keywordIds);
-        $latestMetrics = $this->latestMetrics($project, $relationKeywordIds, $sourceById);
+        $latestMetrics = $this->latestMetrics($relationKeywordIds, $sourceById);
         $targets = $this->targets($project, array_values($clusterIds));
         $pages = $this->pages($project, $targets);
         $pendingReviews = $this->pendingReviews($project, $relationKeywordIds);
@@ -277,7 +277,7 @@ final class ProjectSeoExportSnapshot
      * @param  array<int,KeywordSource>  $sourceById
      * @return array<int,array<string,KeywordMetric>>
      */
-    private function latestMetrics(Project $project, array $keywordIds, array $sourceById): array
+    private function latestMetrics(array $keywordIds, array $sourceById): array
     {
         if ($keywordIds === []) {
             return [];
@@ -303,11 +303,11 @@ final class ProjectSeoExportSnapshot
             ->orderBy('metric')
             ->get();
 
+        $allowedKeywordIds = array_fill_keys($keywordIds, true);
         $result = [];
         foreach ($metrics as $metric) {
-            $keyword = Keyword::query()->find($metric->keyword_id);
             $source = $sourceById[$metric->keyword_source_id] ?? null;
-            if (! $keyword instanceof Keyword || $keyword->project_id !== $project->id
+            if (! isset($allowedKeywordIds[$metric->keyword_id])
                 || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {
                 throw ProjectSeoExportException::projectRelation();
             }
