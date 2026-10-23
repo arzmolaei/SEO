@@ -45,17 +45,15 @@ final class MaintenanceWindow
         try {
             return $callback();
         } finally {
-            if (! $this->maintenanceMode->active()) {
-                return;
-            }
+            if ($this->maintenanceMode->active()) {
+                $data = $this->maintenanceMode->data();
 
-            $data = $this->maintenanceMode->data();
-
-            if (
-                ($data['seo_os_owner'] ?? null) === self::OWNER
-                && ($data['seo_os_owner_token'] ?? null) === $ownerToken
-            ) {
-                $this->maintenanceMode->deactivate();
+                if (
+                    ($data['seo_os_owner'] ?? null) === self::OWNER
+                    && ($data['seo_os_owner_token'] ?? null) === $ownerToken
+                ) {
+                    $this->maintenanceMode->deactivate();
+                }
             }
         }
     }
