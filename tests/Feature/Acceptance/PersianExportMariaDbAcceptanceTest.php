@@ -45,8 +45,8 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
         $project = app(CreateProject::class)->handle($owner, $workspace, '=پروژه فارسی');
 
         [$primary, $secondary] = $this->importKeywords($owner, $project);
-        $this->addLatestMetrics($primary, '2500.0000', '18.5000');
-        $this->addLatestMetrics($secondary, '75.0000', '45.0000');
+        $this->addDifficultyEvidence($primary, '18.5000');
+        $this->addDifficultyEvidence($secondary, '45.0000');
 
         KeywordIntentAssignment::query()->create([
             'project_id' => $project->id,
@@ -139,18 +139,35 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
     private function importKeywords(User $owner, Project $project): array
     {
         $primaryText = "+سئو\u{200C}سایت";
-        $batch = app(StageKeywordImport::class)->handle(
-            actor: $owner,
-            project: $project,
-            source: 'connected-import',
-            originalFilename: 'connected.csv',
-            mapping: ['keyword' => 'Keyword', 'volume' => 'Volume'],
-            rows: [
-                ['Keyword' => $primaryText, 'Volume' => '1000'],
-                ['Keyword' => 'خدمات سئو', 'Volume' => '50'],
+        $imports = [
+            [
+                'source' => 'connected-import-old',
+                'filename' => 'connected-old.csv',
+                'primary_volume' => '1000',
+                'secondary_volume' => '50',
             ],
-        );
-        app(CommitKeywordImportBatch::class)->handle($owner, $batch);
+            [
+                'source' => 'connected-import-latest',
+                'filename' => 'connected-latest.csv',
+                'primary_volume' => '2500',
+                'secondary_volume' => '75',
+            ],
+        ];
+
+        foreach ($imports as $import) {
+            $batch = app(StageKeywordImport::class)->handle(
+                actor: $owner,
+                project: $project,
+                source: $import['source'],
+                originalFilename: $import['filename'],
+                mapping: ['keyword' => 'Keyword', 'volume' => 'Volume'],
+                rows: [
+                    ['Keyword' => $primaryText, 'Volume' => $import['primary_volume']],
+                    ['Keyword' => 'خدمات سئو', 'Volume' => $import['secondary_volume']],
+                ],
+            );
+            app(CommitKeywordImportBatch::class)->handle($owner, $batch);
+        }
 
         $primary = Keyword::query()
             ->where('project_id', $project->id)
@@ -174,29 +191,24 @@ class PersianExportMariaDbAcceptanceTest extends TestCase
         ]);
     }
 
-    private function addLatestMetrics(Keyword $keyword, string $latestVolume, string $difficulty): void
+    private function addDifficultyEvidence(Keyword $keyword, string $difficulty): void
     {
-        $source = KeywordSource::query()->where('keyword_id', $keyword->id)->firstOrFail();
+        $source = KeywordSource::query()
+            ->where('keyword_id', $keyword->id)
+            ->orderByDesc('id')
+            ->firstOrFail();
         $rawPayload = is_array($source->raw_payload) ? $source->raw_payload : [];
         $source->update(['raw_payload' => [
             ...$rawPayload,
             'secret_should_not_export' => 'hidden',
         ]]);
-        $observedAt = now()->addMinute();
 
-        KeywordMetric::query()->create([
-            'keyword_id' => $keyword->id,
-            'keyword_source_id' => $source->id,
-            'metric' => 'volume',
-            'value' => $latestVolume,
-            'observed_at' => $observedAt,
-        ]);
         KeywordMetric::query()->create([
             'keyword_id' => $keyword->id,
             'keyword_source_id' => $source->id,
             'metric' => 'difficulty',
             'value' => $difficulty,
-            'observed_at' => $observedAt,
+            'observed_at' => now()->addMinute(),
         ]);
     }
 
