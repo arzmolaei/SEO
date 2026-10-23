@@ -109,7 +109,6 @@ class UpdatePackageReaderTest extends TestCase
             'resources/views/app.blade.php',
             'routes/web.php',
             'vendor/autoload.php',
-            'public/index.php',
             'public/build/manifest.json',
             'public/build/assets/app-abc123.js',
             'public/fonts/open/vazirmatn/font.woff2',
@@ -132,6 +131,8 @@ class UpdatePackageReaderTest extends TestCase
             '.github/workflows/ci.yml',
             'package.json',
             'vite.config.ts',
+            'public/index.php',
+            'public/robots.txt',
             'random.txt',
         ] as $path) {
             try {
