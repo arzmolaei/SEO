@@ -22,6 +22,7 @@ final class SeoOsUpdateMaintenanceGate
 
     public function __construct(private readonly string $installationRoot) {}
 
+    /** @return list<string> */
     public static function maintenancePhases(): array
     {
         return self::PHASES;
@@ -109,6 +110,15 @@ final class SeoOsRuntimeReleaseLocator
         $this->installationRoot = rtrim($resolved, DIRECTORY_SEPARATOR);
     }
 
+    /**
+     * @return array{
+     *     kind: 'root'|'slot',
+     *     release_root: string,
+     *     release_id: ?string,
+     *     product_version: string,
+     *     package_digest_sha256: ?string
+     * }
+     */
     public function resolve(): array
     {
         $pointerPath = $this->path(self::POINTER_RELATIVE_PATH);
@@ -207,6 +217,7 @@ final class SeoOsRuntimeReleaseLocator
         }
     }
 
+    /** @return array<string, mixed> */
     private function readMetadata(string $path): array
     {
         clearstatcache(true, $path);
@@ -233,6 +244,10 @@ final class SeoOsRuntimeReleaseLocator
         return $decoded;
     }
 
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  list<string>  $expected
+     */
     private function assertExactKeys(array $metadata, array $expected): void
     {
         $actual = array_keys($metadata);
