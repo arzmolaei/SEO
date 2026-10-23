@@ -94,7 +94,7 @@ final class SystemRestoreController extends Controller
     private function privateHeaders(): array
     {
         return [
-            'Cache-Control' => 'private, no-store',
+            'Cache-Control' => 'no-cache, private, no-store',
             'Pragma' => 'no-cache',
             'X-Content-Type-Options' => 'nosniff',
         ];
