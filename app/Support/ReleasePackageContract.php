@@ -5,6 +5,7 @@ namespace App\Support;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use SplFileInfo;
 
 final class ReleasePackageContract
 {
@@ -74,6 +75,11 @@ final class ReleasePackageContract
             $forbidden[] = 'bootstrap/cache';
         } elseif (is_dir($bootstrapCache)) {
             foreach (new FilesystemIterator($bootstrapCache, FilesystemIterator::SKIP_DOTS) as $entry) {
+                if (! $entry instanceof SplFileInfo) {
+                    $forbidden[] = 'bootstrap/cache';
+
+                    continue;
+                }
                 if (
                     $entry->isLink() || ! $entry->isFile()
                     || ! in_array($entry->getFilename(), ['.gitignore', '.gitkeep', 'packages.php', 'services.php'], true)
