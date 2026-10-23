@@ -89,7 +89,8 @@ final class UpdatePackageFormat
             'resources/views/',
             'routes/',
             'vendor/',
-            'public/',
+            'public/build/',
+            'public/fonts/open/',
         ] as $prefix) {
             if (str_starts_with($path, $prefix) && strlen($path) > strlen($prefix)) {
                 return true;
