@@ -1,0 +1,94 @@
+name: Persian export UI once
+
+on:
+  push:
+    branches:
+      - feature/persian-export
+    paths:
+      - .github/workflows/persian-export-ui-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/persian-export
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+          npm ci --prefer-offline --no-audit
+      - name: Patch export UI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('resources/js/pages/projects/keywords.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "import { Columns3, LoaderCircle } from 'lucide-react';",
+                  "import { Columns3, Download, LoaderCircle } from 'lucide-react';",
+              ),
+              (
+                  """    activeView,\n    intelligence,\n}: {\n    keywords: KeywordPaginator;\n    filters: KeywordFilters;\n    savedViews: SavedKeywordView[];\n    activeView: SavedKeywordView | null;\n    intelligence: KeywordIntelligenceWorkspace;\n}) {""",
+                  """    activeView,\n    intelligence,\n    canExport,\n}: {\n    keywords: KeywordPaginator;\n    filters: KeywordFilters;\n    savedViews: SavedKeywordView[];\n    activeView: SavedKeywordView | null;\n    intelligence: KeywordIntelligenceWorkspace;\n    canExport: boolean;\n}) {""",
+              ),
+              (
+                  """    const { locale, t } = useLocale();\n    const path = usePage().url.split('?')[0];\n    const projectId = intelligence.project_id;""",
+                  """    const { locale, t } = useLocale();\n    const page = usePage();\n    const path = page.url.split('?')[0];\n    const exportError = page.props.flash.export_error ?? null;\n    const projectId = intelligence.project_id;""",
+              ),
+              (
+                  """                            <div className=\"flex items-center gap-2\">\n                                {isLoading ? (""",
+                  """                            <div className=\"flex items-center gap-2\">\n                                {canExport ? (\n                                    <a\n                                        href={`/projects/${projectId}/exports/seo-plan.csv`}\n                                        className=\"inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent\"\n                                    >\n                                        <Download className=\"size-4\" />\n                                        {locale === 'fa' ? 'خروجی CSV' : 'Export CSV'}\n                                    </a>\n                                ) : null}\n                                {isLoading ? (""",
+              ),
+              (
+                  """                    </div>\n\n                    <nav\n                        className=\"grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4\"""",
+                  """                    </div>\n\n                    {exportError ? (\n                        <div\n                            role=\"alert\"\n                            className=\"rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive\"\n                        >\n                            {exportError}\n                        </div>\n                    ) : null}\n\n                    <nav\n                        className=\"grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4\"""",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'missing UI patch anchor: {old[:80]!r}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          npx oxfmt --write resources/js/pages/projects/keywords.tsx resources/js/types/global.d.ts
+      - name: Verify frontend and focused export behavior
+        run: |
+          php artisan wayfinder:generate --with-form
+          npm run check
+          npm run types:check
+          npm run build
+          php artisan test tests/Feature/Exports/ProjectSeoExportCapabilityTest.php tests/Feature/Exports/ProjectSeoExportDownloadTest.php
+      - name: Commit verified UI and remove one-shot workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/persian-export-ui-once.yml
+          git add resources/js/pages/projects/keywords.tsx resources/js/types/global.d.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: add Persian project export action'
+          git push origin HEAD:feature/persian-export
