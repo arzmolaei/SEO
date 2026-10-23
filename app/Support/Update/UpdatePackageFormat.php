@@ -10,7 +10,7 @@ final class UpdatePackageFormat
 
     private const UINT32_BASE = 4_294_967_296;
 
-    /** @param array<string, mixed> $metadata */
+    /** @param array<array-key, mixed> $metadata */
     public static function canonicalMetadataJson(array $metadata): string
     {
         return json_encode(

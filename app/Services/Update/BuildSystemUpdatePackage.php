@@ -32,7 +32,7 @@ final class BuildSystemUpdatePackage
         }
         $outputPath = $parent.DIRECTORY_SEPARATOR.basename($outputPath);
         $temporary = $outputPath.'.tmp';
-        if (file_exists($outputPath) || is_link($outputPath) || file_exists($temporary) || is_link($temporary)) {
+        if ($this->destinationExists($outputPath) || file_exists($temporary) || is_link($temporary)) {
             throw $this->invalidBuild();
         }
 
@@ -99,7 +99,7 @@ final class BuildSystemUpdatePackage
                 throw $this->invalidBuild();
             }
             fclose($stream);
-            if (file_exists($outputPath) || is_link($outputPath) || ! rename($temporary, $outputPath)) {
+            if ($this->destinationExists($outputPath) || ! rename($temporary, $outputPath)) {
                 throw $this->invalidBuild();
             }
 
@@ -112,6 +112,13 @@ final class BuildSystemUpdatePackage
             }
             @unlink($temporary);
         }
+    }
+
+    private function destinationExists(string $path): bool
+    {
+        clearstatcache(true, $path);
+
+        return file_exists($path) || is_link($path);
     }
 
     /** @param array<string, string> $paths */
