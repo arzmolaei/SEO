@@ -10,7 +10,7 @@ final class UpdatePackageFormat
 
     private const UINT32_BASE = 4_294_967_296;
 
-    /** @param array<string, mixed> $metadata */
+    /** @param array<array-key, mixed> $metadata */
     public static function canonicalMetadataJson(array $metadata): string
     {
         return json_encode(
@@ -75,23 +75,36 @@ final class UpdatePackageFormat
         }
     }
 
+    /** @return list<string> */
+    public static function runtimeFiles(): array
+    {
+        return ['VERSION', 'artisan', 'composer.json', 'composer.lock', '.env.example'];
+    }
+
+    /** @return list<string> */
+    public static function runtimeDirectories(): array
+    {
+        return [
+            'app',
+            'bootstrap',
+            'config',
+            'database/migrations',
+            'resources/views',
+            'routes',
+            'vendor',
+            'public/build',
+            'public/fonts/open',
+        ];
+    }
+
     private static function isAllowlistedPath(string $path): bool
     {
-        if (in_array($path, ['VERSION', 'artisan', 'composer.json', 'composer.lock', '.env.example'], true)) {
+        if (in_array($path, self::runtimeFiles(), true)) {
             return true;
         }
 
-        foreach ([
-            'app/',
-            'bootstrap/',
-            'config/',
-            'database/migrations/',
-            'resources/views/',
-            'routes/',
-            'vendor/',
-            'public/build/',
-            'public/fonts/open/',
-        ] as $prefix) {
+        foreach (self::runtimeDirectories() as $directory) {
+            $prefix = $directory.'/';
             if (str_starts_with($path, $prefix) && strlen($path) > strlen($prefix)) {
                 return true;
             }

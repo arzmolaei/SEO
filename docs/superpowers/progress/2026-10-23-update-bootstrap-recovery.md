@@ -29,3 +29,6 @@ Implementation head `662cac538c1e7d4470be6f9ee18453286163fcc7`, CI `40021758794`
 Actual-router recovery coverage then exposed a pre-existing maintenance allowlist bug: Fortify's registered password confirmation is `/user/confirm-password`, not only `/confirm-password`. RED on `d73e582e`, CI `40021902513`: one failure, 478 passing. The narrow allowlist now includes the real password-confirmation and two-factor challenge paths. Registration, password changes and two-factor configuration stay blocked. This is required so the persisted system owner can authenticate/reconfirm during recovery.
 
 Final exact-head CI and integration remain pending; no main/subsystem completion claim is made.
+
+
+Final reviewed Task 7 head `a90e1c08214fa1fcd2def6cd26513d91b6f6433c` passed all six permanent jobs in CI `40022118065`; PR #11 merged with expected-head protection into the active feature branch at `f699d8363de91a419bb6d5de7e508fc8c6f8bec1`. Final count: 479 backend tests, connected-only cases in dedicated MariaDB jobs. Independent review found no unresolved findings. Combined runtime package smoke is the next gate through PR #10, followed by Task 8. This is not integration into main.
