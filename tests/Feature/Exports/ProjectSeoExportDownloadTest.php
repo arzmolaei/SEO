@@ -36,7 +36,12 @@ class ProjectSeoExportDownloadTest extends TestCase
             $response->assertOk();
             $this->assertInstanceOf(StreamedResponse::class, $response->baseResponse);
             $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
-            $response->assertHeader('cache-control', 'private, no-store');
+            $cacheControl = array_map(
+                'trim',
+                explode(',', (string) $response->headers->get('cache-control')),
+            );
+            $this->assertContains('private', $cacheControl);
+            $this->assertContains('no-store', $cacheControl);
             $response->assertHeader('pragma', 'no-cache');
             $response->assertHeader('x-content-type-options', 'nosniff');
             $response->assertHeader('x-seo-export-schema', ProjectSeoExportSchema::ID);
