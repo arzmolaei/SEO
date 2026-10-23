@@ -120,7 +120,9 @@ class UpdateMigrationRunnerTest extends TestCase
         $first = $this->runner->runPending($this->runner->snapshot(), static function (): void {});
         $this->writeMigration('2099_01_01_000002_second', "Schema::create('update_probe_second', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_second');");
         $events = 0;
-        $after = $this->runner->runPending(UpdateMigrationState::fromArray($first->toArray()), function () use (&$events): void { $events++; });
+        $after = $this->runner->runPending(UpdateMigrationState::fromArray($first->toArray()), function () use (&$events): void {
+            $events++;
+        });
         $this->assertSame(1, $events);
         $this->assertCount(2, $after->appliedSuffix);
     }
