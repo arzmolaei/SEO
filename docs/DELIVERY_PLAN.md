@@ -1,87 +1,79 @@
 # SEO OS delivery gates
 
-This is a delivery map, not a claim that the whole product is implemented. The
-active implementation plan/progress and current GitHub CI are authoritative.
+This is the durable delivery map, not a claim that the whole product is implemented. The active plan, current Git heads and exact-head CI are authoritative.
 
 ## Continue autonomously
 
-Complete one task with RED/GREEN, relevant verification, semantic commit/push and
-final-head permanent CI. Then take the next task in the active plan without routine
-confirmation. Update PROJECT_STATE and active progress at boundaries. Do not claim
-indefinite background execution across a terminated session; the next session
-resumes recorded Git/CI state instead of rebuilding completed work. Never weaken
-gates or add implementation-mirroring tests.
+Complete one bounded task with RED/GREEN, relevant verification, semantic commit/push and exact-head permanent CI. Then continue to the next approved task without routine confirmation. Update `PROJECT_STATE` and handoff at subsystem boundaries. Never weaken gates or recreate a completed subsystem because chat context is stale.
 
-## Verified delivery slices
+## Integrated delivery slices
 
-- Foundation + Keyword Core: completed, reviewed and merged through PR #1.
-- Keyword Intelligence Tasks 1–11: completed, reviewed and merged through PR #2.
-- Keyword Intelligence is part of `main` at merge commit
-  `95bb5a014834590c30ff2562615b050b71c997f0`.
-- Self-host Installer Tasks 1–8: implementation, connected acceptance and
-  whole-branch review completed on `feature/self-host-installer`; PR #4 is the
-  single integration PR.
-- Installer implementation evidence before final documentation:
-  `75772ff85cc1eda7da8330af43dc7d89161c8954`, permanent CI `39859189369`,
-  success across PHP 8.4/8.5, verify and MariaDB 10.11 connected acceptance.
+- Foundation + Keyword Core — integrated through PR #1.
+- Keyword Intelligence — integrated through PR #2.
+- Self-host Installer — integrated through PR #4 with permanent MariaDB 10.11 acceptance and runtime-only release smoke.
+- Persian Export — integrated through PR #5 at merge commit `a6924d77b3a9b7f74b484f7e303c8168905c520c`, with exact `seo-plan/1` contract and permanent MariaDB 10.11 acceptance.
 
-The installer slice now covers clean browser bootstrap, persistent APP_KEY and
-production `.env`, real MySQL/MariaDB verification, resumable migrations, exactly
-one first owner/workspace, queue/scheduler activation evidence, final revalidation,
-lock-last semantics, authenticated handoff and installer lockdown. The runtime-only
-release package also boots `/install` over HTTP without Node/npm/Composer on the
-host.
-
-PR #4 still requires a fresh permanent CI run on the final documentation-complete
-SHA. Do not treat an older successful run as the merge gate.
+Current stable `main` at this checkpoint is `fabf2bf02d18c4e14f4aa97b6ab819da8620b174`; permanent `main` CI `39913391652` is green.
 
 ## First usable self-host release gate — active lifecycle phase
 
-The Installer boundary is complete pending PR #4 final-head CI and merge. The
-remaining lifecycle work, in order, is:
+### Backup + Restore — implementation complete, integration boundary active
 
-1. **Persian project export** — real project data, UTF-8/Persian correctness,
-   bounded streaming behavior and strict access isolation.
-2. **Backup + Restore** — database, uploaded files and durable settings with a
-   versioned checksum manifest; restore into a clean installation and verify users,
-   authorization and SEO data.
-3. **Update + interrupted recovery/rollback** — compatibility checks, mandatory
-   pre-update backup, migrations, health validation, failed/interrupted update
-   recovery and rollback on real fixtures.
-4. **End-to-end lifecycle acceptance** — clean runtime package through install,
-   real project workflow, export, backup/restore, update/recovery and operational
-   health.
+Active branch / PR: `feature/backup-restore` / PR #7.
 
-Already satisfied within the Installer slice:
+Tasks 1–10 product implementation and permanent connected acceptance are complete. Exact implementation evidence before final documentation:
 
-- clean runtime-only package and supported environment preflight;
-- fresh browser installation, first owner, installer lock and authenticated entry;
-- real MariaDB 10.11 connected installation acceptance;
-- queue/scheduler evidence, shared-host commands and blocking-failure visibility;
-- installer UI/actions are connected rather than dead placeholders.
+- head `35ee01a108ef5a9df31fce829378756e850e8565`;
+- CI `39976140240`, success;
+- six permanent green jobs: `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB, Backup/Restore MariaDB.
 
-Still required before the first usable self-host release can be called complete:
+The slice includes:
 
-- Project -> import -> keyword/intent/cluster -> mapping -> priority workflow on a
-  clean installed release as part of final lifecycle acceptance;
-- Persian project export;
-- versioned backup and clean restore;
-- safe update plus interruption/failure recovery and rollback;
-- final clean-package lifecycle acceptance across all of the above.
+- stable ProductVersion + release-tree identity;
+- system-owner identity and owner-only lifecycle access;
+- shared lifecycle mutex + maintenance window;
+- deterministic `seo-backup/1` bundle with strict bounds/path/checksum verification;
+- explicit durable DB/settings/file scope and schema fingerprint;
+- private full backup download;
+- clean-target restore verification before mutation;
+- destination DB identity/credentials preserved while source APP_KEY restores durable encrypted state;
+- protected safety snapshot and fail-closed `recovery_required` after destructive interruption;
+- exact recovery to pre-restore clean bootstrap state;
+- Persian-first settings UI with digest confirmation and real server phases;
+- connected MariaDB 10.11 full round-trip + interruption/recovery acceptance;
+- runtime release-tree verification containing VERSION, lifecycle code, routes/controllers and built UI.
 
-Do not collapse those risks into one oversized implementation task. Each bounded
-sub-project gets its own design/plan where required, RED contract, verified
-boundary, semantic commits and exact-head permanent CI.
+The feature branch has reconciled current `main` through merge commit `0f857c313dfe5256764bbd55f33e562e9576db66` while retaining the reviewed feature design required by its plan.
+
+Backup + Restore is integrated only after:
+
+1. final docs/release-readiness/operator notes are committed;
+2. whole-branch review has no open Critical/Important finding;
+3. fresh exact-head PR CI is green across all six jobs;
+4. PR #7 merges with expected-head protection;
+5. independent post-merge `main` CI is green;
+6. `PROJECT_STATE` records the exact merged state.
+
+### Remaining lifecycle work before first usable self-host release
+
+1. **Update + Interrupted Recovery/Rollback** — compatibility checks, mandatory pre-update backup, migrations/code transition, health validation, interrupted/failed update recovery and rollback on real fixtures. It must reuse ProductVersion, LifecycleMutex and Backup/Restore safety primitives.
+2. **Final end-to-end lifecycle acceptance** — clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
+
+Already satisfied before those two slices:
+
+- runtime-only package and supported host preflight;
+- browser installation, owner creation, installer lock and authenticated entry;
+- real MariaDB 10.11 installer acceptance;
+- complete keyword/import/intelligence core;
+- Persian project handoff export;
+- versioned full-instance backup, clean restore and interruption recovery implementation with connected acceptance.
+
+Do not collapse Update/Rollback and final lifecycle acceptance into one oversized task. Each gets an explicit design/plan where required, RED contract, connected acceptance and exact-head CI.
 
 ## Subsequent full-product scope
 
-Only after the first usable self-host lifecycle gate is verified should the product
-advance through the master spec phases:
+Only after the first usable self-host lifecycle gate is verified should the product advance through the remaining master-spec phases:
 
-Site Intelligence/crawler -> technical issues/history -> content/tasks/internal
-linking -> performance/opportunities/recommendations -> full operational release
-acceptance.
+Site Intelligence/crawler -> technical issues/history -> content/tasks/internal linking -> performance/opportunities/recommendations -> final operational release acceptance.
 
-External APIs, CMS providers and AI remain optional integrations. Plans,
-entitlements and SaaS commercialization are later scope, not prerequisites for the
-offline-capable self-host core.
+External APIs, CMS providers and AI remain optional integrations. Plans, entitlements and SaaS commercialization remain later scope and are not prerequisites for the offline-capable self-host core.

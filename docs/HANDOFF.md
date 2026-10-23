@@ -1,162 +1,114 @@
 # SEO OS — handoff to the next implementation agent
 
-Checkpoint: 2026-10-22. Repository evidence and current CI always override stale
-chat context. This handoff records the current verified implementation boundary;
-it does not mean the full self-host lifecycle is complete.
+Checkpoint: 2026-10-23. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
 
 ## Start here
 
-Read `AGENTS.md`, `docs/PROJECT_STATE.md`, the release-readiness reports,
-`docs/DELIVERY_PLAN.md`, the master product spec and the active subsystem
-spec/plan. Fetch origin and inspect actual `main`, active branch heads and latest CI
-before changing code.
+Read `AGENTS.md`, `docs/PROJECT_STATE.md`, `docs/DELIVERY_PLAN.md`, the release-readiness reports and the active subsystem spec/plan. Fetch actual `main`, feature head, PR status and latest CI before changing code.
 
 - Repository: `arzmolaei/SEO`.
-- Foundation + Keyword Core: completed and merged through PR #1.
-- Keyword Intelligence Tasks 1–11: completed and merged through PR #2.
-- Current stable `main` after Keyword Intelligence:
-  `95bb5a014834590c30ff2562615b050b71c997f0`.
-- Self-host Installer Tasks 1–8: implementation, connected acceptance and review
-  completed on `feature/self-host-installer` through PR #4.
-- Installer implementation evidence before final documentation:
-  `75772ff85cc1eda7da8330af43dc7d89161c8954`, CI `39859189369`, success.
-- PR #4 still requires a fresh permanent CI success on the final
-  documentation-complete head before merge.
+- Current stable `main` at this checkpoint: `fabf2bf02d18c4e14f4aa97b6ab819da8620b174`; CI `39913391652` success.
+- Foundation + Keyword Core: merged through PR #1.
+- Keyword Intelligence: merged through PR #2.
+- Self-host Installer: merged through PR #4.
+- Persian Export: merged through PR #5 at merge commit `a6924d77b3a9b7f74b484f7e303c8168905c520c`.
+- Active subsystem: Backup + Restore on `feature/backup-restore`, PR #7.
+- Verified implementation head before final docs: `35ee01a108ef5a9df31fce829378756e850e8565`.
+- Permanent implementation CI: `39976140240`, success across `verify`, PHP 8.4, PHP 8.5, Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB.
+- Main reconciliation parent on feature branch: `0f857c313dfe5256764bbd55f33e562e9576db66`.
 
-Do not create a duplicate installer PR or restart completed installer tasks.
+Do not restart Backup/Restore Tasks 1–10. The implementation exists and permanent connected acceptance is green. Resume from the final review/documentation/merge boundary.
 
-## Completed self-host Installer boundary
+## Backup + Restore completed implementation boundary
 
-The installer is now a browser-driven, resumable and offline-capable host bootstrap,
-not the old health-check-plus-lock placeholder.
+### Lifecycle primitives and identity
 
-### Preflight and environment
+- Root `VERSION` is required in distributable release trees and non-`dev` production identity is enforced.
+- `.installed` supports durable system-owner/provenance metadata while preserving destination-local `installation_id` and DB fingerprint.
+- `SystemOwner` resolves/persists the installer-created owner and fails closed for ambiguous legacy ownership.
+- `LifecycleMutex` is the shared serialization primitive for Backup/Restore and future Update/Rollback.
+- `MaintenanceWindow` provides quiescence without clearing unrelated administrator maintenance state.
 
-- Preflight is database-independent and checks the actual host/runtime floor.
-- Runtime floor is PHP 8.4.1+.
-- Required local extensions, writable paths, disk, assets, APP_KEY and runtime files
-  are checked before DB setup.
-- A missing APP_KEY gets a protected installer runtime key.
-- Browser-managed environment persistence writes production settings atomically and
-  carries that key into durable `.env`.
-- Unknown environment values are preserved; DB passwords are never returned to the
-  browser or installer journal.
+### Backup contract
 
-### Database and migrations
+- Bundle schema is `seo-backup/1` with application-owned deterministic framing and SHA-256 verification.
+- Durable DB scope is an explicit 19-table allowlist with verified parent-first insert and reverse child-first delete order.
+- Volatile framework/runtime tables are excluded.
+- APP_KEY and allowlisted durable runtime settings are included because encrypted durable values must remain usable after restore.
+- DB credentials, APP_URL, mail/storage/external credentials and unrelated environment values are excluded.
+- Durable private/public upload roots are allowlisted; symlinks/path traversal/control paths fail closed.
+- System-owner download runs through a private/no-store completed artifact and removes temporary storage after the response lifecycle.
 
-- Initial production DB support is MySQL/MariaDB.
-- Database verification performs a real capability probe and returns stable,
-  sanitized error codes rather than raw credential-bearing exceptions.
-- Verified identity is represented by a non-secret fingerprint.
-- Migrations use Laravel services in-process, not a shell command.
-- Pending state is derived from the real migration repository; interruption and
-  retry run only remaining work.
+### Restore and recovery contract
 
-### First owner and authentication
+- Upload is private and bounded.
+- Full bytes, paths, entry hashes, content digest, ProductVersion, schema fingerprint and durable catalog compatibility are verified before mutation.
+- Restore only runs against a clean compatible installed target.
+- Confirmation is tied to the exact previously verified digest.
+- A protected safety snapshot is captured before destructive mutation while the lifecycle lock is already owned.
+- DB durable rows restore transactionally with FK enforcement intact.
+- Durable files and allowlisted settings are restored while destination DB identity/secrets and local installation identity remain preserved.
+- Volatile session/cache/queue/password-reset state is cleared, not restored.
+- Any failure after destructive DB commit enters `recovery_required`; no new normal lifecycle operation may proceed until recovery restores the exact pre-restore clean bootstrap state.
+- Successful restore and recovery require fresh login.
 
-- Installer creates exactly one initial owner, workspace and owner membership.
-- The owner is verified and onboarded during bootstrap so successful finalization
-  enters the real dashboard rather than a placeholder onboarding page.
-- Lost-response identical retries are idempotent; changed duplicate identity is
-  rejected safely.
-- Installer password rules are strong but local/offline-safe.
-- Public registration is disabled by default for installed self-host deployments.
+### Persian-first browser UI
 
-### Queue and scheduler activation
+- Owner-only `پشتیبان‌گیری و بازیابی` settings navigation/page.
+- Strong sensitive-backup warning.
+- Download, private upload/verify, source preview, exact digest confirmation and recovery action.
+- Status is server-derived from journal phase; no fake percent progress.
+- Raw APP_KEY, credentials, server paths and restore internals are not exposed in page props.
 
-- Scheduler health uses an observed local heartbeat.
-- Queue health uses a real database queue probe job.
-- Persian UI shows exact shared-host scheduler and bounded queue worker cron
-  commands.
-- Missing external execution evidence is a warning that requires explicit operator
-  acknowledgement; a demonstrable failure is blocking and cannot be acknowledged
-  away.
-- The installer no longer claims queue/scheduler health from configuration alone.
+### Permanent connected acceptance
 
-### Finalization and lock
+CI `39976140240` on `35ee01a108ef5a9df31fce829378756e850e8565` is the verified implementation evidence. Dedicated MariaDB 10.11 acceptance uses separate source/destination databases and covers representative durable tables, Persian + ZWNJ data, users/password hashes/passkeys/memberships/project isolation, uploads, source APP_KEY usability, destination DB credential + installation identity preservation, volatile-state exclusion, second-restore rejection and injected post-DB-commit failure followed by exact safety recovery and artifact cleanup.
 
-- Finalization revalidates current preflight, persistent APP_KEY, database identity,
-  migrations, owner membership and operational evidence.
-- `.installed` is written last and contains only versioned non-secret metadata.
-- Failed lock write leaves the installer recoverable and does not authenticate the
-  owner.
-- Successful finalization uses a persistent database session, logs the owner in,
-  clears transient installer state and redirects to the dashboard.
-- After the install lock exists, every installer route is inaccessible.
+The same exact head also passed frontend formatter/lint, TypeScript, production build, Pint, PHPStan/Larastan, backend tests, dependency audits, runtime-only Composer install and release-tree smoke.
 
-### Connected release acceptance
+## Why `main` was reconciled into the feature branch
 
-Permanent CI run `39859189369` on
-`75772ff85cc1eda7da8330af43dc7d89161c8954` passed:
+PR #7 was one commit behind `main`. That `main` commit intentionally removed an early Backup/Restore design draft from stable `main`; the reviewed final design belongs on the feature branch and is explicitly required by the feature merge boundary. The reconciliation commit `0f857c313dfe5256764bbd55f33e562e9576db66` makes current `main` an ancestor while retaining the final reviewed feature design.
 
-- MariaDB 10.11 connected installer acceptance;
-- PHP 8.4 and 8.5 compatibility;
-- frontend formatter/lint, TypeScript and production build;
-- Pint and PHPStan/Larastan;
-- normal backend suite: **310 passed, 1 connected-only skip, 1853 assertions**;
-- runtime npm and Composer audits;
-- runtime-only Composer install;
-- release-tree build and actual HTTP `/install` smoke with no `.env`, Node/npm,
-  tests or development Composer packages on the runtime tree.
+Never resolve this by deleting the reviewed feature design or force-pushing history.
 
-The connected flow covers clean install, refresh/retry, real DB verification,
-real migrations, owner retry after simulated response loss, operational warning
-acknowledgement, finalization, login, dashboard entry, lock metadata and installer
-lockdown.
+## Exact next actions at this handoff
 
-A first MariaDB diagnostic found one genuine bug: all installer POSTs shared a
-single `6/min` bucket and a legitimate install could hit HTTP 429. The final design
-uses a named limiter scoped by IP plus endpoint path; connected acceptance passed
-after that fix. The temporary diagnostic workflow was removed.
+1. Confirm final documentation/release evidence is committed on the actual PR head.
+2. Perform/confirm whole-branch review with no open Critical/Important findings.
+3. Require fresh permanent exact-head PR CI across all six jobs.
+4. Merge PR #7 using expected-head protection only after the exact head is green.
+5. Require independent post-merge `main` CI.
+6. Update `docs/PROJECT_STATE.md` on `main` with the merged SHA and post-merge CI evidence.
+7. Then start **Update + Interrupted Recovery/Rollback** as the next lifecycle subsystem.
 
-Detailed evidence: `docs/release-readiness/self-host-installer.md`.
+## After Backup + Restore integration
 
-## Critical invariants that carry forward
+Update + Interrupted Recovery/Rollback must reuse the existing lifecycle stack rather than creating parallel mechanisms:
 
-- Preserve original keyword text, provenance/metric history and explicit human
-  intent/cluster/mapping decisions.
-- Every project resource query/mutation remains project-scoped and authorized.
-- Automation never recalculates through explicit locks/manual overrides.
-- Mapping warnings are reviewable signals, never silent target mutations.
-- Ready is derived from current evidence, not a permanent badge.
-- Installer journal/lock metadata stays non-secret; secrets belong only in required
-  durable configuration such as protected `.env`.
-- Finalization never trusts a journal marker in place of current truth.
-- Queue/scheduler verification requires observed evidence; true failures block.
-- Core self-host workflows remain independent of international API/AI/SERP/CDN
-  availability.
-- Commercial font binaries, `.env`, secrets and local fixtures stay ignored.
+- `ProductVersion` for compatibility;
+- `LifecycleMutex` for serialization;
+- automatic backup/snapshot primitives for mandatory pre-update safety;
+- explicit journaled phases;
+- health validation after migrations/code switch;
+- fail-closed interrupted update recovery and rollback on real fixtures.
 
-## Exact next lifecycle work after PR #4
+After Update/Rollback, complete final end-to-end lifecycle acceptance:
 
-After PR #4 receives final-head CI success and is merged, continue the first usable
-self-host lifecycle gate in this order:
+clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
 
-1. **Persian Export** — real project data, UTF-8/Persian correctness, bounded
-   streaming and strict access isolation.
-2. **Backup + Restore** — database, uploads and durable settings with a versioned
-   checksum manifest; clean restore must verify users, authorization and SEO data.
-3. **Update + interrupted recovery/rollback** — compatibility, mandatory backup,
-   migrations, health, failure recovery and rollback on real fixtures.
-4. **Final lifecycle acceptance** — clean package install -> real project/import/
-   intelligence workflow -> export -> backup/restore -> update/recovery ->
-   operational health.
+Do not advance into crawler/Site Intelligence, Search Console, SERP, AI or vector work before this first usable self-host lifecycle gate is deliberately complete.
 
-Do not move to Site Intelligence/crawler, technical crawling, Search Console,
-SERP, AI or vector features until that lifecycle gate is trustworthy.
+## Invariants to preserve
 
-Persian Export is a genuinely new bounded subsystem. Follow the required
-architecture/design/spec review process before implementation rather than silently
-skipping those artifact gates.
+- Core lifecycle works without Composer, Node/npm, SSH, shell commands or international APIs on the production host.
+- Backup bundles are secrets: they contain durable instance state and APP_KEY.
+- No backup/restore temp or recovery artifact is public-web-addressable.
+- Destination DB credentials and installation identity survive restore unchanged.
+- Project-scoped authorization and explicit human SEO decisions remain intact.
+- Any future durable-file mutator acquires the shared lifecycle mutex.
+- `.env`, credentials, private font binaries and local fixtures stay out of public Git/release artifacts.
 
 ## Engineering protocol
 
-Use RED -> correct RED -> minimal GREEN -> refactor -> meaningful focused
-verification -> permanent final-head CI -> semantic commit/push. Diagnose failures
-before changing code. Never force-push, overwrite unexpected history, weaken gates,
-remove a valid regression test or infer success from a cancelled/older run. Continue
-task-by-task without routine user confirmation.
-
-If execution is externally interrupted, record the last verified SHA/CI and exact
-first unfinished behavior in Git. Resume from repository evidence instead of
-rebuilding completed work.
+Use RED -> correct RED -> minimal GREEN -> meaningful focused verification -> semantic commit/push -> exact-head permanent CI. Diagnose failures before changes. Never force-push, weaken gates, remove valid regressions or infer success from an older run. If execution is interrupted, record the exact verified SHA/CI and first unfinished boundary in Git; the next session resumes from repository evidence instead of rebuilding completed work.
