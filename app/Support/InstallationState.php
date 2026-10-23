@@ -27,6 +27,17 @@ class InstallationState
         'restored_at',
     ];
 
+    /** @var list<string> */
+    private const RECOVERY_REQUIRED_METADATA = [
+        'installed_at',
+        'version',
+        'installer_schema_version',
+        'product_version',
+        'installation_id',
+        'database_fingerprint',
+        'owner_user_id',
+    ];
+
     private string $lockPath;
 
     private bool $assumeInstalled;
@@ -114,8 +125,66 @@ class InstallationState
         return $payload;
     }
 
+    /** @param  array<string, mixed>  $snapshot */
+    public function restoreRecoverySnapshot(array $snapshot): void
+    {
+        if ($this->assumeInstalled) {
+            throw new RuntimeException('Recovery cannot rewrite an assumed installation state.');
+        }
+
+        $allowed = array_merge(['installed_at', 'version'], self::INITIAL_METADATA);
+        $this->assertAllowedMetadata(
+            $snapshot,
+            $allowed,
+            'Unsupported installation recovery snapshot metadata.',
+        );
+
+        foreach (self::RECOVERY_REQUIRED_METADATA as $key) {
+            if (! array_key_exists($key, $snapshot)) {
+                throw new InvalidArgumentException('Installation recovery snapshot is incomplete.');
+            }
+        }
+
+        if (
+            ! is_string($snapshot['installed_at'])
+            || trim($snapshot['installed_at']) === ''
+            || $snapshot['version'] !== 2
+            || ! is_int($snapshot['installer_schema_version'])
+            || $snapshot['installer_schema_version'] < 1
+            || ! is_string($snapshot['product_version'])
+            || trim($snapshot['product_version']) === ''
+            || ! is_string($snapshot['installation_id'])
+            || preg_match('/\A[a-f0-9]{32}\z/', $snapshot['installation_id']) !== 1
+            || ! is_string($snapshot['database_fingerprint'])
+            || preg_match('/\A[a-f0-9]{64}\z/', $snapshot['database_fingerprint']) !== 1
+            || ! is_int($snapshot['owner_user_id'])
+            || $snapshot['owner_user_id'] < 1
+        ) {
+            throw new InvalidArgumentException('Installation recovery snapshot is invalid.');
+        }
+
+        foreach (['restored_from_installation_id', 'restored_at'] as $optional) {
+            if (! array_key_exists($optional, $snapshot)) {
+                continue;
+            }
+
+            if (! is_string($snapshot[$optional]) || trim($snapshot[$optional]) === '') {
+                throw new InvalidArgumentException('Installation recovery snapshot is invalid.');
+            }
+        }
+
+        if (
+            array_key_exists('restored_from_installation_id', $snapshot)
+            && preg_match('/\A[a-f0-9]{32}\z/', $snapshot['restored_from_installation_id']) !== 1
+        ) {
+            throw new InvalidArgumentException('Installation recovery snapshot is invalid.');
+        }
+
+        $this->writePayload($snapshot);
+    }
+
     /**
-     * @param  array<string, int|string>  $metadata
+     * @param  array<string, mixed>  $metadata
      * @param  list<string>  $allowedMetadata
      */
     private function assertAllowedMetadata(array $metadata, array $allowedMetadata, string $message): void
