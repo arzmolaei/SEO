@@ -3,6 +3,7 @@
 namespace Tests\Unit\System;
 
 use FilesystemIterator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -91,7 +92,7 @@ class RuntimeReleaseLocatorTest extends TestCase
         $this->locator()->resolve();
     }
 
-    /** @dataProvider invalidReleaseIds */
+    #[DataProvider('invalidReleaseIds')]
     public function test_unsafe_release_ids_fail_closed(string $releaseId): void
     {
         $digest = str_repeat('c', 64);
