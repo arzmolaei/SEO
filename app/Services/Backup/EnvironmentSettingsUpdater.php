@@ -25,7 +25,7 @@ final class EnvironmentSettingsUpdater
     {
         $validated = $this->validate($settings);
 
-        $contents = file_get_contents($this->environmentPath);
+        $contents = @file_get_contents($this->environmentPath);
         if ($contents === false) {
             throw $this->writeFailed();
         }
