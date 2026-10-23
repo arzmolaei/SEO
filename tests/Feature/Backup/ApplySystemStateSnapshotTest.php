@@ -21,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ApplySystemStateSnapshotTest extends TestCase
@@ -238,6 +239,58 @@ class ApplySystemStateSnapshotTest extends TestCase
 
         $this->assertSame($beforeUserCount, User::query()->count());
         $this->assertSame($details, (new InstallationState)->details());
+    }
+
+    /** @return array<string, array{bool}> */
+    public static function queueRetentionPolicies(): array
+    {
+        return ['ordinary restore' => [false], 'update rollback' => [true]];
+    }
+
+    #[DataProvider('queueRetentionPolicies')]
+    public function test_update_rollback_preserves_exact_queued_work_while_ordinary_restore_still_clears_it(bool $preserveQueuedWork): void
+    {
+        $this->seedAndCaptureBaselineSnapshot();
+        DB::table('jobs')->insert([
+            'queue' => 'default', 'payload' => '{"displayName":"کار منتظر","batchId":"retained-batch"}',
+            'attempts' => 2, 'reserved_at' => null, 'available_at' => 123, 'created_at' => 120,
+        ]);
+        DB::table('job_batches')->insert([
+            'id' => 'retained-batch', 'name' => 'دسته منتظر', 'total_jobs' => 3, 'pending_jobs' => 2,
+            'failed_jobs' => 1, 'failed_job_ids' => '["failed-probe"]', 'options' => 'serialized-options',
+            'cancelled_at' => null, 'created_at' => 120, 'finished_at' => null,
+        ]);
+        DB::table('failed_jobs')->insert([
+            'uuid' => 'failed-probe', 'connection' => 'database', 'queue' => 'default',
+            'payload' => '{"displayName":"کار ناموفق"}', 'exception' => 'retained failure',
+            'failed_at' => '2026-10-23 12:00:00',
+        ]);
+        $queued = [];
+        foreach (['jobs', 'job_batches', 'failed_jobs'] as $table) {
+            $queued[$table] = DB::table($table)->orderBy('id')->get()->map(static fn (object $row): array => (array) $row)->all();
+        }
+        DB::table('cache')->insert(['key' => 'volatile-probe', 'value' => 'clear', 'expiration' => 123]);
+        $ownership = (new LifecycleMutex)->acquire('snapshot-queue-policy');
+        try {
+            if ($preserveQueuedWork) {
+                $this->app->make(ApplySystemStateSnapshot::class)->handle(
+                    $this->bundlePath, $this->metadataPath, $this->stagingRoot, $ownership,
+                    preserveQueuedWork: true,
+                );
+            } else {
+                // Exercise the unchanged public default used by ordinary Restore.
+                $this->app->make(ApplySystemStateSnapshot::class)->handle(
+                    $this->bundlePath, $this->metadataPath, $this->stagingRoot, $ownership,
+                );
+            }
+        } finally {
+            $ownership->release();
+        }
+        foreach ($queued as $table => $rows) {
+            $actual = DB::table($table)->orderBy('id')->get()->map(static fn (object $row): array => (array) $row)->all();
+            $this->assertSame($preserveQueuedWork ? $rows : [], $actual, $table);
+        }
+        $this->assertDatabaseCount('cache', 0);
     }
 
     /** @return array<string, mixed> */
