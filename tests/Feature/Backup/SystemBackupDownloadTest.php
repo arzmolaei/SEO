@@ -68,10 +68,10 @@ class SystemBackupDownloadTest extends TestCase
 
     public function test_backup_download_requires_auth_verification_recent_password_and_exact_system_owner(): void
     {
-        $this->get('/settings/backup/download')->assertRedirect('/login');
-
         $systemOwner = $this->member(WorkspaceRole::Owner, false);
         $this->markInstalled($systemOwner);
+
+        $this->get('/settings/backup/download')->assertRedirect('/login');
 
         $this->actingAs($systemOwner)
             ->get('/settings/backup/download')
