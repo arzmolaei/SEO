@@ -30,6 +30,7 @@ final class PrepareSystemUpdate
         private readonly InstallationState $installationState,
         private readonly UpdateReleaseStager $stager,
         private readonly ActiveReleasePointer $activeReleasePointer,
+        private readonly UpdateMigrationRunner $migrationRunner,
     ) {}
 
     public function handle(string $expectedPackageDigest): PreparedSystemUpdate
@@ -142,11 +143,13 @@ final class PrepareSystemUpdate
             $uploadId,
             $details,
         );
-        $migrationHistoryDigest = $this->migrationHistoryDigest();
+        $migrationState = $this->migrationRunner->snapshot();
+        $migrationHistoryDigest = $migrationState->digestSha256;
 
         $this->journal->transition('quiescing', 'snapshot_ready', [
             'safety_snapshot_id' => $uploadId,
             'pre_update_migration_history_sha256' => $migrationHistoryDigest,
+            'pre_update_migration_state' => $migrationState->toArray(),
         ]);
 
         $ownership->assertActive();
@@ -334,23 +337,6 @@ final class PrepareSystemUpdate
             throw $this->invalidState();
         }
         @chmod($path, 0600);
-    }
-
-    private function migrationHistoryDigest(): string
-    {
-        $rows = DB::table('migrations')
-            ->orderBy('id')
-            ->get(['migration', 'batch'])
-            ->map(static fn (object $row): array => [
-                'migration' => (string) $row->migration,
-                'batch' => (int) $row->batch,
-            ])
-            ->all();
-
-        return hash('sha256', json_encode(
-            $rows,
-            JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-        ));
     }
 
     private function uploadPath(string $uploadId): string

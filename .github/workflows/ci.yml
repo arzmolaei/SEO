@@ -69,7 +69,7 @@ jobs:
         run: npm run build
 
       - name: Check PHP style
-        run: composer lint:check
+        run: composer lint:check -- --verbose
 
       - name: Static analysis
         run: composer types:check
@@ -354,3 +354,6 @@ jobs:
 
       - name: Run connected backup restore acceptance
         run: php artisan test tests/Feature/Acceptance/BackupRestoreMariaDbAcceptanceTest.php --fail-on-skipped
+
+      - name: Run connected exact migration and partial DDL acceptance
+        run: php artisan test tests/Feature/Acceptance/UpdateMigrationsMariaDbAcceptanceTest.php --fail-on-skipped
