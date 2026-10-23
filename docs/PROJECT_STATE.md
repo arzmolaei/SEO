@@ -1,157 +1,108 @@
 # SEO OS — Durable Project State & Handoff
 
-Last checkpoint: 2026-10-22
+Last checkpoint: 2026-10-23
 
-This file is the durable source of truth for continuing SEO OS across agent
-sessions. **Do not reconstruct project state from chat history when this file and
-Git disagree. Git + CI win.**
+This file is the durable source of truth for continuing SEO OS across agent sessions. **Git + exact-head CI override stale chat or old hashes.** Never reset/force-push over unexpected branch movement or recreate a completed subsystem.
 
 ## Stable baseline
 
 - Repository: `arzmolaei/SEO`.
 - Stable branch: `main`.
-- Foundation + Keyword Core was reviewed and merged through PR #1.
-- Keyword Intelligence was reviewed and merged through PR #2.
-- Current `main` baseline after Keyword Intelligence:
-  `95bb5a014834590c30ff2562615b050b71c997f0`.
-- Active integration branch: `feature/self-host-installer` through PR #4.
-- Never develop directly on `main`, reset an active branch, force-push over
-  unexpected movement or create a duplicate subsystem PR.
+- Foundation + Keyword Core: merged through PR #1.
+- Keyword Intelligence: merged through PR #2.
+- Self-host Installer: merged through PR #4 and post-merge CI verified.
+- Current stable `main`: `c4f03303408a676d43a3fdbf94f1f49e00affbe5`.
+- Active integration branch: `feature/persian-export`, PR #5.
+- Runtime floor: PHP `>= 8.4.1`; permanent compatibility gates: PHP 8.4 and 8.5.
 
-Always fetch current heads and exact-head CI before new code. Recorded hashes are
-evidence, not permission to assume Git has not moved.
+Always fetch current `main`, active branch head and current CI before changing code. Recorded hashes are evidence, not permission to assume Git has not moved.
 
-## Completed product slices
+## Completed integrated product slices
 
 ### Foundation + Keyword Core
 
-Complete and integrated. The slice includes Laravel 13 + Inertia/React/TypeScript,
-Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation,
-Project shell, Persian keyword normalization preserving original source text,
-streaming/resumable keyword import, canonical keyword/provenance/metric history,
-server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo,
-allowlist-first runtime release packaging and connected foundation acceptance.
+Integrated. Includes Laravel 13 + Inertia/React/TypeScript, Persian-first RTL/LTR, auth/onboarding, Workspace/Membership/Project isolation, project shell, Persian keyword normalization preserving original source text, resumable import, canonical keyword/provenance/metric history, server-side Keyword Grid, Saved Views, transactional bulk changes/audit/safe Undo and allowlist-first runtime packaging.
 
-Detailed evidence: `docs/release-readiness/foundation-keyword-core.md`.
+Evidence: `docs/release-readiness/foundation-keyword-core.md`.
 
 ### Keyword Intelligence
 
-Complete and integrated. Tasks 1–11 provide intent history, deterministic Persian
-classification, project-scoped Review Queue, relational/reversible clusters,
-manual merge/split/move/lock with safe Undo, existing/planned Pages, mapping
-history, deterministic mapping-conflict review, explainable local priority and the
-connected Grid/Intent/Clusters/Mapping workspace.
+Integrated. Includes deterministic intent history/classification, project-scoped Review Queue, relational/reversible clusters, manual merge/split/move/lock, existing/planned Pages, mapping history/conflict review, explainable local priority and connected Grid/Intent/Clusters/Mapping workspace. No crawler/SERP/vector/AI dependency was introduced.
 
-Keyword Intelligence never introduced crawler, SERP, vector or AI dependencies.
-Manual decisions/locks survive recalculation and core workflows stay usable without
-international APIs.
+Evidence: `docs/release-readiness/keyword-intelligence.md`.
 
-Detailed evidence: `docs/release-readiness/keyword-intelligence.md`.
+### Self-host Installer
 
-### Self-host Installer — implementation and acceptance complete
+Integrated on `main` at merge commit `c4f03303408a676d43a3fdbf94f1f49e00affbe5`; post-merge permanent CI is green.
 
-Tasks 1–8 are implemented, connected-acceptance verified and whole-branch reviewed
-on `feature/self-host-installer`. Do not restart the installer plan from stale chat.
+The installer provides DB-independent host preflight, browser-managed production `.env` and persistent APP_KEY, real MySQL/MariaDB verification, resumable in-process migrations, exactly-once first owner/workspace, offline-safe password validation, public registration disabled by default, scheduler heartbeat, real database queue probe, shared-host commands, lock-last finalization, authenticated dashboard handoff and installer lockdown. MariaDB 10.11 connected acceptance and runtime-only release `/install` HTTP smoke are permanent gates.
 
-Implementation evidence before the final documentation commits:
+Evidence: `docs/release-readiness/self-host-installer.md`.
 
-- implementation SHA: `75772ff85cc1eda7da8330af43dc7d89161c8954`;
-- permanent CI: `39859189369` — success;
-- PHP 8.4 and PHP 8.5 compatibility: success;
-- normal backend suite: **310 passed, 1 connected-only skip, 1853 assertions**;
-- MariaDB 10.11 connected installer acceptance: success;
-- frontend formatter/lint, TypeScript and production build: success;
-- Pint and PHPStan/Larastan: success;
-- runtime npm and Composer security audits: success;
-- runtime-only Composer install: success;
-- release-tree build and real HTTP `/install` smoke: success.
+## Active slice — Persian Export
 
-The installer now provides:
+Design: `docs/superpowers/specs/2026-10-23-persian-export-design.md`  
+Plan: `docs/superpowers/plans/2026-10-23-persian-export.md`  
+Release evidence: `docs/release-readiness/persian-export.md`
 
-1. DB-independent host preflight with PHP 8.4.1+ and local runtime checks;
-2. browser-managed production environment and persistent APP_KEY;
-3. real MySQL/MariaDB capability verification with sanitized failures;
-4. resumable in-process Laravel migrations without shell commands;
-5. exactly-once first owner/workspace bootstrap with local password rules;
-6. public registration disabled by default after self-host bootstrap;
-7. scheduler heartbeat, real database queue probe and shared-host cron commands;
-8. explicit acknowledgement for unobserved external execution while true failures
-   remain blocking;
-9. final revalidation of current truth rather than journal markers alone;
-10. `.installed` lock written last, owner authenticated and installer routes locked;
-11. endpoint-scoped installer throttling that does not break a normal multi-step
-    installation;
-12. a runtime-only release package whose installer boots without Node/npm/Composer
-    on the production host.
+Tasks 1–6 are complete and Task 7 is at the final review/documentation/merge gate.
 
-The first MariaDB diagnostic exposed a shared-throttle 429 regression during normal
-installation; it was fixed with a named endpoint-scoped limiter and the permanent
-MariaDB acceptance subsequently passed.
+Implemented boundary:
 
-Detailed evidence: `docs/release-readiness/self-host-installer.md`.
+1. versioned `seo-plan/1` CSV with exact 74-column schema;
+2. UTF-8 BOM, CRLF, deterministic scalar/CSV formatting and incremental SHA-256;
+3. spreadsheet formula/control-prefix defense plus exact Persian/ZWNJ recovery through `exact_text_json`;
+4. project-scoped current intent/latest metrics/cluster/mapping/review/priority semantics;
+5. cluster priority reuses `ClusterPriorityScore::calculate()` with explicit primary-keyword basis;
+6. strict export role boundary: Owner/Admin/SEO Manager only;
+7. bounded 250-row keyword batches and private `php://temp` output, no durable/public artifact;
+8. repeatable-read MySQL/MariaDB snapshot closed before HTTP streaming;
+9. real Keywords workspace `خروجی CSV` action and stable Persian generation errors;
+10. permanent MariaDB 10.11 gate including 10,000 keywords and a connected Persian domain flow.
 
-PR #4 must still receive a fresh permanent CI success on the final
-documentation-complete SHA before merge. Older green evidence does not replace that
-gate.
+Implementation evidence before final documentation:
 
-## Fonts / self-host rule
+- Task 6 permanent exact-head SHA: `1898ee48349948d8caa28004920c6e396ae96326`;
+- permanent CI run `39911325085`: success across PHP 8.4, PHP 8.5, verify, Installer MariaDB and Persian Export MariaDB;
+- review found a selected-metric N+1 query pattern;
+- RED regression commit `5f262644f25d4155dc96c8b153086b31772ed6f0` proved four redundant keyword point queries for two keywords;
+- verified performance fix commit `1e3aaf62a4297c12cedfbf5d5d435dd6f6b1ef09`;
+- focused verification run `39911869862`: success for query-budget regression, Export suite, Pint and PHPStan/Larastan; temporary workflow removed itself.
 
-- Default interface font: IRANSansX FaNum.
-- Selectable alternatives: Yekan Bakh and Vazirmatn.
-- Vazirmatn is bundled locally from its OFL source for release builds.
-- Proprietary IRANSansX/Yekan Bakh binaries are never committed publicly; licensed
-  files are installed into the ignored private-font directory.
-- Core runtime must not depend on an international font/CDN request.
+PR #5 must receive fresh permanent CI success on the final documentation-complete SHA before merge. After merge, `main` must receive independent post-merge permanent CI success before Persian Export is called integrated.
+
+## Self-host/offline invariants
+
+- Core runtime/install must not depend on Composer, Node/npm, SSH, shell access, foreign APIs or international internet on the production host.
+- Vazirmatn may be bundled locally under its open license. Proprietary IRANSansX/Yekan Bakh binaries are never committed publicly and require licensed local installation.
+- Preserve original keyword text, provenance/metric history and explicit human intent/cluster/mapping decisions.
+- Every project resource query/mutation/export remains project-scoped and authorized.
+- Automation must not silently overwrite explicit locks/manual decisions.
+- `.env`, secrets, private font binaries and local fixtures stay out of public Git/release artifacts.
 
 ## Exact next lifecycle work
 
-After PR #4 final-head CI and merge, the first usable self-host lifecycle gate
-continues in this order:
+After PR #5 is merged and post-merge CI is green, start **Backup + Restore** as the next separate subsystem. Its release boundary must include database + uploads + durable settings, versioned checksum manifest, clean restore and verification of users, authorization and SEO data.
 
-1. **Persian Export** — real project data, UTF-8/Persian correctness, streaming and
-   project/access isolation.
-2. **Backup + Restore** — database, uploads and settings with a versioned checksum
-   manifest; restore into a clean installation and verify users, authorization and
-   SEO data.
-3. **Update + interrupted recovery/rollback** — compatibility checks, mandatory
-   pre-update backup, migrations, health, interruption/failure recovery and real
-   rollback fixtures.
-4. **Final lifecycle acceptance** — clean release install -> real project/import/
-   intelligence workflow -> export -> backup/restore -> update/recovery ->
-   operational health.
+Then continue:
 
-Do not start Site Intelligence/crawler, Search Console, SERP, AI or vector work
-before that lifecycle gate is deliberately completed.
+1. **Update + interrupted recovery/rollback** — compatibility checks, mandatory pre-update backup, migrations, health validation, interrupted/failed update recovery and rollback on real fixtures.
+2. **Final end-to-end lifecycle acceptance** — clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian export -> backup/restore -> update/recovery -> operational health.
+
+Do not start crawler/Site Intelligence, Search Console, SERP, AI or vector work before this first usable self-host lifecycle gate is deliberately complete.
 
 ## Mandatory continuation protocol
 
-Before changing code in a new agent/session:
-
-1. Read `AGENTS.md`.
-2. Read this file and `docs/HANDOFF.md` completely.
-3. Read release readiness, `docs/DELIVERY_PLAN.md`, master spec and the current
-   active spec/plan.
-4. Fetch current `main`, active branch heads and current CI.
-5. Continue only the genuinely next subsystem; do not resurrect completed tasks.
-6. Use TDD for bounded behavior: RED -> correct GREEN -> refactor -> verification.
-7. Keep permanent CI gates intact; diagnostic workflows must not survive as a
-   weakened pipeline.
-8. Update durable state at verified subsystem boundaries.
-9. Do not stop for routine user confirmation; continue autonomously task-by-task.
-10. Required architecture/spec review gates for a genuinely new subsystem still
-    apply; standing autonomy does not falsify artifact approval.
+1. Read `AGENTS.md`, this file, `docs/HANDOFF.md`, `docs/DELIVERY_PLAN.md` and active spec/plan.
+2. Fetch current Git heads and exact-head CI before writes.
+3. Use RED -> correct RED -> minimal GREEN -> verification -> semantic commit/push.
+4. Diagnose failures before changing production code or tests.
+5. Keep permanent CI gates intact; temporary diagnostics/workflows must not survive in the product.
+6. Never force-push or infer success from stale/cancelled/pending runs.
+7. Update durable state at verified subsystem boundaries.
+8. Continue autonomously through approved plans without routine confirmation.
+9. A genuinely new architecture still follows the mandatory brainstorming -> design approval -> written spec review -> implementation-plan review process.
 
 ## Definition of trustworthy progress
 
-Code existence is not completion. Applicable formatter/lint, TypeScript, production
-frontend build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits,
-authorization/isolation coverage, connected acceptance and release/runtime smoke
-must be green. CI must correspond to the current final head; older, cancelled or
-stale runs are not proof.
-
-The actual runtime floor is **PHP 8.4.1+**. Older PHP 8.3 references are stale and
-must not be advertised as verified compatibility.
-
-If execution is externally interrupted, preserve the latest verified SHA/CI and
-exact first unfinished behavior in Git. The next session resumes from repository
-evidence, not guesses.
+Code existence is not completion. Applicable frontend check/TypeScript/build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits, project isolation, connected MariaDB acceptance and release/runtime smoke must be green on the current head. Subsystem integration additionally requires the merge commit on `main` to receive its own permanent CI success.
