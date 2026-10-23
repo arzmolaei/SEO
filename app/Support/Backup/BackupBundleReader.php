@@ -8,7 +8,7 @@ use JsonException;
 
 final class BackupBundleReader
 {
-    /** @var array{max_manifest_bytes:int,max_path_bytes:int,max_entries:int,max_entry_bytes:int,max_bundle_bytes:int,chunk_bytes:int} */
+    /** @var array{max_manifest_bytes:int,max_path_bytes:int,max_entries:int,max_entry_bytes:int,max_bundle_bytes:int,chunk_bytes:positive-int} */
     private array $limits;
 
     private int $bytesRead = 0;
@@ -160,7 +160,12 @@ final class BackupBundleReader
 
         $bytes = '';
         while (strlen($bytes) < $length) {
-            $chunk = fread($stream, min($length - strlen($bytes), $this->limits['chunk_bytes']));
+            $readLength = min($length - strlen($bytes), $this->limits['chunk_bytes']);
+            if ($readLength < 1) {
+                throw $this->invalidBundle();
+            }
+
+            $chunk = fread($stream, $readLength);
             if ($chunk === false || $chunk === '') {
                 throw $this->invalidBundle();
             }

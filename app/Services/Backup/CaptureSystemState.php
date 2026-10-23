@@ -8,6 +8,7 @@ use App\Support\Lifecycle\LifecycleMutexHandle;
 use App\Support\Lifecycle\ProductVersion;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use PDO;
 use Throwable;
@@ -161,7 +162,7 @@ final class CaptureSystemState
                     if ($family === 'decimal' || $family === 'float') {
                         $wrapped = $connection->getQueryGrammar()->wrap($name);
                         $castType = $connection->getDriverName() === 'sqlite' ? 'TEXT' : 'CHAR';
-                        $query->addSelect($connection->raw("CAST({$wrapped} AS {$castType}) AS {$wrapped}"));
+                        $query->addSelect(new Expression("CAST({$wrapped} AS {$castType}) AS {$wrapped}"));
                     } else {
                         $query->addSelect($name);
                     }
@@ -302,9 +303,6 @@ final class CaptureSystemState
 
         while ($pending !== []) {
             $directory = array_pop($pending);
-            if (! is_array($directory)) {
-                throw $this->integrityFailure();
-            }
 
             $items = scandir($directory['absolute']);
             if ($items === false) {

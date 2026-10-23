@@ -7,7 +7,7 @@ use App\Services\Backup\BackupManifest;
 
 final class BackupBundleWriter
 {
-    /** @var array{max_manifest_bytes:int,max_path_bytes:int,max_entries:int,max_entry_bytes:int,max_bundle_bytes:int,chunk_bytes:int} */
+    /** @var array{max_manifest_bytes:int,max_path_bytes:int,max_entries:int,max_entry_bytes:int,max_bundle_bytes:int,chunk_bytes:positive-int} */
     private array $limits;
 
     /** @param array<string, int>|null $limits */
@@ -165,7 +165,7 @@ final class BackupBundleWriter
         }
 
         $metadata = stream_get_meta_data($stream);
-        if (($metadata['seekable'] ?? false) !== true) {
+        if ($metadata['seekable'] !== true) {
             throw $this->integrityFailure();
         }
     }
