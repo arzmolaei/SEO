@@ -24,3 +24,10 @@ Builder, explicit-metadata CLI, lazy/file writer inputs and canonical path famil
 Real-process runtime-only smoke is being added to the permanent verify gate: build a complete update package from the no-dev runtime tree, stage it with the actual stager, boot source -> target slot -> source across separate HTTP requests, verify stable env/storage and both content-addressed assets. This does not claim migration/rollback-coordinator acceptance (Task 13).
 
 Local PHP/Composer are unavailable; final exact-head full CI and independent review remain required.
+
+
+## Independent review and correction
+
+Review found one Important issue: generated build-host bootstrap configuration could enter an otherwise valid runtime package and override the destination `.env`. Regression `test_rejects_build_host_config_route_and_event_caches_before_publishing` observed RED on `35a3764d0ec893c724abc2872321645b4f52ef2b`, CI `40019592094`: one new failure, 468 passing tests. Correction: the shared release contract rejects generated bootstrap state except Composer provider-discovery metadata (`packages.php`, `services.php`) and empty-directory markers. This protects both ordinary runtime releases and update builds; no cache contents are emitted in errors.
+
+CI isolation ruling: PR #10 is temporarily based on `verification/update-package-baseline@f38d104` so active Task 7 RED tests from the concurrent execution cannot prevent this branch's actual runtime smoke from executing. Do not merge into the verification branch. Retarget to the active feature branch after this branch's gates pass, re-run merged CI, then integrate with expected-head protection.

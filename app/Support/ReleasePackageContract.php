@@ -69,6 +69,20 @@ final class ReleasePackageContract
             }
         }
 
+        $bootstrapCache = $root.DIRECTORY_SEPARATOR.'bootstrap/cache';
+        if (is_link($bootstrapCache)) {
+            $forbidden[] = 'bootstrap/cache';
+        } elseif (is_dir($bootstrapCache)) {
+            foreach (new FilesystemIterator($bootstrapCache, FilesystemIterator::SKIP_DOTS) as $entry) {
+                if (
+                    $entry->isLink() || ! $entry->isFile()
+                    || ! in_array($entry->getFilename(), ['.gitignore', '.gitkeep', 'packages.php', 'services.php'], true)
+                ) {
+                    $forbidden[] = 'bootstrap/cache/'.$entry->getFilename();
+                }
+            }
+        }
+
         if ($this->containsPrivateKey($root.DIRECTORY_SEPARATOR.'storage')) {
             $forbidden[] = 'storage/**/*.key';
         }
