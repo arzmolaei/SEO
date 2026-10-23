@@ -224,6 +224,39 @@ class UpdateMigrationRunnerTest extends TestCase
         $this->assertSame($before->toArray(), $this->runner->snapshot()->toArray());
     }
 
+    public function test_missing_reordered_history_or_missing_definition_cannot_authorize_a_down(): void
+    {
+        $first = '2099_01_01_000001_first';
+        $second = '2099_01_01_000002_second';
+        $this->writeMigration($first, "Schema::create('update_probe_first', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_first');");
+        $this->writeMigration($second, "Schema::create('update_probe_second', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_second');");
+        $before = $this->runner->snapshot();
+        $after = $this->runner->runPending($before, static function (): void {});
+        $firstRow = (array) DB::table('migrations')->where('migration', $first)->first();
+        DB::table('migrations')->where('migration', $first)->delete();
+        $this->assertRollbackBlocked($before, $after);
+        DB::table('migrations')->insert($firstRow);
+        DB::table('migrations')->where('migration', $first)->update(['migration' => $second]);
+        DB::table('migrations')->where('id', '!=', $firstRow['id'])->where('migration', $second)->update(['migration' => $first]);
+        $this->assertRollbackBlocked($before, $after);
+        DB::table('migrations')->where('id', '!=', $firstRow['id'])->where('migration', $first)->update(['migration' => $second]);
+        DB::table('migrations')->where('id', $firstRow['id'])->update(['migration' => $first]);
+        File::delete($this->directory.'/'.$second.'.php');
+        $this->assertRollbackBlocked($before, $after);
+        $this->assertTrue(Schema::hasTable('update_probe_first'));
+        $this->assertTrue(Schema::hasTable('update_probe_second'));
+    }
+
+    private function assertRollbackBlocked(UpdateMigrationState $before, UpdateMigrationState $after): void
+    {
+        try {
+            $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+            $this->fail('Incomplete or reordered proof must block rollback.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+    }
+
     private function writeMigration(string $name, string $up, string $down): void
     {
         File::put($this->directory.'/'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { {$up} } public function down(): void { {$down} } };\n");

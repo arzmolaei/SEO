@@ -69,7 +69,7 @@ jobs:
         run: npm run build
 
       - name: Check PHP style
-        run: composer lint:check
+        run: composer lint:check -- --verbose
 
       - name: Static analysis
         run: composer types:check
