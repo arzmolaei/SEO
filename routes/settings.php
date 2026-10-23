@@ -22,6 +22,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(RequirePassword::class)
         ->name('security.edit');
 
+    Route::get('settings/backup', [SystemBackupController::class, 'edit'])
+        ->middleware(EnsureSystemOwner::class)
+        ->name('settings.backup.edit');
+
     Route::get('settings/backup/download', [SystemBackupController::class, 'download'])
         ->middleware([RequirePassword::class, EnsureSystemOwner::class])
         ->name('settings.backup.download');
