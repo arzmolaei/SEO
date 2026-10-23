@@ -223,6 +223,7 @@ class VerifyRestoreBundleTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($this->owner)
+            ->withSession(['auth.password_confirmed_at' => 0])
             ->post('/settings/backup/restore/verify', [
                 'backup' => UploadedFile::fake()->createWithContent('bad.seobak', 'bad'),
             ])
