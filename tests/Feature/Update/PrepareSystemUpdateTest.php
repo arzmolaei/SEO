@@ -160,6 +160,7 @@ class PrepareSystemUpdateTest extends TestCase
         $this->assertSame($prepared->targetReleaseId, $state['target_release_id']);
         $this->assertSame($preview->packageDigestSha256, $state['package_digest_sha256']);
         $this->assertArrayHasKey('pre_update_migration_history_sha256', $state);
+        $this->assertSame(hash('sha256', $this->installationRoot.'/storage/app/lifecycle/lifecycle.lock'), $state['lifecycle_mutex_path_sha256']);
         $this->assertArrayNotHasKey('target_release_root', $state);
         $this->assertStringNotContainsString($this->directory, json_encode($state, JSON_THROW_ON_ERROR));
 

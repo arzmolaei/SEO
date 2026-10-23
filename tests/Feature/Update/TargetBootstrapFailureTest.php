@@ -4,6 +4,7 @@ namespace Tests\Feature\Update;
 
 use App\Services\Update\UpdateJournal;
 use App\Support\Update\ActiveReleasePointer;
+use App\Support\Lifecycle\LifecycleMutex;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -172,12 +173,28 @@ class TargetBootstrapFailureTest extends TestCase
     public function test_custom_mutex_configuration_requires_manual_recovery_instead_of_using_another_lock(): void
     {
         $this->seedJournal('root', null, '0.1.0-alpha.1');
-        File::put($this->installationRoot.'/.env', 'BACKUP_LIFECYCLE_LOCK_PATH=/custom/lifecycle.lock');
+        $state = $this->journal->state();
+        $state['lifecycle_mutex_path_sha256'] = hash('sha256', '/custom/lifecycle.lock');
+        File::put($this->journalPath, json_encode($state, JSON_THROW_ON_ERROR));
         $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
         $this->runPublicLauncher();
 
         $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
         $this->assertSame('target_active', $this->journal->state()['phase']);
+    }
+
+    public function test_another_lifecycle_owner_blocks_pointer_and_journal_recovery_writes(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $ownership = (new LifecycleMutex($this->installationRoot.'/storage/app/lifecycle/lifecycle.lock'))->acquire('restore');
+        try {
+            $this->runPublicLauncher();
+            $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+            $this->assertSame('target_active', $this->journal->state()['phase']);
+        } finally {
+            $ownership->release();
+        }
     }
 
     private function seedJournal(string $sourceKind, ?string $sourceReleaseId, string $sourceVersion): void
@@ -189,6 +206,7 @@ class TargetBootstrapFailureTest extends TestCase
             'target_product_version' => '0.1.0-alpha.2',
         ]);
         $this->journal->transition('verified', 'preparing', [
+            'lifecycle_mutex_path_sha256' => hash('sha256', $this->installationRoot.'/storage/app/lifecycle/lifecycle.lock'),
             'source_release_kind' => $sourceKind,
             'source_release_id' => $sourceReleaseId,
             'source_product_version' => $sourceVersion,
