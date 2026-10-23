@@ -71,7 +71,7 @@ final class BackupBundleFormat
     private static function assertPath(string $path, bool $restore): void
     {
         $invalid = $path === ''
-            || str_contains($path, "\\")
+            || str_contains($path, '\\')
             || str_starts_with($path, '/')
             || preg_match('/\A[A-Za-z]:/', $path) === 1
             || preg_match('/[\x00-\x1F\x7F]/', $path) === 1;
@@ -85,7 +85,7 @@ final class BackupBundleFormat
         }
 
         if (! $invalid) {
-            $invalid = ! self::isAllowlistedPath($path);
+            $invalid = !self::isAllowlistedPath($path);
         }
 
         if (! $invalid) {

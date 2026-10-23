@@ -45,7 +45,7 @@ class BackupBundleReaderTest extends TestCase
         $tampered = substr_replace($bytes, "{\"id\":\"9\"}\n", $position, strlen($payload));
 
         $this->assertReaderFailure($tampered, 'restore_checksum_mismatch');
-        $this->assertReaderFailure($bytes."unexpected", 'restore_invalid_bundle');
+        $this->assertReaderFailure($bytes.'unexpected', 'restore_invalid_bundle');
     }
 
     public function test_reader_rejects_oversized_manifest_before_reading_attacker_declared_payload(): void
@@ -75,7 +75,7 @@ class BackupBundleReaderTest extends TestCase
 
     public function test_reader_rejects_traversal_and_control_byte_paths(): void
     {
-        foreach (["../secret.txt", "storage/app/private/uploads/bad\0name.txt"] as $path) {
+        foreach (['../secret.txt', "storage/app/private/uploads/bad\0name.txt"] as $path) {
             $payload = 'x';
             $manifest = BackupManifest::fromArray([
                 ...$this->manifestFields(),
