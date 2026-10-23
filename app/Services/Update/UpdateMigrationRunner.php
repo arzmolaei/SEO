@@ -14,13 +14,17 @@ final class UpdateMigrationRunner
 
     private readonly string $migrationPath;
 
+    private readonly string $attemptPath;
+
     public function __construct(
         private readonly Migrator $migrator,
         ?string $connection = null,
         ?string $migrationPath = null,
+        ?string $attemptPath = null,
     ) {
         $this->connection = $connection ?? (string) config('database.default');
         $this->migrationPath = $migrationPath ?? database_path('migrations');
+        $this->attemptPath = $attemptPath ?? storage_path('app/lifecycle/update/migration-attempt.json');
     }
 
     public function snapshot(): UpdateMigrationState
@@ -36,6 +40,7 @@ final class UpdateMigrationRunner
     /** @param callable(UpdateMigrationState): void $afterEachCompleted */
     public function runPending(UpdateMigrationState $before, callable $afterEachCompleted): UpdateMigrationState
     {
+        $this->resolveCompletedAttempt();
         $this->assertCheckpoint($before);
         $files = $this->migrationFiles();
         $cursor = $before;
@@ -45,14 +50,12 @@ final class UpdateMigrationRunner
                 continue;
             }
             $this->assertCheckpoint($cursor);
+            $this->startAttempt('up', $name);
             try {
                 $this->migrator->usingConnection($this->connection, fn () => $this->migrator->run([$file], ['pretend' => false, 'step' => true]));
             } catch (Throwable $exception) {
-                $afterFailure = $this->snapshot();
-                if ($afterFailure->ran !== $cursor->ran || $afterFailure->schemaFingerprintSha256 !== $cursor->schemaFingerprintSha256) {
-                    throw $this->recoveryRequired($exception);
-                }
-                throw new UpdateException('update_migration_failed', 'مهاجرت نسخه جدید اجرا نشد؛ برگشت باید از وضعیت ثبت‌شده انجام شود.', $exception);
+                // Unchanged DDL/history cannot exclude committed data-only work.
+                throw $this->recoveryRequired($exception);
             }
             $after = $this->snapshot();
             if (
@@ -65,7 +68,9 @@ final class UpdateMigrationRunner
             $row = $after->ran[array_key_last($after->ran)];
             $suffix[] = [...$row, 'schema_fingerprint_sha256' => $after->schemaFingerprintSha256];
             $cursor = new UpdateMigrationState($after->ran, $after->schemaFingerprintSha256, $suffix);
+            $this->completeAttempt($cursor);
             $afterEachCompleted($cursor);
+            $this->clearAttempt();
         }
 
         return $cursor;
@@ -77,6 +82,7 @@ final class UpdateMigrationRunner
      */
     public function rollbackExactSuffix(UpdateMigrationState $before, array $expectedAppliedSuffix, ?callable $afterEachCompleted = null): void
     {
+        $this->resolveCompletedAttempt();
         $suffix = $expectedAppliedSuffix;
         $files = $this->migrationFiles();
         $rows = array_map(static fn (array $row): array => ['migration' => $row['migration'], 'batch' => $row['batch']], $suffix);
@@ -100,6 +106,7 @@ final class UpdateMigrationRunner
             if (! is_string($file)) {
                 throw $this->recoveryRequired();
             }
+            $this->startAttempt('down', $row['migration']);
             try {
                 // Only this proven file is available to Migrator; no broad batch rollback.
                 $this->migrator->usingConnection($this->connection, fn () => $this->migrator->rollback([$file], ['pretend' => false, 'step' => 1]));
@@ -110,9 +117,11 @@ final class UpdateMigrationRunner
             array_pop($rows);
             $expected = $this->reverseCheckpoint($before, $rows, $suffix);
             $this->assertCheckpoint($expected);
+            $this->completeAttempt($expected);
             if ($afterEachCompleted !== null) {
                 $afterEachCompleted($expected);
             }
+            $this->clearAttempt();
         }
     }
 
@@ -154,12 +163,81 @@ final class UpdateMigrationRunner
         return $files;
     }
 
+    private function resolveCompletedAttempt(): void
+    {
+        if (! file_exists($this->attemptPath) && ! is_link($this->attemptPath)) {
+            return;
+        }
+        if (is_link($this->attemptPath) || ! is_file($this->attemptPath)) {
+            throw $this->recoveryRequired();
+        }
+        $raw = file_get_contents($this->attemptPath);
+        if (! is_string($raw) || strlen($raw) > 65536) {
+            throw $this->recoveryRequired();
+        }
+        try {
+            $attempt = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+        } catch (Throwable $exception) {
+            throw $this->recoveryRequired($exception);
+        }
+        if (! is_array($attempt) || ($attempt['schema'] ?? null) !== 'seo-update-migration-attempt/1' || ($attempt['phase'] ?? null) !== 'complete' || ! is_array($attempt['checkpoint'] ?? null)) {
+            throw $this->recoveryRequired();
+        }
+        $this->assertCheckpoint(UpdateMigrationState::fromArray($attempt['checkpoint']));
+        $this->clearAttempt();
+    }
+
+    private function startAttempt(string $direction, string $migration): void
+    {
+        $this->resolveCompletedAttempt();
+        $this->writeAttempt(['phase' => 'started', 'direction' => $direction, 'migration' => $migration]);
+    }
+
+    private function completeAttempt(UpdateMigrationState $state): void
+    {
+        $this->writeAttempt(['phase' => 'complete', 'checkpoint' => $state->toArray()]);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function writeAttempt(array $data): void
+    {
+        $directory = dirname($this->attemptPath);
+        if (is_link($directory) || is_link($this->attemptPath) || is_link($this->attemptPath.'.tmp')) {
+            throw $this->recoveryRequired();
+        }
+        if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
+            throw $this->recoveryRequired();
+        }
+        $json = UpdatePackageFormat::canonicalMetadataJson(['schema' => 'seo-update-migration-attempt/1', ...$data]);
+        if (file_put_contents($this->attemptPath.'.tmp', $json, LOCK_EX) !== strlen($json)) {
+            throw $this->recoveryRequired();
+        }
+        @chmod($this->attemptPath.'.tmp', 0600);
+        if (! rename($this->attemptPath.'.tmp', $this->attemptPath)) {
+            throw $this->recoveryRequired();
+        }
+        @chmod($this->attemptPath, 0600);
+    }
+
+    private function clearAttempt(): void
+    {
+        if (! unlink($this->attemptPath)) {
+            throw $this->recoveryRequired();
+        }
+    }
+
     private function schemaFingerprint(Connection $connection): string
     {
         if ($connection->getDriverName() === 'sqlite') {
             $definitions = $connection->select("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE substr(name, 1, 7) <> 'sqlite_' ORDER BY type, name");
             $objects = array_map(static fn (object $row): array => (array) $row, $definitions);
         } elseif ($connection->getDriverName() === 'mysql') {
+            // V1 proves table/view/trigger DDL. Unsupported executable schema
+            // objects cannot silently fall outside a recovery checkpoint.
+            $unsupported = $connection->select('SELECT ROUTINE_NAME AS name FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() UNION ALL SELECT EVENT_NAME AS name FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE NOT IN (\'BASE TABLE\', \'VIEW\')');
+            if ($unsupported !== []) {
+                throw $this->recoveryRequired();
+            }
             $names = $connection->getSchemaBuilder()->getTableListing(null, false);
             sort($names, SORT_STRING);
             $objects = [];
@@ -171,11 +249,12 @@ final class UpdateMigrationRunner
                     throw $this->recoveryRequired();
                 }
                 // AUTO_INCREMENT is mutable row state, not structural DDL evidence.
-                $sql = preg_replace('/ AUTO_INCREMENT=[0-9]+\b/', '', $sql);
+                $sql = $this->normalizeTableCounter($sql);
                 $objects[] = ['type' => 'table', 'name' => $name, 'sql' => $sql];
             }
             foreach ($connection->getSchemaBuilder()->getViews() as $view) {
-                $objects[] = ['type' => 'view', ...$view];
+                $quoted = '`'.str_replace('`', '``', $view['name']).'`';
+                $objects[] = ['type' => 'view', ...(array) $connection->selectOne('SHOW CREATE VIEW '.$quoted)];
             }
             $triggers = $connection->select('SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_ORDER, ACTION_CONDITION, ACTION_STATEMENT, ACTION_ORIENTATION, ACTION_TIMING, SQL_MODE, DEFINER, CHARACTER_SET_CLIENT, COLLATION_CONNECTION, DATABASE_COLLATION FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY TRIGGER_NAME');
             foreach ($triggers as $trigger) {
@@ -187,6 +266,42 @@ final class UpdateMigrationRunner
         }
 
         return hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['objects' => $objects]));
+    }
+
+    private function normalizeTableCounter(string $sql): string
+    {
+        $quote = null;
+        $depth = 0;
+        $result = '';
+        for ($index = 0, $length = strlen($sql); $index < $length; $index++) {
+            $character = $sql[$index];
+            if ($quote !== null) {
+                $result .= $character;
+                if ($character === "\\" && $index + 1 < $length) {
+                    $result .= $sql[++$index];
+                } elseif ($character === $quote) {
+                    if ($index + 1 < $length && $sql[$index + 1] === $quote) {
+                        $result .= $sql[++$index];
+                    } else {
+                        $quote = null;
+                    }
+                }
+                continue;
+            }
+            if (in_array($character, ["'", '"', '`'], true)) {
+                $quote = $character;
+            } elseif ($character === '(') {
+                $depth++;
+            } elseif ($character === ')') {
+                $depth--;
+            } elseif ($depth === 0 && $character === ' ' && preg_match('/\G AUTO_INCREMENT=[0-9]+\b/', $sql, $match, 0, $index) === 1) {
+                $index += strlen($match[0]) - 1;
+                continue;
+            }
+            $result .= $character;
+        }
+
+        return $result;
     }
 
     private function recoveryRequired(?Throwable $previous = null): UpdateException

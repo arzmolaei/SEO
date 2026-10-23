@@ -40,7 +40,7 @@ class UpdateMigrationsMariaDbAcceptanceTest extends TestCase
         Artisan::call('migrate:fresh', ['--database' => 'update_migrations', '--force' => true]);
         $this->directory = sys_get_temp_dir().'/seo-mariadb-migrations-'.bin2hex(random_bytes(6));
         File::ensureDirectoryExists($this->directory);
-        $this->runner = new UpdateMigrationRunner($this->app->make(Migrator::class), 'update_migrations', $this->directory);
+        $this->runner = new UpdateMigrationRunner($this->app->make(Migrator::class), 'update_migrations', $this->directory, $this->directory.'/attempt.json');
     }
 
     protected function tearDown(): void
@@ -66,6 +66,19 @@ class UpdateMigrationsMariaDbAcceptanceTest extends TestCase
         $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
         $this->assertSame($before->toArray(), $this->runner->snapshot()->toArray());
         $this->assertSame('preserved', DB::table('cache')->where('key', 'row-state')->value('value'));
+    }
+
+    public function test_counter_like_default_literals_and_view_write_constraints_are_structural_evidence(): void
+    {
+        DB::unprepared("CREATE TABLE update_probe_first (id BIGINT PRIMARY KEY, note VARCHAR(100) DEFAULT ' AUTO_INCREMENT=1') ENGINE=InnoDB");
+        $before = $this->runner->snapshot();
+        DB::unprepared("ALTER TABLE update_probe_first ALTER COLUMN note SET DEFAULT ' AUTO_INCREMENT=2'");
+        $this->assertNotSame($before->schemaFingerprintSha256, $this->runner->snapshot()->schemaFingerprintSha256);
+        DB::unprepared('CREATE VIEW update_probe_view AS SELECT * FROM update_probe_first WHERE id > 0');
+        $beforeView = $this->runner->snapshot();
+        DB::unprepared('ALTER VIEW update_probe_view AS SELECT * FROM update_probe_first WHERE id > 0 WITH CASCADED CHECK OPTION');
+        $this->assertNotSame($beforeView->schemaFingerprintSha256, $this->runner->snapshot()->schemaFingerprintSha256);
+        DB::unprepared('DROP VIEW update_probe_view');
     }
 
     /** @return array<string, array{string}> */

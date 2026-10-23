@@ -181,6 +181,24 @@ class UpdateMigrationRunnerTest extends TestCase
         }
     }
 
+    public function test_unlogged_data_only_down_is_not_repeated_after_failure(): void
+    {
+        DB::table('cache')->insert(['key' => 'reverse-probe', 'value' => 'preserved', 'expiration' => 0]);
+        $before = $this->runner->snapshot();
+        $down = "\\Illuminate\\Support\\Facades\\DB::table('cache')->where('key', 'reverse-probe')->increment('expiration'); throw new \\RuntimeException('private failure');";
+        $this->writeMigration('2099_01_01_000001_data', '', $down);
+        $after = $this->runner->runPending($before, static function (): void {});
+        foreach ([1, 2] as $attempt) {
+            try {
+                $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+                $this->fail('An ambiguous down must not run again.');
+            } catch (UpdateException $exception) {
+                $this->assertSame('update_recovery_required', $exception->codeName());
+            }
+            $this->assertSame(1, DB::table('cache')->where('key', 'reverse-probe')->value('expiration'));
+        }
+    }
+
     private function writeMigration(string $name, string $up, string $down): void
     {
         File::put($this->directory.'/'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { {$up} } public function down(): void { {$down} } };\n");
