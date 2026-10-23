@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\ApplicationTableCatalog;
+use App\Services\Backup\BackupException;
 use App\Services\Backup\CaptureSystemState;
 use App\Services\Backup\EnvironmentSettingsUpdater;
 use App\Services\Backup\RestoreSystemBackup;
@@ -103,6 +104,12 @@ class RestoreSystemBackupTest extends TestCase
         }
 
         parent::tearDown();
+    }
+
+    public function test_restore_confirm_and_recovery_endpoints_require_authentication(): void
+    {
+        $this->post('/settings/backup/restore/confirm')->assertRedirect('/login');
+        $this->post('/settings/backup/restore/recover')->assertRedirect('/login');
     }
 
     public function test_environment_updater_changes_only_restore_allowlist_and_refreshes_runtime_config(): void
@@ -241,7 +248,29 @@ class RestoreSystemBackupTest extends TestCase
             new UploadedFile($bundlePath, 'source.seobak', 'application/octet-stream', null, true),
         );
 
-        $this->app->make(RestoreSystemBackup::class)->handle($preview->digest());
+        $wrongDigest = str_repeat('f', 64);
+        $this->actingAs($destinationOwner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/backup/restore/confirm', [
+                'content_digest_sha256' => $wrongDigest,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'restore_digest_mismatch');
+        $this->assertAuthenticatedAs($destinationOwner);
+
+        $response = $this->actingAs($destinationOwner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/backup/restore/confirm', [
+                'content_digest_sha256' => $preview->digest(),
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('status', 'complete')
+            ->assertJsonPath('login_required', true)
+            ->assertHeader('cache-control', 'no-cache, private, no-store')
+            ->assertHeader('pragma', 'no-cache')
+            ->assertHeader('x-content-type-options', 'nosniff');
+        $this->assertGuest();
 
         $this->assertDatabaseHas('users', ['email' => 'source-owner@example.test']);
         $this->assertDatabaseMissing('users', ['email' => 'destination-owner@example.test']);
@@ -271,6 +300,20 @@ class RestoreSystemBackupTest extends TestCase
         $this->assertSame($sourceInstallationId, $details['restored_from_installation_id']);
         $this->assertIsString($details['restored_at']);
         $this->assertNotSame('', $details['restored_at']);
+
+        try {
+            $this->app->make(RestoreSystemBackup::class)->handle($preview->digest());
+            $this->fail('A second restore unexpectedly succeeded.');
+        } catch (BackupException $exception) {
+            $this->assertSame('restore_digest_mismatch', $exception->codeName());
+        }
+
+        $restoredOwner = User::query()->where('email', 'source-owner@example.test')->firstOrFail();
+        $this->actingAs($restoredOwner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/backup/restore/recover')
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'restore_recovery_invalid_state');
     }
 
     private function clearDurableDatabase(): void
