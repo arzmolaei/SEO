@@ -32,6 +32,36 @@ class UpdatePackageWriterTest extends TestCase
         fclose($second);
     }
 
+    public function test_lazy_inputs_open_one_file_at_a_time_and_close_owned_streams(): void
+    {
+        $output = fopen('php://temp', 'w+b');
+        $previous = null;
+        $opens = 0;
+        $entries = [];
+        foreach (['VERSION', 'app/Release.php'] as $path) {
+            $entries[] = [
+                'path' => $path,
+                'media_type' => 'text/plain',
+                'stream' => function () use (&$previous, &$opens) {
+                    $this->assertFalse(is_resource($previous));
+                    $previous = fopen('php://temp', 'w+b');
+                    $this->assertIsResource($previous);
+                    fwrite($previous, 'payload');
+                    $opens++;
+
+                    return $previous;
+                },
+            ];
+        }
+        try {
+            (new UpdatePackageWriter($this->limits()))->write($output, $this->manifestFields(), $entries);
+            $this->assertSame(6, $opens);
+            $this->assertFalse(is_resource($previous));
+        } finally {
+            fclose($output);
+        }
+    }
+
     public function test_writer_preserves_utf8_payload_and_rejects_duplicate_or_unsafe_paths(): void
     {
         $output = fopen('php://temp', 'w+b');
