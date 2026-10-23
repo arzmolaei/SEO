@@ -3,8 +3,8 @@
 namespace App\Services\Update;
 
 use App\Services\Backup\ApplicationSchemaFingerprint;
-use App\Services\Backup\CaptureSystemState;
 use App\Services\Backup\CapturedSystemState;
+use App\Services\Backup\CaptureSystemState;
 use App\Services\Backup\RestoreJournal;
 use App\Support\InstallationState;
 use App\Support\Lifecycle\LifecycleMutex;
@@ -49,8 +49,7 @@ final class PrepareSystemUpdate
         LifecycleMutexHandle $ownership,
         string $uploadId,
         string $expectedPackageDigest,
-    ): PreparedSystemUpdate
-    {
+    ): PreparedSystemUpdate {
         $ownership->assertActive();
         $state = $this->verifiedState($expectedPackageDigest);
         if ($this->requiredUploadId($state) !== $uploadId) {
@@ -247,8 +246,7 @@ final class PrepareSystemUpdate
         LifecycleMutexHandle $ownership,
         string $uploadId,
         array $installationDetails,
-    ): array
-    {
+    ): array {
         $safetyRoot = rtrim((string) config(
             'update.safety_path',
             storage_path('app/lifecycle/update/safety'),
