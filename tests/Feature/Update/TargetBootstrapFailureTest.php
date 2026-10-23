@@ -3,8 +3,8 @@
 namespace Tests\Feature\Update;
 
 use App\Services\Update\UpdateJournal;
-use App\Support\Update\ActiveReleasePointer;
 use App\Support\Lifecycle\LifecycleMutex;
+use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;

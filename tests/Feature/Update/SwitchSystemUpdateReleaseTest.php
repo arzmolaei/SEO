@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Update;
 
+use App\Models\User;
+use App\Services\Backup\RestoreJournal;
 use App\Services\Update\SwitchSystemUpdateRelease;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
+use App\Support\InstallationState;
 use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -155,6 +158,79 @@ class SwitchSystemUpdateReleaseTest extends TestCase
 
         $this->assertSame($sourceReleaseId, $this->pointer->current()['release_id']);
         $this->assertSame('staged', $this->journal->state()['phase'] ?? null);
+    }
+
+    public function test_owner_confirm_endpoint_switches_then_requires_a_separate_target_request(): void
+    {
+        $owner = $this->markInstalledOwner();
+        $before = $this->migrationHistory();
+        $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/confirm', ['package_digest_sha256' => $this->packageDigest])
+            ->assertOk()
+            ->assertJson([
+                'status' => 'target_active',
+                'target_version' => $this->targetVersion,
+                'requires_reload' => true,
+                'continue_url' => url('/settings/update'),
+            ])
+            ->assertHeader('Cache-Control', 'no-cache, no-store, private');
+        $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+        $this->assertFalse($this->journal->state()['migration_started']);
+        $this->assertSame($before, $this->migrationHistory());
+    }
+
+    public function test_confirm_requires_authentication_system_owner_and_recent_password(): void
+    {
+        $owner = $this->markInstalledOwner();
+        $payload = ['package_digest_sha256' => $this->packageDigest];
+        $this->post('/settings/update/confirm', $payload)->assertRedirect('/login');
+        $other = User::factory()->create(['email_verified_at' => now()]);
+        $this->actingAs($other)->withSession(['auth.password_confirmed_at' => time()])
+            ->post('/settings/update/confirm', $payload)->assertForbidden();
+        $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => 0])
+            ->post('/settings/update/confirm', $payload)->assertRedirect(route('password.confirm'));
+        $this->assertSame('root', $this->pointer->current()['kind']);
+    }
+
+    public function test_stale_confirm_digest_does_not_activate_a_release(): void
+    {
+        $owner = $this->markInstalledOwner();
+        $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/confirm', ['package_digest_sha256' => str_repeat('f', 64)])
+            ->assertStatus(409)->assertJson(['code' => 'update_invalid_state']);
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertSame('staged', $this->journal->state()['phase']);
+    }
+
+    public function test_switch_refuses_an_unresolved_restore_before_pointer_mutation(): void
+    {
+        config(['backup.restore.journal_path' => $this->directory.'/restore/state.json']);
+        (new RestoreJournal)->startUpload(str_repeat('b', 32));
+        try {
+            $this->app->make(SwitchSystemUpdateRelease::class)->handle($this->packageDigest);
+            $this->fail('An unresolved restore must block activation.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_lifecycle_conflict', $exception->codeName());
+        }
+        $this->assertSame('root', $this->pointer->current()['kind']);
+    }
+
+    private function markInstalledOwner(): User
+    {
+        config([
+            'installer.assume_installed' => false,
+            'installer.lock_path' => $this->directory.'/.installed',
+        ]);
+        $owner = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
+        (new InstallationState)->markInstalled([
+            'installer_schema_version' => 2,
+            'product_version' => '0.1.0-alpha.1',
+            'installation_id' => str_repeat('a', 32),
+            'database_fingerprint' => str_repeat('b', 64),
+            'owner_user_id' => $owner->id,
+        ]);
+
+        return $owner;
     }
 
     private function seedStagedJournal(): void
