@@ -59,7 +59,7 @@ class ProjectSeoExportLargeDatasetTest extends TestCase
 
         rewind($stream);
         $hash = hash_init('sha256');
-        while (! feof($stream)) {
+        while (!feof($stream)) {
             $chunk = fread($stream, 65_536);
             $this->assertNotFalse($chunk);
             if ($chunk !== '') {
