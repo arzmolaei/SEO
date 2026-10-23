@@ -7,3 +7,6 @@ Base: active `feature/update-recovery-rollback@eea234dcbed29cf263ac794aab061f487
 Tests pin complete queue payloads, attempts, scheduling timestamps, batch metadata/options and failure evidence under both policies, alongside ordinary volatile cleanup. Correct RED: `31b3b75d`, CI `40026309005`, one missing-policy failure with 487 passing tests. Current-head GREEN and independent review remain required.
 
 The future source-booted Update recovery coordinator MUST pass `preserveQueuedWork: true` only after exact source code/schema recovery and proven quiescence under the shared LifecycleMutex. This policy alone does not stop workers or prove concurrency safety. Full Update/Rollback is not integrated or release-ready.
+
+
+Independent review found no concrete findings in this scoped correction. Code head `17662123b31a5f74b35b77bd51b175c99218d448` passed all six permanent gates in CI `40026436495` (488 backend tests, 3722 assertions and existing connected/runtime acceptance). PR #12 migration runner is now integrated at `56045cfcb81ec0e7d63f2a3a8a18817c83c7944a`, final docs-head CI `40026705128` all six green. The combined migration + retention tree must receive fresh CI before PR #13 merge.
