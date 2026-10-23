@@ -62,6 +62,15 @@ class LifecycleMutexTest extends TestCase
         }
     }
 
+    public function test_active_handle_proves_its_actual_lock_path_without_exposing_the_path(): void
+    {
+        $handle = (new LifecycleMutex($this->path))->acquire('update');
+        $this->assertSame(hash('sha256', realpath($this->path)), $handle->pathFingerprint());
+        $handle->release();
+        $this->expectException(RuntimeException::class);
+        $handle->pathFingerprint();
+    }
+
     public function test_release_is_idempotent_and_allows_a_later_operation_to_acquire(): void
     {
         $mutex = new LifecycleMutex($this->path);

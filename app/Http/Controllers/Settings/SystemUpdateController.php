@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\Update\PrepareSystemUpdate;
+use App\Services\Update\SwitchSystemUpdateRelease;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\VerifyUpdatePackage;
@@ -64,6 +66,41 @@ final class SystemUpdateController extends Controller
                 'code' => 'update_invalid_package',
                 'message' => 'بسته به‌روزرسانی معتبر نیست.',
             ], 422, $this->privateHeaders());
+        }
+    }
+
+    public function confirm(
+        Request $request,
+        UpdateJournal $journal,
+        PrepareSystemUpdate $prepare,
+        SwitchSystemUpdateRelease $switchRelease,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'package_digest_sha256' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
+        ]);
+        $digest = $validated['package_digest_sha256'];
+        try {
+            if (($journal->state()['phase'] ?? null) === 'verified') {
+                $prepare->handle($digest);
+            }
+            $result = $switchRelease->handle($digest);
+
+            // The target's autoloader/kernel must start only in the next HTTP request.
+            return response()->json([
+                ...$result,
+                'requires_reload' => true,
+                'continue_url' => route('settings.update'),
+            ], 200, $this->privateHeaders());
+        } catch (UpdateException $exception) {
+            return response()->json([
+                'code' => $exception->codeName(),
+                'message' => $exception->userMessage(),
+            ], 409, $this->privateHeaders());
+        } catch (Throwable) {
+            return response()->json([
+                'code' => 'update_operation_failed',
+                'message' => 'ادامه به‌روزرسانی متوقف شد؛ وضعیت عملیات را بررسی کنید.',
+            ], 409, $this->privateHeaders());
         }
     }
 

@@ -80,7 +80,15 @@ Verification evidence:
 
 ## Active lifecycle slice — Update + Interrupted Recovery/Rollback
 
-This is now the exact next subsystem. Product implementation has not started at this checkpoint.
+This is the active subsystem; it is **not integrated on main**. Implementation is in PR #8 on `feature/update-recovery-rollback`; the older main checkpoint must not be interpreted as permission to recreate it.
+
+The active branch already contains the approved Update/Rollback design, written review and 13-task plan. Tasks 1–6 exist, including the shared recovery kernel, package framing/verification, journal/maintenance, immutable staging and quiesced pre-update snapshot. Task 7 was completed through PR #11 with dependency-free bootstrap recovery and owner confirmation, merged into the active feature branch at `f699d8363de91a419bb6d5de7e508fc8c6f8bec1`. Final reviewed head `a90e1c08214fa1fcd2def6cd26513d91b6f6433c` passed all six permanent jobs in CI `40022118065`, including 479 backend tests on both PHP versions and the real recovery-auth routes.
+
+Independent Task 12 package tooling is in PR #10. Head `8fd35c701c4f36e6690be4bb65568b67eee08e27` passed all six jobs in CI `40019999023` against a fixed baseline, including the actual no-dev runtime source -> private slot -> source smoke. Retargeted merged-tree CI against the active branch remains required. This tooling additionally rejects build-host cached config/route/event state and streams file inputs without holding the vendor tree open.
+
+**Exact resume order:** verify/integrate PR #10 on the combined Task 7 + package-tooling tree with current-head CI, then start **Task 8 — exact-history target migration runner**. Do not recreate Tasks 1–7 or package tooling from stale main prose. Update/Rollback still needs Tasks 8–11 and 13, final seven-job acceptance, reviewed integration and independent post-merge main CI. Final end-to-end lifecycle acceptance remains after that.
+
+Progress: `docs/superpowers/progress/2026-10-23-update-bootstrap-recovery.md` and `docs/superpowers/progress/2026-10-24-update-package-builder.md`. Current Git/CI outrank these intermediate hashes.
 
 Required architecture direction:
 
