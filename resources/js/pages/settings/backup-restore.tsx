@@ -8,11 +8,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import Heading from '@/components/heading';
-import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -208,9 +204,9 @@ export default function BackupRestore({ restore }: Props) {
     const fileInput = useRef<HTMLInputElement>(null);
     const [file, setFile] = useState<File | null>(null);
     const [confirmationDigest, setConfirmationDigest] = useState('');
-    const [busy, setBusy] = useState<
-        'verify' | 'restore' | 'recover' | null
-    >(null);
+    const [busy, setBusy] = useState<'verify' | 'restore' | 'recover' | null>(
+        null,
+    );
     const [error, setError] = useState<string | null>(null);
 
     const phaseLabel = useMemo(() => {
@@ -301,13 +297,10 @@ export default function BackupRestore({ restore }: Props) {
         try {
             const data = new FormData();
             data.append('backup', file);
-            const response = await request(
-                '/settings/backup/restore/verify',
-                {
-                    method: 'POST',
-                    body: data,
-                },
-            );
+            const response = await request('/settings/backup/restore/verify', {
+                method: 'POST',
+                body: data,
+            });
             if (response) {
                 setConfirmationDigest('');
                 refreshRestoreState();
@@ -331,18 +324,15 @@ export default function BackupRestore({ restore }: Props) {
         setError(null);
 
         try {
-            const response = await request(
-                '/settings/backup/restore/confirm',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        content_digest_sha256: confirmationDigest,
-                    }),
+            const response = await request('/settings/backup/restore/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-            );
+                body: JSON.stringify({
+                    content_digest_sha256: confirmationDigest,
+                }),
+            });
             if (response) {
                 window.location.assign('/login');
             }
@@ -377,10 +367,7 @@ export default function BackupRestore({ restore }: Props) {
         <>
             <Head title={t.title} />
 
-            <div
-                className="space-y-6"
-                dir={locale === 'fa' ? 'rtl' : 'ltr'}
-            >
+            <div className="space-y-6" dir={locale === 'fa' ? 'rtl' : 'ltr'}>
                 <Heading
                     variant="small"
                     title={t.title}
@@ -390,15 +377,13 @@ export default function BackupRestore({ restore }: Props) {
                 <Alert variant="destructive">
                     <ShieldAlert />
                     <AlertTitle>{t.warningTitle}</AlertTitle>
-                    <AlertDescription>
-                        {t.warningDescription}
-                    </AlertDescription>
+                    <AlertDescription>{t.warningDescription}</AlertDescription>
                 </Alert>
 
                 <div className="rounded-lg border px-4 py-3 text-sm">
                     <div className="font-medium">{t.status}</div>
                     <div
-                        className="text-muted-foreground mt-1"
+                        className="mt-1 text-muted-foreground"
                         data-test="restore-phase"
                     >
                         {phaseLabel}
@@ -428,9 +413,7 @@ export default function BackupRestore({ restore }: Props) {
                                 data-test="recover-restore"
                             >
                                 <RotateCcw />
-                                {busy === 'recover'
-                                    ? t.recovering
-                                    : t.recover}
+                                {busy === 'recover' ? t.recovering : t.recover}
                             </Button>
                         </CardContent>
                     </Card>
@@ -515,10 +498,7 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.sourceVersion}
                                             </dt>
                                             <dd className="font-medium">
-                                                {
-                                                    restore.preview
-                                                        .source_product_version
-                                                }
+                                                {restore.preview.source_product_version}
                                             </dd>
                                         </div>
                                         <div>
@@ -526,10 +506,7 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.createdAt}
                                             </dt>
                                             <dd className="font-medium">
-                                                {
-                                                    restore.preview
-                                                        .source_created_at_utc
-                                                }
+                                                {restore.preview.source_created_at_utc}
                                             </dd>
                                         </div>
                                         <div>
@@ -537,10 +514,7 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.records}
                                             </dt>
                                             <dd className="font-medium">
-                                                {
-                                                    restore.preview
-                                                        .table_record_count
-                                                }
+                                                {restore.preview.table_record_count}
                                             </dd>
                                         </div>
                                         <div>
@@ -548,10 +522,7 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.files}
                                             </dt>
                                             <dd className="font-medium">
-                                                {
-                                                    restore.preview
-                                                        .durable_file_count
-                                                }
+                                                {restore.preview.durable_file_count}
                                             </dd>
                                         </div>
                                         <div>
@@ -560,8 +531,7 @@ export default function BackupRestore({ restore }: Props) {
                                             </dt>
                                             <dd className="font-medium">
                                                 {formatBytes(
-                                                    restore.preview
-                                                        .bundle_bytes,
+                                                    restore.preview.bundle_bytes,
                                                     locale,
                                                 )}
                                             </dd>
@@ -569,11 +539,11 @@ export default function BackupRestore({ restore }: Props) {
                                     </dl>
 
                                     <div className="space-y-2">
-                                        <div className="text-muted-foreground text-sm">
+                                        <div className="text-sm text-muted-foreground">
                                             {t.digest}
                                         </div>
                                         <code
-                                            className="bg-muted block overflow-x-auto rounded-md p-3 text-xs"
+                                            className="block overflow-x-auto rounded-md bg-muted p-3 text-xs"
                                             dir="ltr"
                                         >
                                             {restore.preview.digest}
