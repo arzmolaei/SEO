@@ -71,19 +71,31 @@ final class UpdateMigrationRunner
         return $cursor;
     }
 
-    /** @param list<array{migration:string,batch:int,schema_fingerprint_sha256:string}> $expectedAppliedSuffix */
-    public function rollbackExactSuffix(UpdateMigrationState $before, array $expectedAppliedSuffix): void
+    /**
+     * @param  list<array{migration:string,batch:int,schema_fingerprint_sha256:string}>  $expectedAppliedSuffix
+     * @param  (callable(UpdateMigrationState): void)|null  $afterEachCompleted
+     */
+    public function rollbackExactSuffix(UpdateMigrationState $before, array $expectedAppliedSuffix, ?callable $afterEachCompleted = null): void
     {
         $suffix = $expectedAppliedSuffix;
         $files = $this->migrationFiles();
         $rows = array_map(static fn (array $row): array => ['migration' => $row['migration'], 'batch' => $row['batch']], $suffix);
-        $expected = new UpdateMigrationState(
-            [...$before->ran, ...$rows],
-            $suffix === [] ? $before->schemaFingerprintSha256 : $suffix[array_key_last($suffix)]['schema_fingerprint_sha256'],
-            $suffix,
-        );
-        $this->assertCheckpoint($expected);
+        // Validate all persisted evidence before reconciling a completed reverse step.
+        $this->reverseCheckpoint($before, $rows, $suffix);
+        $current = $this->snapshot();
+        while (true) {
+            $expected = $this->reverseCheckpoint($before, $rows, $suffix);
+            if ($current->ran === $expected->ran && $current->schemaFingerprintSha256 === $expected->schemaFingerprintSha256) {
+                break;
+            }
+            if ($suffix === []) {
+                throw $this->recoveryRequired();
+            }
+            array_pop($suffix);
+            array_pop($rows);
+        }
         foreach (array_reverse($suffix) as $row) {
+            $this->assertCheckpoint($expected);
             $file = $files[$row['migration']] ?? null;
             if (! is_string($file)) {
                 throw $this->recoveryRequired();
@@ -96,13 +108,25 @@ final class UpdateMigrationRunner
             }
             array_pop($suffix);
             array_pop($rows);
-            $expected = new UpdateMigrationState(
-                [...$before->ran, ...$rows],
-                $suffix === [] ? $before->schemaFingerprintSha256 : $suffix[array_key_last($suffix)]['schema_fingerprint_sha256'],
-                $suffix,
-            );
+            $expected = $this->reverseCheckpoint($before, $rows, $suffix);
             $this->assertCheckpoint($expected);
+            if ($afterEachCompleted !== null) {
+                $afterEachCompleted($expected);
+            }
         }
+    }
+
+    /**
+     * @param  list<array{migration:string,batch:int}>  $rows
+     * @param  list<array{migration:string,batch:int,schema_fingerprint_sha256:string}>  $suffix
+     */
+    private function reverseCheckpoint(UpdateMigrationState $before, array $rows, array $suffix): UpdateMigrationState
+    {
+        return new UpdateMigrationState(
+            [...$before->ran, ...$rows],
+            $suffix === [] ? $before->schemaFingerprintSha256 : $suffix[array_key_last($suffix)]['schema_fingerprint_sha256'],
+            $suffix,
+        );
     }
 
     private function assertCheckpoint(UpdateMigrationState $expected): void
@@ -132,23 +156,37 @@ final class UpdateMigrationRunner
 
     private function schemaFingerprint(Connection $connection): string
     {
-        $schema = $connection->getSchemaBuilder();
-        $names = array_values(array_filter($schema->getTableListing(null, false), static fn (string $name): bool => ! str_starts_with($name, 'sqlite_')));
-        sort($names, SORT_STRING);
-        $tables = [];
-        $prefix = $connection->getTablePrefix();
-        foreach ($names as $name) {
-            $logical = $prefix !== '' && str_starts_with($name, $prefix) ? substr($name, strlen($prefix)) : $name;
-            $indexes = $schema->getIndexes($logical);
-            $foreignKeys = $schema->getForeignKeys($logical);
-            usort($indexes, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
-            usort($foreignKeys, static fn (array $a, array $b): int => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
-            $tables[] = ['name' => $name, 'columns' => $schema->getColumns($logical), 'indexes' => $indexes, 'foreign_keys' => $foreignKeys];
+        if ($connection->getDriverName() === 'sqlite') {
+            $definitions = $connection->select("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE substr(name, 1, 7) <> 'sqlite_' ORDER BY type, name");
+            $objects = array_map(static fn (object $row): array => (array) $row, $definitions);
+        } elseif ($connection->getDriverName() === 'mysql') {
+            $names = $connection->getSchemaBuilder()->getTableListing(null, false);
+            sort($names, SORT_STRING);
+            $objects = [];
+            foreach ($names as $name) {
+                $quoted = '`'.str_replace('`', '``', $name).'`';
+                $definition = (array) $connection->selectOne('SHOW CREATE TABLE '.$quoted);
+                $sql = $definition['Create Table'] ?? null;
+                if (! is_string($sql)) {
+                    throw $this->recoveryRequired();
+                }
+                // AUTO_INCREMENT is mutable row state, not structural DDL evidence.
+                $sql = preg_replace('/ AUTO_INCREMENT=[0-9]+\b/', '', $sql);
+                $objects[] = ['type' => 'table', 'name' => $name, 'sql' => $sql];
+            }
+            foreach ($connection->getSchemaBuilder()->getViews() as $view) {
+                $objects[] = ['type' => 'view', ...$view];
+            }
+            $triggers = $connection->select('SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_ORDER, ACTION_CONDITION, ACTION_STATEMENT, ACTION_ORIENTATION, ACTION_TIMING, SQL_MODE, DEFINER, CHARACTER_SET_CLIENT, COLLATION_CONNECTION, DATABASE_COLLATION FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY TRIGGER_NAME');
+            foreach ($triggers as $trigger) {
+                $objects[] = ['type' => 'trigger', ...(array) $trigger];
+            }
+            usort($objects, static fn (array $a, array $b): int => strcmp(UpdatePackageFormat::canonicalMetadataJson($a), UpdatePackageFormat::canonicalMetadataJson($b)));
+        } else {
+            throw $this->recoveryRequired();
         }
-        $views = $schema->getViews();
-        usort($views, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
 
-        return hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['tables' => $tables, 'views' => $views]));
+        return hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['objects' => $objects]));
     }
 
     private function recoveryRequired(?Throwable $previous = null): UpdateException
