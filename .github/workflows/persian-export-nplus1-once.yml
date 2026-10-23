@@ -1,0 +1,99 @@
+name: Persian export N+1 fix once
+
+on:
+  push:
+    branches:
+      - feature/persian-export
+    paths:
+      - .github/workflows/persian-export-nplus1-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/persian-export
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies and prepare database
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate --ansi
+          test -f database/database.sqlite || touch database/database.sqlite
+          php artisan migrate --force --ansi
+      - name: Eliminate per-metric keyword lookups
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/Services/Exports/ProjectSeoExportSnapshot.php')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "$latestMetrics = $this->latestMetrics($project, $relationKeywordIds, $sourceById);",
+                  "$latestMetrics = $this->latestMetrics($relationKeywordIds, $sourceById);",
+              ),
+              (
+                  "private function latestMetrics(Project $project, array $keywordIds, array $sourceById): array",
+                  "private function latestMetrics(array $keywordIds, array $sourceById): array",
+              ),
+              (
+                  """        $result = [];
+        foreach ($metrics as $metric) {
+            $keyword = Keyword::query()->find($metric->keyword_id);
+            $source = $sourceById[$metric->keyword_source_id] ?? null;
+            if (! $keyword instanceof Keyword || $keyword->project_id !== $project->id
+                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {
+                throw ProjectSeoExportException::projectRelation();
+            }
+            $result[$metric->keyword_id][$metric->metric] = $metric;
+        }
+""",
+                  """        $allowedKeywordIds = array_fill_keys($keywordIds, true);
+        $result = [];
+        foreach ($metrics as $metric) {
+            $source = $sourceById[$metric->keyword_source_id] ?? null;
+            if (! isset($allowedKeywordIds[$metric->keyword_id])
+                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {
+                throw ProjectSeoExportException::projectRelation();
+            }
+            $result[$metric->keyword_id][$metric->metric] = $metric;
+        }
+""",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'missing patch anchor: {old[:120]!r}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          vendor/bin/pint app/Services/Exports/ProjectSeoExportSnapshot.php
+      - name: Verify regression and export suite
+        run: |
+          php artisan test tests/Feature/Exports/ProjectSeoExportQueryBudgetTest.php tests/Feature/Exports/ProjectSeoExportSnapshotTest.php tests/Feature/Exports/ExportProjectSeoPlanTest.php tests/Feature/Exports/ProjectSeoExportDownloadTest.php
+          composer lint:check
+          composer types:check
+      - name: Commit verified fix and remove one-shot workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/persian-export-nplus1-once.yml
+          git add app/Services/Exports/ProjectSeoExportSnapshot.php
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'perf: eliminate export metric keyword N plus one'
+          git push origin HEAD:feature/persian-export
