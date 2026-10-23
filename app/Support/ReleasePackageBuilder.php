@@ -12,6 +12,7 @@ final class ReleasePackageBuilder
 {
     /** @var list<string> */
     private const RUNTIME_FILES = [
+        'VERSION',
         'artisan',
         'composer.json',
         'composer.lock',
