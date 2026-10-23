@@ -5,8 +5,10 @@ namespace App\Http\Middleware;
 use App\Models\Project;
 use App\Support\LocaleContext;
 use App\Support\ProjectWorkspaceContext;
+use App\Support\SystemOwner;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -40,6 +42,16 @@ class HandleInertiaRequests extends Middleware
     {
         $localeContext = LocaleContext::from(app()->getLocale());
         $routeProject = $request->route('project');
+        $user = $request->user();
+        $canManageSystemBackup = false;
+
+        if ($user !== null) {
+            try {
+                $canManageSystemBackup = app(SystemOwner::class)->is($user);
+            } catch (Throwable) {
+                $canManageSystemBackup = false;
+            }
+        }
 
         return [
             ...parent::share($request),
@@ -47,7 +59,7 @@ class HandleInertiaRequests extends Middleware
             'locale' => $localeContext['locale'],
             'direction' => $localeContext['direction'],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'flash' => [
                 'export_error' => $request->session()->get('export_error'),
@@ -55,6 +67,9 @@ class HandleInertiaRequests extends Middleware
             'projectContext' => $routeProject instanceof Project
                 ? ProjectWorkspaceContext::for($routeProject)
                 : null,
+            'systemBackup' => [
+                'canManage' => $canManageSystemBackup,
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
