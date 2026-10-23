@@ -28,8 +28,8 @@ final class UpdatePackageReader
     }
 
     /**
-     * @param resource $stream
-     * @param (callable(string, string): void)|null $onChunk
+     * @param  resource  $stream
+     * @param  (callable(string, string): void)|null  $onChunk
      */
     public function read($stream, ?callable $onChunk = null): UpdateManifest
     {
