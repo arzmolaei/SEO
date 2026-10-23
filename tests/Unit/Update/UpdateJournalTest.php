@@ -157,6 +157,22 @@ class UpdateJournalTest extends TestCase
         }
     }
 
+    public function test_reader_rejects_unknown_persisted_phase_without_rewriting_evidence(): void
+    {
+        foreach (['unknown', 'Migrating', '', ' migration', 'uploaded '] as $phase) {
+            $this->writeState(['phase' => $phase, 'upload_id' => str_repeat('a', 32)]);
+            $before = file_get_contents($this->path);
+
+            try {
+                (new UpdateJournal($this->path))->state();
+                $this->fail('Unknown persisted phase must require operator recovery.');
+            } catch (UpdateException $exception) {
+                $this->assertSame('update_invalid_state', $exception->codeName());
+                $this->assertSame($before, file_get_contents($this->path));
+            }
+        }
+    }
+
     public function test_clear_removes_state_and_stale_temporary_file(): void
     {
         $journal = new UpdateJournal($this->path);
