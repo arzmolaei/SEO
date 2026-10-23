@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\System;
 
+use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Foundation\Application;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
@@ -17,6 +18,7 @@ class ReleaseSlotBootstrapTest extends TestCase
         $slotRoot = sys_get_temp_dir().'/seo-os-release-slot-'.bin2hex(random_bytes(6));
 
         mkdir($stableRoot.'/storage', 0755, true);
+        file_put_contents($stableRoot.'/VERSION', "0.1.0-alpha.1\n");
         mkdir($slotRoot.'/bootstrap', 0755, true);
         mkdir($slotRoot.'/routes', 0755, true);
         file_put_contents($slotRoot.'/routes/web.php', "<?php\n");
@@ -36,6 +38,7 @@ class ReleaseSlotBootstrapTest extends TestCase
             $this->assertSame($slotRoot, $app->basePath());
             $this->assertSame($stableRoot.'/storage', $app->storagePath());
             $this->assertSame($stableRoot, $app->environmentPath());
+            $this->assertSame($stableRoot, (new ActiveReleasePointer)->current()['release_root']);
         } finally {
             Application::setInstance($original);
             @unlink($slotRoot.'/bootstrap/app.php');
@@ -45,6 +48,7 @@ class ReleaseSlotBootstrapTest extends TestCase
             @rmdir($slotRoot.'/routes');
             @rmdir($slotRoot);
             @rmdir($stableRoot.'/storage');
+            @unlink($stableRoot.'/VERSION');
             @rmdir($stableRoot);
         }
     }
