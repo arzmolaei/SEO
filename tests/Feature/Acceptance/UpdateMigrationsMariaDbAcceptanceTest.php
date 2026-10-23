@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class UpdateMigrationsMariaDbAcceptanceTest extends TestCase
@@ -105,6 +106,62 @@ class UpdateMigrationsMariaDbAcceptanceTest extends TestCase
         }
         $this->assertSame($before->ran, $this->runner->snapshot()->ran);
         $this->assertNotSame($before->schemaFingerprintSha256, $this->runner->snapshot()->schemaFingerprintSha256);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function interruptedDirections(): array
+    {
+        return ['forward' => ['up'], 'reverse' => ['down']];
+    }
+
+    #[DataProvider('interruptedDirections')]
+    public function test_process_exit_during_committed_data_only_work_never_repeats_it(string $direction): void
+    {
+        DB::table('cache')->insert(['key' => 'process-probe', 'value' => 'preserved', 'expiration' => 0]);
+        $before = $this->runner->snapshot();
+        $mutation = "DB::table('cache')->where('key', 'process-probe')->increment('expiration'); exit(73);";
+        $up = $direction === 'up' ? $mutation : '';
+        $down = $direction === 'down' ? $mutation : '';
+        File::put($this->directory.'/2099_01_01_000001_process.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Support\\Facades\\DB;\nreturn new class extends Migration { public function up(): void { {$up} } public function down(): void { {$down} } };\n");
+        $after = $direction === 'down' ? $this->runner->runPending($before, static function (): void {}) : null;
+        $payload = ['before' => $before->toArray(), 'suffix' => $after?->appliedSuffix ?? []];
+        File::put($this->directory.'/checkpoint.json', json_encode($payload, JSON_THROW_ON_ERROR));
+        $autoload = var_export(base_path('vendor/autoload.php'), true);
+        $bootstrap = var_export(base_path('bootstrap/app.php'), true);
+        $connection = var_export(config('database.connections.update_migrations'), true);
+        $directory = var_export($this->directory, true);
+        $operation = $direction === 'up'
+            ? '$runner->runPending($before, static function (): void {});'
+            : '$runner->rollbackExactSuffix($before, $payload["suffix"]);';
+        File::put($this->directory.'/child.php', <<<PHPCHILD
+<?php
+require {$autoload};
+\$app = require {$bootstrap};
+\$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+config(['database.connections.update_migrations' => {$connection}, 'database.default' => 'update_migrations']);
+Illuminate\Support\Facades\DB::purge('update_migrations');
+\$directory = {$directory};
+\$payload = json_decode(file_get_contents(\$directory.'/checkpoint.json'), true, flags: JSON_THROW_ON_ERROR);
+\$before = App\Services\Update\UpdateMigrationState::fromArray(\$payload['before']);
+\$runner = new App\Services\Update\UpdateMigrationRunner(\$app->make(Illuminate\Database\Migrations\Migrator::class), 'update_migrations', \$directory, \$directory.'/attempt.json');
+{$operation}
+PHPCHILD);
+        $process = new Process([PHP_BINARY, $this->directory.'/child.php'], base_path(), timeout: 15);
+        $process->run();
+        $this->assertSame(73, $process->getExitCode(), $process->getErrorOutput());
+        $this->assertSame(1, DB::table('cache')->where('key', 'process-probe')->value('expiration'));
+        try {
+            if ($direction === 'up') {
+                $this->runner->runPending($before, static function (): void {});
+            } else {
+                $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+            }
+            $this->fail('Process interruption must retain an unresolved attempt.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertSame(1, DB::table('cache')->where('key', 'process-probe')->value('expiration'));
+        $this->assertFileExists($this->directory.'/attempt.json');
     }
 
     private function writeMigration(string $name, string $up, string $down, bool $fail = false): void

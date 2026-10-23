@@ -199,6 +199,31 @@ class UpdateMigrationRunnerTest extends TestCase
         }
     }
 
+    public function test_completed_forward_evidence_survives_callback_interruption_before_journal_persistence(): void
+    {
+        $before = $this->runner->snapshot();
+        $this->writeMigration('2099_01_01_000001_first', "Schema::create('update_probe_first', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_first');");
+        try {
+            $this->runner->runPending($before, static function (): void {
+                throw new \RuntimeException('journal write interrupted');
+            });
+            $this->fail('The fixture must interrupt publication.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('journal write interrupted', $exception->getMessage());
+        }
+        $this->assertFileExists($this->directory.'/attempt.json');
+        $seen = [];
+        $after = $this->runner->runPending($before, function (UpdateMigrationState $state) use (&$seen): void {
+            $seen[] = $state;
+        });
+        $this->assertCount(1, $seen);
+        $this->assertCount(1, $after->appliedSuffix);
+        $this->assertSame($after->toArray(), $seen[0]->toArray());
+        $this->assertFileDoesNotExist($this->directory.'/attempt.json');
+        $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+        $this->assertSame($before->toArray(), $this->runner->snapshot()->toArray());
+    }
+
     private function writeMigration(string $name, string $up, string $down): void
     {
         File::put($this->directory.'/'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { {$up} } public function down(): void { {$down} } };\n");
