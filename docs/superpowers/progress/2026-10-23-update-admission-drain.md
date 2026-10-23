@@ -21,3 +21,12 @@ Database reservation must reject ambient transactions (`transactionLevel() !== 0
 Exemptions are exact method+path pairs only for lifecycle actions acquiring exclusive ownership. Authentication/status requests keep shared admission. Prepending the middleware outside StartSession covers downstream session persistence before return.
 
 Audit also found `ActiveReleasePointer` defaulted to `base_path()` even in a slot-booted process. Its default must use `SEO_OS_INSTALLATION_ROOT`, matching the existing stager/launcher; explicit test roots remain supported. Add a real slot-bootstrap regression before fixing it.
+
+
+## Implementation checkpoint
+
+Observed HTTP/shared-lease/stable-pointer RED: `cfbdfe21`, CI `40027177798`, 5 failed/496 passed. HTTP implementation `1b52dfca` passed all six jobs in `40027464885` before a later test update canceled the aggregate workflow; final-head verification remains required. Observed queue RED: `715e7fb2`, CI `40027625618`, 3 failed/503 passed. Queue implementation `288d4ef6` passed backend/connected gates but CI `40027889202` caught an import-order style issue, now corrected from the formatter diff.
+
+Independent implementation review found no concrete Important findings. Permanent real-process tests now pin an already-admitted HTTP mutation blocking exclusive safety capture, an idle actual Laravel worker denied reservation under the updater's ownership, and paused source request/worker rejection after a completed pointer switch with maintenance cleared. Connector defaults and ambient transaction behavior have direct integration tests; connected multi-connection MariaDB acceptance remains required before the full lifecycle release.
+
+Queue-retention PR #13 was reviewed and merged at `b9999976f5273342ecf233318a966635bd70eb6e` after combined-tree CI `40027046367` passed all six jobs. This branch now combines that accepted boundary before final admission verification. Task 9 is still next after these confirmed Task 6/10 acceptance corrections; no main integration or full-product claim.
