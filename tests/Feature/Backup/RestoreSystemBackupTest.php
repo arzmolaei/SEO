@@ -54,6 +54,7 @@ class RestoreSystemBackupTest extends TestCase
         $this->restoreUploads = $this->directory.'/lifecycle/restore/uploads';
         $this->journalPath = $this->directory.'/lifecycle/restore/state.json';
         $this->installationLockPath = $this->directory.'/.installed';
+        $destinationKey = 'base64:'.base64_encode(str_repeat('d', 32));
 
         File::ensureDirectoryExists($this->privateUploads);
         File::ensureDirectoryExists($this->publicUploads);
@@ -61,7 +62,7 @@ class RestoreSystemBackupTest extends TestCase
 
         File::put($this->environmentPath, implode("\n", [
             '# destination environment',
-            'APP_KEY=base64:destination-key',
+            "APP_KEY={$destinationKey}",
             'APP_LOCALE=de',
             'APP_FALLBACK_LOCALE=en',
             'SELF_HOST_REGISTRATION=false',
@@ -86,7 +87,7 @@ class RestoreSystemBackupTest extends TestCase
                 'storage/app/private/uploads' => $this->privateUploads,
                 'storage/app/public/uploads' => $this->publicUploads,
             ],
-            'app.key' => 'base64:destination-key',
+            'app.key' => $destinationKey,
             'app.locale' => 'de',
             'app.fallback_locale' => 'en',
         ]);
@@ -114,8 +115,10 @@ class RestoreSystemBackupTest extends TestCase
 
     public function test_environment_updater_changes_only_restore_allowlist_and_refreshes_runtime_config(): void
     {
+        $sourceKey = 'base64:'.base64_encode(str_repeat('s', 32));
+
         (new EnvironmentSettingsUpdater($this->environmentPath))->apply([
-            'APP_KEY' => 'base64:source-key',
+            'APP_KEY' => $sourceKey,
             'APP_LOCALE' => 'fa',
             'APP_FALLBACK_LOCALE' => 'en',
             'SELF_HOST_REGISTRATION' => true,
@@ -123,7 +126,7 @@ class RestoreSystemBackupTest extends TestCase
 
         $values = (new InstallerEnvironment($this->environmentPath))->values();
 
-        $this->assertSame('base64:source-key', $values['APP_KEY']);
+        $this->assertSame($sourceKey, $values['APP_KEY']);
         $this->assertSame('fa', $values['APP_LOCALE']);
         $this->assertSame('en', $values['APP_FALLBACK_LOCALE']);
         $this->assertSame('true', $values['SELF_HOST_REGISTRATION']);
@@ -139,7 +142,7 @@ class RestoreSystemBackupTest extends TestCase
         $this->assertStringContainsString('# destination environment', $contents);
         $this->assertFileDoesNotExist($this->environmentPath.'.tmp');
 
-        $this->assertSame('base64:source-key', config('app.key'));
+        $this->assertSame($sourceKey, config('app.key'));
         $this->assertSame('fa', config('app.locale'));
         $this->assertSame('en', config('app.fallback_locale'));
         $this->assertTrue((bool) config('installer.public_registration'));
