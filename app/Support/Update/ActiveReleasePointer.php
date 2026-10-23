@@ -15,7 +15,8 @@ final class ActiveReleasePointer
 
     public function __construct(?string $installationRoot = null, ?string $pointerPath = null, ?string $releaseRoot = null)
     {
-        $root = $installationRoot ?? base_path();
+        $root = $installationRoot
+            ?? (defined('SEO_OS_INSTALLATION_ROOT') ? (string) constant('SEO_OS_INSTALLATION_ROOT') : base_path());
         $resolved = realpath($root);
         if ($resolved === false || ! is_dir($resolved)) {
             throw $this->invalidState();

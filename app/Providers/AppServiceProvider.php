@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\SystemProbe;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
+use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use App\Support\NativeSystemProbe;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
         $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
+        $this->app->bind(RuntimeReleaseAdmission::class, static fn () => new RuntimeReleaseAdmission);
     }
 
     /**
