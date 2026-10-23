@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   patch-and-verify:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -36,50 +35,15 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('app/Services/Exports/ProjectSeoExportSnapshot.php')
           text = path.read_text()
-
-          replacements = [
-              (
-                  "$latestMetrics = $this->latestMetrics($project, $relationKeywordIds, $sourceById);",
-                  "$latestMetrics = $this->latestMetrics($relationKeywordIds, $sourceById);",
-              ),
-              (
-                  "private function latestMetrics(Project $project, array $keywordIds, array $sourceById): array",
-                  "private function latestMetrics(array $keywordIds, array $sourceById): array",
-              ),
-              (
-                  """        $result = [];
-        foreach ($metrics as $metric) {
-            $keyword = Keyword::query()->find($metric->keyword_id);
-            $source = $sourceById[$metric->keyword_source_id] ?? null;
-            if (! $keyword instanceof Keyword || $keyword->project_id !== $project->id
-                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {
-                throw ProjectSeoExportException::projectRelation();
-            }
-            $result[$metric->keyword_id][$metric->metric] = $metric;
-        }
-""",
-                  """        $allowedKeywordIds = array_fill_keys($keywordIds, true);
-        $result = [];
-        foreach ($metrics as $metric) {
-            $source = $sourceById[$metric->keyword_source_id] ?? null;
-            if (! isset($allowedKeywordIds[$metric->keyword_id])
-                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {
-                throw ProjectSeoExportException::projectRelation();
-            }
-            $result[$metric->keyword_id][$metric->metric] = $metric;
-        }
-""",
-              ),
-          ]
-
-          for old, new in replacements:
-              if old not in text:
-                  raise SystemExit(f'missing patch anchor: {old[:120]!r}')
-              text = text.replace(old, new, 1)
-
+          text = text.replace("$latestMetrics = $this->latestMetrics($project, $relationKeywordIds, $sourceById);", "$latestMetrics = $this->latestMetrics($relationKeywordIds, $sourceById);", 1)
+          text = text.replace("private function latestMetrics(Project $project, array $keywordIds, array $sourceById): array", "private function latestMetrics(array $keywordIds, array $sourceById): array", 1)
+          old = "        $result = [];\n        foreach ($metrics as $metric) {\n            $keyword = Keyword::query()->find($metric->keyword_id);\n            $source = $sourceById[$metric->keyword_source_id] ?? null;\n            if (! $keyword instanceof Keyword || $keyword->project_id !== $project->id\n                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {"
+          new = "        $allowedKeywordIds = array_fill_keys($keywordIds, true);\n        $result = [];\n        foreach ($metrics as $metric) {\n            $source = $sourceById[$metric->keyword_source_id] ?? null;\n            if (! isset($allowedKeywordIds[$metric->keyword_id])\n                || ! $source instanceof KeywordSource || $source->keyword_id !== $metric->keyword_id) {"
+          if old not in text:
+              raise SystemExit('missing latestMetrics patch anchor')
+          text = text.replace(old, new, 1)
           path.write_text(text)
           PY
           vendor/bin/pint app/Services/Exports/ProjectSeoExportSnapshot.php
