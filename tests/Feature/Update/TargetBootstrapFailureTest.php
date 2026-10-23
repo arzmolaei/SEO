@@ -139,6 +139,47 @@ class TargetBootstrapFailureTest extends TestCase
         $this->assertStringNotContainsString($this->directory, $encoded);
     }
 
+    public function test_fatal_target_bootstrap_has_sanitized_shutdown_recovery(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        File::put(
+            $this->releaseRoot.'/'.$this->targetReleaseId.'/vendor/autoload.php',
+            "<?php ini_set('memory_limit', '16M'); str_repeat('x', 32 * 1024 * 1024);",
+        );
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        [$exitCode, $output] = $this->runPublicLauncher();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertSame('Application update recovery is required.', trim($output));
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertStringNotContainsString($this->directory, $output);
+    }
+
+    public function test_target_journal_mismatch_never_reverts_an_unproven_release(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $state = $this->journal->state();
+        $state['target_release_id'] = 'unrelated-release';
+        File::put($this->journalPath, json_encode($state, JSON_THROW_ON_ERROR));
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $this->runPublicLauncher();
+
+        $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+        $this->assertSame('recovery_required', $this->journal->state()['phase']);
+        $this->assertFalse($this->journal->state()['recovery_reverted_to_source']);
+    }
+
+    public function test_custom_mutex_configuration_requires_manual_recovery_instead_of_using_another_lock(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        File::put($this->installationRoot.'/.env', 'BACKUP_LIFECYCLE_LOCK_PATH=/custom/lifecycle.lock');
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+        $this->runPublicLauncher();
+
+        $this->assertSame($this->targetReleaseId, $this->pointer->current()['release_id']);
+        $this->assertSame('target_active', $this->journal->state()['phase']);
+    }
+
     private function seedJournal(string $sourceKind, ?string $sourceReleaseId, string $sourceVersion): void
     {
         $uploadId = str_repeat('c', 32);
