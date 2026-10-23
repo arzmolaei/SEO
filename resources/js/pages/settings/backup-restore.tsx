@@ -90,8 +90,7 @@ const copy = {
         genericError:
             'عملیات انجام نشد. وضعیت سرور را دوباره بررسی کنید و تلاش مجدد انجام دهید.',
         fileRequired: 'یک فایل .seobak انتخاب کنید.',
-        digestMismatch:
-            'SHA-256 واردشده دقیقاً با فایل تأییدشده برابر نیست.',
+        digestMismatch: 'SHA-256 واردشده دقیقاً با فایل تأییدشده برابر نیست.',
         phaseIdle: 'آماده',
         phaseUploaded: 'فایل بارگذاری شده',
         phaseVerified: 'فایل تأیید شده؛ منتظر تأیید نهایی',
@@ -498,7 +497,10 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.sourceVersion}
                                             </dt>
                                             <dd className="font-medium">
-                                                {restore.preview.source_product_version}
+                                                {
+                                                    restore.preview
+                                                        .source_product_version
+                                                }
                                             </dd>
                                         </div>
                                         <div>
@@ -506,7 +508,10 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.createdAt}
                                             </dt>
                                             <dd className="font-medium">
-                                                {restore.preview.source_created_at_utc}
+                                                {
+                                                    restore.preview
+                                                        .source_created_at_utc
+                                                }
                                             </dd>
                                         </div>
                                         <div>
@@ -514,7 +519,10 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.records}
                                             </dt>
                                             <dd className="font-medium">
-                                                {restore.preview.table_record_count}
+                                                {
+                                                    restore.preview
+                                                        .table_record_count
+                                                }
                                             </dd>
                                         </div>
                                         <div>
@@ -522,7 +530,10 @@ export default function BackupRestore({ restore }: Props) {
                                                 {t.files}
                                             </dt>
                                             <dd className="font-medium">
-                                                {restore.preview.durable_file_count}
+                                                {
+                                                    restore.preview
+                                                        .durable_file_count
+                                                }
                                             </dd>
                                         </div>
                                         <div>
@@ -531,7 +542,8 @@ export default function BackupRestore({ restore }: Props) {
                                             </dt>
                                             <dd className="font-medium">
                                                 {formatBytes(
-                                                    restore.preview.bundle_bytes,
+                                                    restore.preview
+                                                        .bundle_bytes,
                                                     locale,
                                                 )}
                                             </dd>
