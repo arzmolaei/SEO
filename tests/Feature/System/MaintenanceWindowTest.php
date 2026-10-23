@@ -61,6 +61,25 @@ class MaintenanceWindowTest extends TestCase
         $this->assertFalse($this->maintenanceMode->active());
     }
 
+    public function test_callback_failure_is_not_suppressed_if_callback_deactivates_maintenance(): void
+    {
+        $window = new MaintenanceWindow($this->maintenanceMode);
+
+        try {
+            $window->run('restore', function (): never {
+                $this->maintenanceMode->deactivate();
+
+                throw new RuntimeException('restore failed after maintenance exit');
+            });
+
+            $this->fail('Expected callback failure was suppressed by maintenance cleanup.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('restore failed after maintenance exit', $exception->getMessage());
+        }
+
+        $this->assertFalse($this->maintenanceMode->active());
+    }
+
     public function test_it_never_clears_unrelated_administrator_maintenance_state(): void
     {
         $this->maintenanceMode->activate([
