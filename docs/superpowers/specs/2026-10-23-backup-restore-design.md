@@ -250,14 +250,23 @@ Paths are normalized as relative POSIX paths. Absolute paths, Windows drive root
 
 **Cross-feature invariant:** every future application mutation that creates/replaces/deletes a file under a durable upload root must acquire `LifecycleMutex`. This, not maintenance mode alone, is what makes DB+file operations serializable against backup/restore/update.
 
-## 11. Compatibility Rules
+## 11. Product Version Identity and Compatibility
+
+The current `installer.product_version` falls back to `dev`, which is not strong enough to authorize destructive restore or update decisions.
+
+The lifecycle release introduces one local `ProductVersion` source of truth backed by a `VERSION` file included in the runtime package. Requirements:
+
+- a production release package must contain a non-empty, non-`dev` version identifier;
+- installer finalization, backup manifests and the future updater all use the same `ProductVersion` service;
+- local/test environments may use `dev`, but `dev` can never be treated as a distributable self-host release identity;
+- release-tree acceptance fails if a production package has no stable version identity.
 
 V1 restore is intentionally **same product version + same application schema fingerprint only**.
 
 Restore requires:
 
 - supported backup schema `seo-backup/1`;
-- exact `product_version` match;
+- exact non-dev `product_version` match in production;
 - exact application schema fingerprint match;
 - all catalog tables/columns/types present as declared;
 - production database engine MySQL/MariaDB with transactional application tables;
@@ -412,6 +421,8 @@ Stable failure codes/messages include at least:
 
 ### Shared lifecycle
 
+- `VERSION` — stable runtime package identity for distributable releases.
+- `app/Support/Lifecycle/ProductVersion.php` — one version source for installer, backup and updater.
 - `app/Support/Lifecycle/LifecycleMutex.php` — exclusive backup/restore/update lock.
 - `app/Support/Lifecycle/MaintenanceWindow.php` — activate/deactivate Laravel maintenance mode safely and recover stale lifecycle ownership.
 - `app/Support/SystemOwner.php` — resolve, persist and authorize system owner.
@@ -437,15 +448,17 @@ Stable failure codes/messages include at least:
 
 ### Existing installer/state changes
 
-- `app/Actions/Installer/FinalizeInstallation.php` — persist validated `owner_user_id` in new installation lock.
+- `app/Actions/Installer/FinalizeInstallation.php` — persist validated `owner_user_id` and stable product version in new installation lock.
 - `app/Support/InstallationState.php` — lock metadata schema upgrade + atomic update API for legacy-owner resolution and restore metadata.
+- `scripts/release/build-release.php` — require/include the stable `VERSION` identity in production release trees.
 
 ## 18. Acceptance Contract
 
 Fast tests cover:
 
 - system-owner resolution/legacy persistence and denial for all other roles/users;
-- new installer finalization persists owner id;
+- new installer finalization persists owner id and stable ProductVersion;
+- production release tree rejects missing/`dev` version identity;
 - bundle magic/version/parser bounds/trailing-data/duplicate-entry/path traversal rejection;
 - checksum/size/content-digest mismatch rejection before mutation;
 - exact durable vs volatile table catalog;
@@ -466,7 +479,7 @@ Fast tests cover:
 The permanent CI gate must:
 
 1. provision source and destination databases separately;
-2. migrate both with the same packaged application schema;
+2. migrate both with the same packaged application schema and stable test ProductVersion;
 3. create real source users/workspaces/projects and a Persian keyword/intelligence workflow;
 4. create representative allowlisted durable upload files;
 5. create a source backup through the real capture/bundle coordinator;
@@ -482,7 +495,7 @@ The permanent CI gate must:
 
 ### Release-tree acceptance
 
-Runtime package acceptance must prove backup/restore controllers, bundle parser/writer, lifecycle services and settings UI are included after `composer install --no-dev`, and production execution requires no Composer/Node/npm/shell/archive utility on the host.
+Runtime package acceptance must prove backup/restore controllers, bundle parser/writer, lifecycle services, settings UI and non-dev `VERSION` are included after `composer install --no-dev`, and production execution requires no Composer/Node/npm/shell/archive utility on the host.
 
 ## 19. Release Boundary
 
@@ -497,4 +510,4 @@ Backup + Restore is complete only after:
 - PR merges with an expected-head guard;
 - post-merge `main` CI passes.
 
-After that, the next subsystem is Update + Interrupted Recovery/Rollback. It must reuse `LifecycleMutex`, capture/bundle primitives, safety backup and recovery semantics rather than inventing parallel mechanisms.
+After that, the next subsystem is Update + Interrupted Recovery/Rollback. It must reuse `ProductVersion`, `LifecycleMutex`, capture/bundle primitives, safety backup and recovery semantics rather than inventing parallel mechanisms.
