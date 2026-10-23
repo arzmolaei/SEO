@@ -7,6 +7,7 @@ use Tests\TestCase;
 
 class ApplicationTableCatalogTest extends TestCase
 {
+    // Source-of-truth guard for the verified durable restore catalog.
     public function test_catalog_is_the_exact_verified_durable_restore_order(): void
     {
         $expected = [
