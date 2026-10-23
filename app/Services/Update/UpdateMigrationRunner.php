@@ -320,6 +320,7 @@ final class UpdateMigrationRunner
                         $quote = null;
                     }
                 }
+
                 continue;
             }
             if (in_array($character, ["'", '"', '`'], true)) {
@@ -330,6 +331,7 @@ final class UpdateMigrationRunner
                 $depth--;
             } elseif ($depth === 0 && $character === ' ' && preg_match('/\G AUTO_INCREMENT=[0-9]+\b/', $sql, $match, 0, $index) === 1) {
                 $index += strlen($match[0]) - 1;
+
                 continue;
             }
             $result .= $character;
