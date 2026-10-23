@@ -213,3 +213,61 @@ jobs:
 
       - name: Run connected self-host installer acceptance
         run: php artisan test tests/Feature/System/SelfHostInstallerAcceptanceTest.php --fail-on-skipped
+
+  persian-export-mariadb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-secret
+          MARIADB_DATABASE: seo_os_export
+          MARIADB_USER: seo_export
+          MARIADB_PASSWORD: export-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PERSIAN_EXPORT_CONNECTED: '1'
+      PERSIAN_EXPORT_LARGE: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: seo_os_export
+      DB_USERNAME: seo_export
+      DB_PASSWORD: export-secret
+      INSTALLER_ASSUME_INSTALLED: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare connected export database
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          php artisan migrate:fresh --force --ansi
+
+      - name: Run connected and large Persian export acceptance
+        run: >-
+          php artisan test
+          tests/Feature/Exports/ProjectSeoExportLargeDatasetTest.php
+          tests/Feature/Acceptance/PersianExportMariaDbAcceptanceTest.php
+          --fail-on-skipped

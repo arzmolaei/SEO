@@ -7,6 +7,7 @@ use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\KeywordIntelligenceController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectSeoExportController;
 use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\ReviewQueueController;
 use App\Http\Controllers\SavedKeywordViewController;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('workspaces/{workspace}/projects', [ProjectController::class, 'store'])->name('workspaces.projects.store');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
+    Route::get('projects/{project}/exports/seo-plan.csv', ProjectSeoExportController::class)->name('projects.exports.seo-plan');
 
     Route::post('projects/{project}/keyword-imports/stage', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.stage');
     Route::post('projects/{project}/keyword-views', [SavedKeywordViewController::class, 'store'])->name('projects.keyword-views.store');

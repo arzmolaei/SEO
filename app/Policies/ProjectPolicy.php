@@ -31,6 +31,11 @@ class ProjectPolicy
         return $this->canManageProject($user, $project);
     }
 
+    public function export(User $user, Project $project): bool
+    {
+        return $this->canManageProject($user, $project);
+    }
+
     private function canManageProject(User $user, Project $project): bool
     {
         $membership = Membership::query()

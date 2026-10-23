@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Columns3, LoaderCircle } from 'lucide-react';
+import { Columns3, Download, LoaderCircle } from 'lucide-react';
 import {
     type FormEvent,
     type KeyboardEvent,
@@ -102,15 +102,19 @@ export default function Keywords({
     savedViews,
     activeView,
     intelligence,
+    canExport,
 }: {
     keywords: KeywordPaginator;
     filters: KeywordFilters;
     savedViews: SavedKeywordView[];
     activeView: SavedKeywordView | null;
     intelligence: KeywordIntelligenceWorkspace;
+    canExport: boolean;
 }) {
     const { locale, t } = useLocale();
-    const path = usePage().url.split('?')[0];
+    const page = usePage();
+    const path = page.url.split('?')[0];
+    const exportError = page.props.flash.export_error ?? null;
     const projectId = intelligence.project_id;
     const [workspaceTab, setWorkspaceTab] = useState<
         'grid' | 'intent' | 'clusters' | 'mapping'
@@ -368,6 +372,17 @@ export default function Keywords({
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
+                                {canExport ? (
+                                    <a
+                                        href={`/projects/${projectId}/exports/seo-plan.csv`}
+                                        className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent"
+                                    >
+                                        <Download className="size-4" />
+                                        {locale === 'fa'
+                                            ? 'خروجی CSV'
+                                            : 'Export CSV'}
+                                    </a>
+                                ) : null}
                                 {isLoading ? (
                                     <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                                         <LoaderCircle className="size-4 animate-spin" />
@@ -381,6 +396,15 @@ export default function Keywords({
                             </div>
                         </div>
                     </div>
+
+                    {exportError ? (
+                        <div
+                            role="alert"
+                            className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                        >
+                            {exportError}
+                        </div>
+                    ) : null}
 
                     <nav
                         className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1 sm:grid-cols-4"

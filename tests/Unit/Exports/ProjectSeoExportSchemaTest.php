@@ -1,0 +1,91 @@
+<?php
+
+namespace Tests\Unit\Exports;
+
+use App\Services\Exports\ProjectSeoExportSchema;
+use PHPUnit\Framework\TestCase;
+
+class ProjectSeoExportSchemaTest extends TestCase
+{
+    public function test_schema_id_and_exact_v1_header_order_are_stable(): void
+    {
+        $this->assertSame('seo-plan/1', ProjectSeoExportSchema::ID);
+        $this->assertSame([
+            'schema_version',
+            'exported_at_utc',
+            'project_id',
+            'project_name',
+            'keyword_id',
+            'keyword_display_text',
+            'keyword_normalized_text',
+            'keyword_status',
+            'source_count',
+            'source_names_json',
+            'intent_assignment_id',
+            'intent',
+            'intent_confidence',
+            'intent_source',
+            'intent_updated_at_utc',
+            'volume_value',
+            'volume_metric_id',
+            'volume_source_id',
+            'volume_source',
+            'volume_observed_at_utc',
+            'difficulty_value',
+            'difficulty_metric_id',
+            'difficulty_source_id',
+            'difficulty_source',
+            'difficulty_observed_at_utc',
+            'cluster_id',
+            'cluster_name',
+            'cluster_primary_keyword_id',
+            'cluster_is_primary',
+            'cluster_intent',
+            'cluster_confidence',
+            'cluster_review_state',
+            'cluster_business_relevance',
+            'cluster_lifecycle_state',
+            'cluster_is_locked',
+            'cluster_revision',
+            'cluster_origin',
+            'cluster_archived_at_utc',
+            'target_id',
+            'target_type',
+            'target_revision',
+            'page_id',
+            'page_title',
+            'page_kind',
+            'page_type',
+            'page_url',
+            'keyword_pending_review_count',
+            'cluster_primary_pending_review_count',
+            'cluster_primary_pending_mapping_conflict',
+            'priority_basis_keyword_id',
+            'priority_volume_value',
+            'priority_volume_metric_id',
+            'priority_volume_source_id',
+            'priority_volume_source',
+            'priority_volume_observed_at_utc',
+            'priority_difficulty_value',
+            'priority_difficulty_metric_id',
+            'priority_difficulty_source_id',
+            'priority_difficulty_source',
+            'priority_difficulty_observed_at_utc',
+            'priority_business_relevance',
+            'priority_has_mapping',
+            'priority_review_complete',
+            'priority_score',
+            'priority_data_completeness',
+            'priority_search_demand_available',
+            'priority_search_demand_points',
+            'priority_difficulty_available',
+            'priority_difficulty_points',
+            'priority_business_relevance_available',
+            'priority_business_relevance_points',
+            'priority_mapping_points',
+            'priority_review_points',
+            'exact_text_json',
+        ], ProjectSeoExportSchema::HEADERS);
+        $this->assertCount(74, ProjectSeoExportSchema::HEADERS);
+    }
+}
