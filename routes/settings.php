@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\SystemBackupController;
+use App\Http\Middleware\EnsureSystemOwner;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +20,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/security', [SecurityController::class, 'edit'])
         ->middleware(RequirePassword::class)
         ->name('security.edit');
+
+    Route::get('settings/backup/download', [SystemBackupController::class, 'download'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class])
+        ->name('settings.backup.download');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
