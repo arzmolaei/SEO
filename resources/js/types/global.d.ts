@@ -14,6 +14,9 @@ declare module '@inertiajs/core' {
             locale: 'fa' | 'en';
             direction: 'rtl' | 'ltr';
             auth: Auth;
+            flash: {
+                export_error?: string | null;
+            };
             projectContext: ProjectContext | null;
             sidebarOpen: boolean;
             [key: string]: unknown;
