@@ -69,7 +69,7 @@ class UpdateAuthorizationTest extends TestCase
                 'current_product_version' => (new ProductVersion)->requireDistributable(),
                 'status' => 'ready',
             ])
-            ->assertHeader('Cache-Control', 'no-cache, private, no-store')
+            ->assertHeader('Cache-Control', 'no-cache, no-store, private')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
@@ -106,7 +106,7 @@ class UpdateAuthorizationTest extends TestCase
             ->assertJson([
                 'code' => 'update_invalid_package',
             ])
-            ->assertHeader('Cache-Control', 'no-cache, private, no-store')
+            ->assertHeader('Cache-Control', 'no-cache, no-store, private')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
