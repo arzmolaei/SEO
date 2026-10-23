@@ -127,6 +127,42 @@ class UpdateMigrationRunnerTest extends TestCase
         $this->assertCount(2, $after->appliedSuffix);
     }
 
+    public function test_unlogged_trigger_ddl_requires_recovery_even_when_columns_are_unchanged(): void
+    {
+        $this->writeMigration('2099_01_01_000001_trigger', "Schema::create('update_probe_first', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_first');");
+        $before = $this->runner->runPending($this->runner->snapshot(), static function (): void {});
+        $this->writeMigration('2099_01_01_000002_trigger_fail', "\\Illuminate\\Support\\Facades\\DB::unprepared('CREATE TRIGGER update_probe_trigger AFTER INSERT ON update_probe_first BEGIN SELECT 1; END'); throw new \\RuntimeException('private');", '');
+        try {
+            $this->runner->runPending($before, static function (): void {});
+            $this->fail('Unlogged triggers must not be mistaken for unchanged schema.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+    }
+
+    public function test_interrupted_reverse_resumes_only_the_exact_proven_remaining_prefix(): void
+    {
+        $this->writeMigration('2099_01_01_000001_first', "Schema::create('update_probe_first', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_first');");
+        $this->writeMigration('2099_01_01_000002_second', "Schema::create('update_probe_second', fn (Blueprint \$table) => \$table->id());", "Schema::drop('update_probe_second');");
+        $before = $this->runner->snapshot();
+        $after = $this->runner->runPending($before, static function (): void {});
+        $checkpoints = [];
+        try {
+            $this->runner->rollbackExactSuffix($before, $after->appliedSuffix, function (UpdateMigrationState $state) use (&$checkpoints): void {
+                $checkpoints[] = $state;
+                throw new \RuntimeException('simulated process interruption');
+            });
+            $this->fail('The reverse checkpoint must be published after each completed down.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('simulated process interruption', $exception->getMessage());
+        }
+        $this->assertCount(1, $checkpoints);
+        $this->assertTrue(Schema::hasTable('update_probe_first'));
+        $this->assertFalse(Schema::hasTable('update_probe_second'));
+        $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+        $this->assertSame($before->toArray(), $this->runner->snapshot()->toArray());
+    }
+
     private function writeMigration(string $name, string $up, string $down): void
     {
         File::put($this->directory.'/'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { {$up} } public function down(): void { {$down} } };\n");
