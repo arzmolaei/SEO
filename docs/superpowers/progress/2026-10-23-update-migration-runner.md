@@ -33,3 +33,8 @@ Before declaring Update/Rollback complete, fix these confirmed Important gaps in
 3. `ApplySystemStateSnapshot` clears `jobs`/`job_batches`, while the Backup catalog excludes them. Update rollback needs an explicit queue-preserving policy; ordinary Restore behavior stays unchanged. Pin queued payloads and batch metadata across rollback (normative review Ruling 6).
 
 These are targeted Task 6/10 acceptance corrections, not permission to redesign completed subsystems. The independent review used the exact Laravel v13.38.0 pinned in composer.lock; method signatures were cross-checked against official Laravel source.
+
+
+## Verified code boundary
+
+Independent review closed the reported Important findings. Code head `0729ad4fd5898cf53a1e5e8ac13c0be84905b388` passed all six permanent gates in CI `40026369422`: PHP 8.4/8.5 suites, frontend/TypeScript/build, Pint/PHPStan, dependency audits, connected Installer/Persian Export/Backup Restore, seven connected migration/DDL/process-exit cases and actual no-dev release-slot boot smoke. Final docs-head CI remains required before PR #12 integration into the active feature branch. Main is unchanged and full Update/Rollback remains incomplete.
