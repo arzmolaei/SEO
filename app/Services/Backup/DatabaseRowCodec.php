@@ -106,7 +106,10 @@ final class DatabaseRowCodec
         return $decoded;
     }
 
-    /** @param array<string, mixed> $values @param array<string, string> $families */
+    /**
+     * @param  array<string, mixed>  $values
+     * @param  array<string, string>  $families
+     */
     private function assertSameColumns(array $values, array $families, bool $capturing): void
     {
         $valueKeys = array_keys($values);

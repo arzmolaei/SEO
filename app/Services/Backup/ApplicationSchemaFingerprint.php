@@ -19,24 +19,23 @@ final class ApplicationSchemaFingerprint
 
             foreach ($schema->getColumns($table) as $column) {
                 $columns[] = [
-                    'name' => (string) ($column['name'] ?? ''),
-                    'type' => $this->normalizeType((string) ($column['type'] ?? '')),
-                    'type_name' => $this->normalizeType((string) ($column['type_name'] ?? '')),
-                    'nullable' => (bool) ($column['nullable'] ?? false),
-                    'auto_increment' => (bool) ($column['auto_increment'] ?? false),
+                    'name' => $column['name'],
+                    'type' => $this->normalizeType($column['type']),
+                    'type_name' => $this->normalizeType($column['type_name']),
+                    'nullable' => $column['nullable'],
+                    'auto_increment' => $column['auto_increment'],
                 ];
             }
 
             /** @var list<array{name: string, columns: list<string>, type: string, unique: bool, primary: bool}> $indexes */
             $indexes = [];
             foreach ($schema->getIndexes($table) as $index) {
-                $index = (array) $index;
                 $indexes[] = [
-                    'name' => strtolower((string) ($index['name'] ?? '')),
-                    'columns' => $this->stringList($index['columns'] ?? []),
-                    'type' => strtolower((string) ($index['type'] ?? '')),
-                    'unique' => (bool) ($index['unique'] ?? false),
-                    'primary' => (bool) ($index['primary'] ?? false),
+                    'name' => strtolower($index['name']),
+                    'columns' => $this->stringList($index['columns']),
+                    'type' => strtolower($index['type']),
+                    'unique' => $index['unique'],
+                    'primary' => $index['primary'],
                 ];
             }
             usort($indexes, static fn (array $left, array $right): int => strcmp(
@@ -47,14 +46,13 @@ final class ApplicationSchemaFingerprint
             /** @var list<array{name: string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: ?string, on_delete: ?string}> $foreignKeys */
             $foreignKeys = [];
             foreach ($schema->getForeignKeys($table) as $foreignKey) {
-                $foreignKey = (array) $foreignKey;
                 $foreignKeys[] = [
                     'name' => strtolower((string) ($foreignKey['name'] ?? '')),
-                    'columns' => $this->stringList($foreignKey['columns'] ?? []),
-                    'foreign_table' => strtolower((string) ($foreignKey['foreign_table'] ?? '')),
-                    'foreign_columns' => $this->stringList($foreignKey['foreign_columns'] ?? []),
-                    'on_update' => $this->nullableString($foreignKey['on_update'] ?? null),
-                    'on_delete' => $this->nullableString($foreignKey['on_delete'] ?? null),
+                    'columns' => $this->stringList($foreignKey['columns']),
+                    'foreign_table' => strtolower($foreignKey['foreign_table']),
+                    'foreign_columns' => $this->stringList($foreignKey['foreign_columns']),
+                    'on_update' => $this->nullableString($foreignKey['on_update']),
+                    'on_delete' => $this->nullableString($foreignKey['on_delete']),
                 ];
             }
             usort($foreignKeys, static fn (array $left, array $right): int => strcmp(

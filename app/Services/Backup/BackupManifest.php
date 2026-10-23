@@ -209,7 +209,10 @@ final class BackupManifest
         }
     }
 
-    /** @param array<string, mixed> $value @param list<string> $expected */
+    /**
+     * @param  array<string, mixed>  $value
+     * @param  list<string>  $expected
+     */
     private static function assertExactKeys(array $value, array $expected): void
     {
         $actualKeys = array_keys($value);
@@ -222,7 +225,10 @@ final class BackupManifest
         }
     }
 
-    /** @param array<string, mixed> $value @param list<string> $allowed */
+    /**
+     * @param  array<string, mixed>  $value
+     * @param  list<string>  $allowed
+     */
     private static function assertAllowedKeys(array $value, array $allowed): void
     {
         foreach (array_keys($value) as $key) {
@@ -232,7 +238,10 @@ final class BackupManifest
         }
     }
 
-    /** @param array<string, mixed> $value @param list<string> $required */
+    /**
+     * @param  array<string, mixed>  $value
+     * @param  list<string>  $required
+     */
     private static function assertRequiredKeys(array $value, array $required): void
     {
         foreach ($required as $key) {

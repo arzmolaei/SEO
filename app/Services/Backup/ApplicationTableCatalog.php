@@ -140,16 +140,16 @@ final class ApplicationTableCatalog
             $columns = [];
 
             foreach ($schema->getColumns($table) as $column) {
-                $type = $this->normalizeType((string) ($column['type'] ?? ''));
-                $typeName = $this->normalizeType((string) ($column['type_name'] ?? $type));
+                $type = $this->normalizeType($column['type']);
+                $typeName = $this->normalizeType($column['type_name']);
 
                 $columns[] = [
-                    'name' => (string) ($column['name'] ?? ''),
+                    'name' => $column['name'],
                     'type' => $type,
                     'type_name' => $typeName,
                     'family' => $this->columnFamily($typeName !== '' ? $typeName : $type),
-                    'nullable' => (bool) ($column['nullable'] ?? false),
-                    'auto_increment' => (bool) ($column['auto_increment'] ?? false),
+                    'nullable' => $column['nullable'],
+                    'auto_increment' => $column['auto_increment'],
                 ];
             }
 
