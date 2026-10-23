@@ -11,8 +11,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\BackupException;
 use App\Services\Backup\CaptureSystemState;
-use App\Support\InstallationState;
 use App\Support\Backup\BackupBundleReader;
+use App\Support\InstallationState;
 use App\Support\Lifecycle\LifecycleMutex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +82,7 @@ class CaptureSystemStateTest extends TestCase
             'project_id' => $project->id,
             'display_text' => 'کلمه‌ی کلیدی',
             'normalized_text' => 'کلمه‌ی کلیدی',
-            'status' => KeywordStatus::Active,
+            'status' => KeywordStatus::Ready,
         ]);
 
         (new InstallationState)->markInstalled([
