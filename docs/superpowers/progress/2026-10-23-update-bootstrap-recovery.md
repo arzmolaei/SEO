@@ -19,4 +19,4 @@ Base: active feature head `1debca14082f5a3bfad2d3167c35784de11ab42d`. Existing s
 
 ## Status
 
-Implementation is under exact-head CI and requires independent review before integration. Task 7's full UI confirm/continue wiring and Tasks 8–13 remain separate acceptance boundaries. Package tooling is independently implemented in PR #10; its no-dev source -> target slot -> source runtime smoke passed all six gates on `8fd35c7`, CI `40019999023`.
+Implementation is under exact-head CI and requires independent review before integration. The owner-only, recent-password confirm endpoint now prepares verified packages or resumes staged ones, then returns an explicit reload instruction; it never runs target code in the source request. A conflicting Restore journal is rechecked under the shared switch lock. Confirm/auth/stale-digest/restore-conflict regressions observed RED on `494451f4`, CI `40021566898` (4 failed, 474 passed). Target continuation/migrations, UI and connected acceptance remain Tasks 8–13. Package tooling is independently implemented in PR #10; its no-dev source -> target slot -> source runtime smoke passed all six gates on `8fd35c7`, CI `40019999023`.

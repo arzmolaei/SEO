@@ -2,6 +2,7 @@
 
 namespace App\Services\Update;
 
+use App\Services\Backup\RestoreJournal;
 use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Lifecycle\LifecycleMutexHandle;
 use App\Support\Update\ActiveReleasePointer;
@@ -10,6 +11,7 @@ final class SwitchSystemUpdateRelease
 {
     public function __construct(
         private readonly UpdateJournal $journal,
+        private readonly RestoreJournal $restoreJournal,
         private readonly LifecycleMutex $mutex,
         private readonly UpdateQuiescence $quiescence,
         private readonly ActiveReleasePointer $activeReleasePointer,
@@ -39,6 +41,10 @@ final class SwitchSystemUpdateRelease
         $state = $this->stagedState($expectedDigest);
         if ($this->requiredUploadId($state) !== $uploadId) {
             throw $this->invalidState();
+        }
+
+        if ($this->restoreJournal->state() !== null) {
+            throw new UpdateException('update_lifecycle_conflict', 'یک عملیات بازیابی دیگر باید ابتدا تعیین تکلیف شود.');
         }
 
         $this->assertPackageDigest($uploadId, $expectedDigest);
