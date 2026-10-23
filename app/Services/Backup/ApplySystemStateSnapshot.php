@@ -28,6 +28,7 @@ final class ApplySystemStateSnapshot
         string $metadataPath,
         string $stagingRoot,
         LifecycleMutexHandle $ownership,
+        bool $preserveQueuedWork = false,
     ): void {
         $ownership->assertActive();
 
@@ -44,7 +45,7 @@ final class ApplySystemStateSnapshot
         $manifest = $this->stageSafetyBundle($bundlePath, $stagingRoot, $ownership);
 
         $ownership->assertActive();
-        $this->restoreDatabase($manifest, $stagingRoot, $ownership);
+        $this->restoreDatabase($manifest, $stagingRoot, $ownership, $preserveQueuedWork);
 
         $ownership->assertActive();
         $this->restoreDurableFiles($stagingRoot);
@@ -54,7 +55,7 @@ final class ApplySystemStateSnapshot
 
         $ownership->assertActive();
         $this->installationState->restoreRecoverySnapshot($installationSnapshot);
-        $this->clearVolatileTables();
+        $this->clearVolatileTables(preserveQueuedWork: $preserveQueuedWork);
 
         $ownership->assertActive();
     }
@@ -147,6 +148,7 @@ final class ApplySystemStateSnapshot
         BackupManifest $manifest,
         string $stagingRoot,
         LifecycleMutexHandle $ownership,
+        bool $preserveQueuedWork,
     ): void {
         $connection = DB::connection();
         $metadata = $this->catalog->metadata($connection);
@@ -184,7 +186,7 @@ final class ApplySystemStateSnapshot
                 $ownership->assertActive();
                 $connection->table($table)->delete();
             }
-            $this->clearVolatileTables($connection);
+            $this->clearVolatileTables($connection, $preserveQueuedWork);
 
             foreach ($this->catalog->insertOrder() as $table) {
                 $ownership->assertActive();
@@ -308,12 +310,12 @@ final class ApplySystemStateSnapshot
         $this->environmentSettingsUpdater->apply($settings);
     }
 
-    private function clearVolatileTables(?Connection $connection = null): void
+    private function clearVolatileTables(?Connection $connection = null, bool $preserveQueuedWork = false): void
     {
         $connection ??= DB::connection();
 
         foreach ($this->catalog->excludedTables() as $table) {
-            if ($table === 'migrations') {
+            if ($table === 'migrations' || ($preserveQueuedWork && in_array($table, ['jobs', 'job_batches', 'failed_jobs'], true))) {
                 continue;
             }
 
