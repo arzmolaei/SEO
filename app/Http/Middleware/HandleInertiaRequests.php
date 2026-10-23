@@ -49,6 +49,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'flash' => [
+                'export_error' => $request->session()->get('export_error'),
+            ],
             'projectContext' => $routeProject instanceof Project
                 ? ProjectWorkspaceContext::for($routeProject)
                 : null,
