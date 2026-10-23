@@ -180,7 +180,7 @@ final class VerifyRestoreBundle
 
         if (
             ! is_array($tables)
-            || $tables !== $this->catalog->metadata($connection)
+            || ! $this->sameContract($tables, $this->catalog->metadata($connection))
             || ! is_array($excluded)
             || $excluded !== $this->catalog->excludedTables()
             || ! is_array($entries)
@@ -255,6 +255,41 @@ final class VerifyRestoreBundle
         }
 
         return [$recordCount, $durableFileCount];
+    }
+
+    /**
+     * Canonicalize only associative key order while preserving list order and scalar types.
+     * This keeps restore-contract comparison strict without rejecting canonicalized manifest JSON.
+     *
+     * @param array<array-key, mixed> $actual
+     * @param array<array-key, mixed> $expected
+     */
+    private function sameContract(array $actual, array $expected): bool
+    {
+        return $this->canonicalizeContract($actual) === $this->canonicalizeContract($expected);
+    }
+
+    private function canonicalizeContract(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            $result = [];
+            foreach ($value as $item) {
+                $result[] = $this->canonicalizeContract($item);
+            }
+
+            return $result;
+        }
+
+        ksort($value, SORT_STRING);
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->canonicalizeContract($item);
+        }
+
+        return $value;
     }
 
     /** @param resource $stream */
