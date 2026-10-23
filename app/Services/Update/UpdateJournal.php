@@ -27,9 +27,18 @@ final class UpdateJournal
     ];
 
     private const MAINTENANCE_PHASES = [
-        'preparing', 'quiescing', 'snapshot_ready', 'staged', 'switch_pending',
-        'target_active', 'migrating', 'validating', 'rollback_required',
-        'migration_rollback', 'source_switch_pending', 'snapshot_restore_required',
+        'preparing',
+        'quiescing',
+        'snapshot_ready',
+        'staged',
+        'switch_pending',
+        'target_active',
+        'migrating',
+        'validating',
+        'rollback_required',
+        'migration_rollback',
+        'source_switch_pending',
+        'snapshot_restore_required',
         'recovery_required',
     ];
 
@@ -42,21 +51,26 @@ final class UpdateJournal
         if (! file_exists($path) && ! is_link($path)) {
             return null;
         }
+
         if (is_link($path) || ! is_file($path)) {
             throw $this->invalidState();
         }
+
         $raw = file_get_contents($path);
         if (! is_string($raw) || strlen($raw) > 65536) {
             throw $this->invalidState();
         }
+
         try {
             $state = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             throw $this->invalidState();
         }
+
         if (! is_array($state) || ! isset($state['phase']) || ! is_string($state['phase'])) {
             throw $this->invalidState();
         }
+
         return $state;
     }
 
@@ -66,21 +80,32 @@ final class UpdateJournal
         if (preg_match('/\A[a-f0-9]{32}\z/', $uploadId) !== 1 || $this->state() !== null) {
             throw $this->invalidState();
         }
+
         $state = ['phase' => 'uploaded', 'upload_id' => $uploadId];
         $this->write($state);
+
         return $state;
     }
 
-    /** @param array<string, mixed> $evidence @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @return array<string, mixed>
+     */
     public function transition(string $expectedPhase, string $nextPhase, array $evidence = []): array
     {
         $state = $this->state();
-        if ($state === null || $state['phase'] !== $expectedPhase || ! in_array($nextPhase, self::TRANSITIONS[$expectedPhase] ?? [], true)) {
+        if (
+            $state === null
+            || $state['phase'] !== $expectedPhase
+            || ! in_array($nextPhase, self::TRANSITIONS[$expectedPhase] ?? [], true)
+        ) {
             throw $this->invalidState();
         }
+
         $this->assertSafeEvidence($evidence);
         $next = array_merge($state, $evidence, ['phase' => $nextPhase]);
         $this->write($next);
+
         return $next;
     }
 
@@ -115,12 +140,14 @@ final class UpdateJournal
             throw $this->invalidState();
         }
         @chmod($directory, 0700);
+
         $json = json_encode($state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $tmp = $path.'.tmp';
         if (file_put_contents($tmp, $json, LOCK_EX) === false) {
             throw $this->invalidState();
         }
         @chmod($tmp, 0600);
+
         if (! rename($tmp, $path)) {
             @unlink($tmp);
             throw $this->invalidState();
