@@ -7,6 +7,26 @@ use RuntimeException;
 
 class InstallationState
 {
+    /** @var list<string> */
+    private const INITIAL_METADATA = [
+        'installer_schema_version',
+        'product_version',
+        'installation_id',
+        'database_fingerprint',
+        'owner_user_id',
+        'restored_from_installation_id',
+        'restored_at',
+    ];
+
+    /** @var list<string> */
+    private const MUTABLE_METADATA = [
+        'installer_schema_version',
+        'product_version',
+        'owner_user_id',
+        'restored_from_installation_id',
+        'restored_at',
+    ];
+
     private string $lockPath;
 
     private bool $assumeInstalled;
@@ -51,34 +71,69 @@ class InstallationState
             return;
         }
 
-        $allowedMetadata = [
-            'installer_schema_version',
-            'product_version',
-            'installation_id',
-            'database_fingerprint',
-        ];
-
-        foreach (array_keys($metadata) as $key) {
-            if (! in_array($key, $allowedMetadata, true)) {
-                throw new InvalidArgumentException('Unsupported installation lock metadata.');
-            }
-        }
-
-        $directory = dirname($this->lockPath);
-
-        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
-            throw new RuntimeException('Unable to create installation state directory.');
-        }
+        $this->assertAllowedMetadata($metadata, self::INITIAL_METADATA, 'Unsupported installation lock metadata.');
 
         $payload = [
             'installed_at' => now()->toIso8601String(),
             'version' => 2,
         ];
 
-        foreach ($allowedMetadata as $key) {
+        foreach (self::INITIAL_METADATA as $key) {
             if (array_key_exists($key, $metadata)) {
                 $payload[$key] = $metadata[$key];
             }
+        }
+
+        $this->writePayload($payload);
+    }
+
+    /**
+     * @param  array<string, int|string>  $changes
+     * @return array<string, mixed>
+     */
+    public function updateMetadata(array $changes): array
+    {
+        $this->assertAllowedMetadata(
+            $changes,
+            self::MUTABLE_METADATA,
+            'Unsupported installation lock metadata update.',
+        );
+
+        $payload = $this->details();
+
+        if ($payload === null) {
+            throw new RuntimeException('Installation lock metadata is unavailable.');
+        }
+
+        foreach ($changes as $key => $value) {
+            $payload[$key] = $value;
+        }
+
+        $this->writePayload($payload);
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, int|string>  $metadata
+     * @param  list<string>  $allowedMetadata
+     */
+    private function assertAllowedMetadata(array $metadata, array $allowedMetadata, string $message): void
+    {
+        foreach (array_keys($metadata) as $key) {
+            if (! in_array($key, $allowedMetadata, true)) {
+                throw new InvalidArgumentException($message);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function writePayload(array $payload): void
+    {
+        $directory = dirname($this->lockPath);
+
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            throw new RuntimeException('Unable to create installation state directory.');
         }
 
         $encoded = json_encode(
