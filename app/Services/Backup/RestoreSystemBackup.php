@@ -125,6 +125,8 @@ final class RestoreSystemBackup
             $this->cleanupPath($safetyBundlePath);
             $this->cleanupPath($safetyMetadataPath);
             $this->cleanupPath($this->uploadedBundlePath($uploadId));
+            $this->cleanupEmptyDirectory(dirname($stagingRoot));
+            $this->cleanupEmptyDirectory(dirname($safetyBundlePath));
         } catch (Throwable $exception) {
             if ($databaseCommitted) {
                 $this->markRecoveryRequired();
@@ -588,6 +590,22 @@ final class RestoreSystemBackup
         }
 
         @rmdir($path);
+    }
+
+    private function cleanupEmptyDirectory(string $path): void
+    {
+        if (! is_dir($path) || is_link($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+        if ($items === false) {
+            return;
+        }
+
+        if (array_values(array_diff($items, ['.', '..'])) === []) {
+            @rmdir($path);
+        }
     }
 
     private function digestMismatch(): BackupException
