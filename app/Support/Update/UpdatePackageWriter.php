@@ -4,6 +4,7 @@ namespace App\Support\Update;
 
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateManifest;
+use Closure;
 
 final class UpdatePackageWriter
 {
@@ -27,7 +28,7 @@ final class UpdatePackageWriter
     /**
      * @param  resource  $output
      * @param  array<string, mixed>  $manifestFields
-     * @param  list<array{path:string,stream:resource,media_type:string}>  $entries
+     * @param  list<array{path:string,stream:resource|Closure(): resource,media_type:string}>  $entries
      */
     public function write($output, array $manifestFields, array $entries): UpdateManifest
     {
@@ -57,33 +58,33 @@ final class UpdatePackageWriter
                 throw $this->invalidPackage();
             }
             $seen[$path] = true;
-            $this->assertStream($stream);
-            $this->rewindStream($stream);
+            $item = $this->withStream($stream, function ($stream) use ($path, $mediaType): array {
+                $hash = hash_init('sha256');
+                $size = 0;
+                while (! feof($stream)) {
+                    $chunk = fread($stream, $this->limits['chunk_bytes']);
+                    if ($chunk === false) {
+                        throw $this->invalidPackage();
+                    }
+                    if ($chunk === '') {
+                        break;
+                    }
 
-            $hash = hash_init('sha256');
-            $size = 0;
-            while (! feof($stream)) {
-                $chunk = fread($stream, $this->limits['chunk_bytes']);
-                if ($chunk === false) {
-                    throw $this->invalidPackage();
-                }
-                if ($chunk === '') {
-                    break;
+                    $size += strlen($chunk);
+                    if ($size > $this->limits['max_entry_bytes']) {
+                        throw $this->invalidPackage();
+                    }
+                    hash_update($hash, $chunk);
                 }
 
-                $size += strlen($chunk);
-                if ($size > $this->limits['max_entry_bytes']) {
-                    throw $this->invalidPackage();
-                }
-                hash_update($hash, $chunk);
-            }
-
-            $metadata[] = [
-                'path' => $path,
-                'size' => $size,
-                'sha256' => hash_final($hash),
-                'media_type' => $mediaType,
-            ];
+                return [
+                    'path' => $path,
+                    'size' => $size,
+                    'sha256' => hash_final($hash),
+                    'media_type' => $mediaType,
+                ];
+            });
+            $metadata[] = $item;
         }
 
         $paths = array_column($metadata, 'path');
@@ -99,8 +100,9 @@ final class UpdatePackageWriter
             hash_update($contentHash, pack('N', strlen($metadataJson)).$metadataJson);
 
             $stream = $entries[$index]['stream'];
-            $this->rewindStream($stream);
-            $this->hashStream($stream, $contentHash);
+            $this->withStream($stream, function ($input) use ($contentHash): void {
+                $this->hashStream($input, $contentHash);
+            });
         }
 
         $manifest = UpdateManifest::fromArray([
@@ -136,22 +138,75 @@ final class UpdatePackageWriter
             $this->writeAll($output, UpdatePackageFormat::packUint64($item['size']));
 
             $stream = $entries[$index]['stream'];
-            $this->rewindStream($stream);
-            while (! feof($stream)) {
-                $chunk = fread($stream, $this->limits['chunk_bytes']);
-                if ($chunk === false) {
-                    throw $this->invalidPackage();
+            $this->withStream($stream, function ($stream) use ($output): void {
+                while (! feof($stream)) {
+                    $chunk = fread($stream, $this->limits['chunk_bytes']);
+                    if ($chunk === false) {
+                        throw $this->invalidPackage();
+                    }
+                    if ($chunk === '') {
+                        break;
+                    }
+                    $this->writeAll($output, $chunk);
                 }
-                if ($chunk === '') {
-                    break;
-                }
-                $this->writeAll($output, $chunk);
-            }
+            });
         }
 
         $this->rewindStream($output);
 
         return $manifest;
+    }
+
+    /**
+     * @param  resource  $output
+     * @param  array<string, mixed>  $manifestFields
+     * @param  list<array{path:string,source_path:string,media_type:string}>  $files
+     */
+    public function writeFiles($output, array $manifestFields, array $files): UpdateManifest
+    {
+        $entries = [];
+        foreach ($files as $file) {
+            $entries[] = [
+                'path' => $file['path'],
+                'media_type' => $file['media_type'],
+                'stream' => function () use ($file) {
+                    if (is_link($file['source_path']) || ! is_file($file['source_path'])) {
+                        throw $this->invalidPackage();
+                    }
+                    $stream = @fopen($file['source_path'], 'rb');
+                    if ($stream === false) {
+                        throw $this->invalidPackage();
+                    }
+
+                    return $stream;
+                },
+            ];
+        }
+
+        return $this->write($output, $manifestFields, $entries);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  resource|Closure(): resource  $source
+     * @param  callable(resource): T  $consume
+     * @return T
+     */
+    private function withStream(mixed $source, callable $consume): mixed
+    {
+        $owned = $source instanceof Closure;
+        $stream = $owned ? $source() : $source;
+        try {
+            $this->assertStream($stream);
+            $this->rewindStream($stream);
+
+            return $consume($stream);
+        } finally {
+            if ($owned && is_resource($stream)) {
+                fclose($stream);
+            }
+        }
     }
 
     /** @param resource $stream */

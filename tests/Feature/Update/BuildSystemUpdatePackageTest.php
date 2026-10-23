@@ -7,6 +7,7 @@ use App\Services\Update\UpdateException;
 use App\Support\Update\UpdatePackageFormat;
 use App\Support\Update\UpdatePackageReader;
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class BuildSystemUpdatePackageTest extends TestCase
@@ -83,6 +84,26 @@ class BuildSystemUpdatePackageTest extends TestCase
         ]];
         $this->assertSame(hash('sha256', UpdatePackageFormat::canonicalMetadataJson($migration)), $manifest['migration_tree_sha256']);
         $this->assertFileDoesNotExist($this->root.'/first.seoupdate.tmp');
+    }
+
+    public function test_cli_builds_with_explicit_source_metadata_and_reproducible_timestamp(): void
+    {
+        $output = $this->root.'/cli.seoupdate';
+        $process = new Process([
+            PHP_BINARY, base_path('scripts/release/build-update-package.php'),
+            $this->release, $output, '0.1.0-alpha.1', str_repeat('1', 64), str_repeat('2', 64), 'development',
+        ], base_path(), ['SOURCE_DATE_EPOCH' => '0']);
+        $process->run();
+        $this->assertTrue($process->isSuccessful(), $process->getErrorOutput());
+        $stream = fopen($output, 'rb');
+        $this->assertIsResource($stream);
+        try {
+            $manifest = $this->app->make(UpdatePackageReader::class)->read($stream)->toArray();
+            $this->assertSame('1970-01-01T00:00:00Z', $manifest['created_at_utc']);
+            $this->assertSame(['0.1.0-alpha.1'], $manifest['allowed_source_product_versions']);
+        } finally {
+            fclose($stream);
+        }
     }
 
     public function test_rejects_dirty_release_and_preserves_existing_output(): void
