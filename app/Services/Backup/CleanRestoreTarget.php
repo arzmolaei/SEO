@@ -20,6 +20,19 @@ final class CleanRestoreTarget
 
     public function assertReady(string $uploadId): void
     {
+        $this->assertReadyState($uploadId, false, null);
+    }
+
+    public function assertReadyForRestore(string $uploadId, LifecycleMutexHandle $ownership): void
+    {
+        $this->assertReadyState($uploadId, true, $ownership);
+    }
+
+    private function assertReadyState(
+        string $uploadId,
+        bool $verifiedRequired,
+        ?LifecycleMutexHandle $ownership,
+    ): void {
         if (preg_match('/\A[a-f0-9]{32}\z/', $uploadId) !== 1) {
             throw $this->notClean();
         }
@@ -36,7 +49,15 @@ final class CleanRestoreTarget
         }
 
         $state = $this->journal->state();
-        if (
+        if ($verifiedRequired) {
+            if (
+                $state === null
+                || ($state['phase'] ?? null) !== 'verified'
+                || ($state['upload_id'] ?? null) !== $uploadId
+            ) {
+                throw $this->notClean();
+            }
+        } elseif (
             $state !== null
             && (
                 ($state['phase'] ?? null) !== 'uploaded'
@@ -71,6 +92,24 @@ final class CleanRestoreTarget
         }
 
         $this->assertDurableRootsEmpty();
+
+        if ($ownership instanceof LifecycleMutexHandle) {
+            try {
+                $ownership->assertActive();
+                if ($ownership->operation() !== 'restore') {
+                    throw $this->notClean();
+                }
+            } catch (Throwable $exception) {
+                if ($exception instanceof BackupException) {
+                    throw $exception;
+                }
+
+                throw $this->notClean();
+            }
+
+            return;
+        }
+
         $this->assertNoOtherLifecycleOperation();
     }
 
