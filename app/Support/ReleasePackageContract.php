@@ -13,6 +13,7 @@ final class ReleasePackageContract
         'VERSION',
         'artisan',
         'bootstrap/app.php',
+        'bootstrap/runtime-release.php',
         'vendor/autoload.php',
         'public/build/manifest.json',
         'public/fonts/open/vazirmatn/Vazirmatn[wght].woff2',

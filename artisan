@@ -6,12 +6,27 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
-// Register the Composer autoloader...
-require __DIR__.'/vendor/autoload.php';
+$installationRoot = __DIR__;
+require_once $installationRoot.'/bootstrap/runtime-release.php';
 
-// Bootstrap Laravel and handle the command...
-/** @var Application $app */
-$app = require_once __DIR__.'/bootstrap/app.php';
+try {
+    $release = (new SeoOsRuntimeReleaseLocator($installationRoot))->resolve();
+
+    if (! defined('SEO_OS_INSTALLATION_ROOT')) {
+        define('SEO_OS_INSTALLATION_ROOT', $installationRoot);
+    }
+
+    // Register the selected release Composer autoloader...
+    require $release['release_root'].'/vendor/autoload.php';
+
+    // Bootstrap the selected Laravel release...
+    /** @var Application $app */
+    $app = require_once $release['release_root'].'/bootstrap/app.php';
+} catch (Throwable) {
+    fwrite(STDERR, "Application update recovery is required.\n");
+
+    exit(1);
+}
 
 $status = $app->handleCommand(new ArgvInput);
 
