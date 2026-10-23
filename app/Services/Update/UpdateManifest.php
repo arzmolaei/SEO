@@ -135,7 +135,10 @@ final class UpdateManifest
         }
     }
 
-    /** @param array<string, mixed> $value @param list<string> $expected */
+    /**
+     * @param  array<string, mixed>  $value
+     * @param  list<string>  $expected
+     */
     private static function assertExactKeys(array $value, array $expected): void
     {
         $actual = array_keys($value);

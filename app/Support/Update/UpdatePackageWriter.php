@@ -44,11 +44,11 @@ final class UpdatePackageWriter
         $metadata = [];
         $seen = [];
         foreach ($entries as $entry) {
-            $path = $entry['path'] ?? null;
-            $mediaType = $entry['media_type'] ?? null;
-            $stream = $entry['stream'] ?? null;
+            $path = $entry['path'];
+            $mediaType = $entry['media_type'];
+            $stream = $entry['stream'];
 
-            if (! is_string($path) || ! is_string($mediaType) || trim($mediaType) === '') {
+            if (trim($mediaType) === '') {
                 throw $this->invalidPackage();
             }
 
@@ -162,7 +162,7 @@ final class UpdatePackageWriter
         }
 
         $metadata = stream_get_meta_data($stream);
-        if (($metadata['seekable'] ?? false) !== true) {
+        if ($metadata['seekable'] !== true) {
             throw $this->invalidPackage();
         }
     }
