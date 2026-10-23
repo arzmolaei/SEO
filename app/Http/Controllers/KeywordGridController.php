@@ -50,6 +50,7 @@ class KeywordGridController extends Controller
             'savedViews' => $savedViews->map(fn (SavedKeywordView $view): array => $this->serializeView($view))->values(),
             'activeView' => $activeView === null ? null : $this->serializeView($activeView),
             'intelligence' => $this->queryIntelligence->handle($user, $project, $request->query()),
+            'canExport' => $this->policy->export($user, $project),
         ]);
     }
 
