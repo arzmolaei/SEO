@@ -75,7 +75,7 @@ jobs:
 
           path.write_text(text)
           PY
-          npx oxfmt --write resources/js/pages/projects/keywords.tsx resources/js/types/global.d.ts
+          npx vp check --fix resources/js/pages/projects/keywords.tsx resources/js/types/global.d.ts
       - name: Verify frontend and focused export behavior
         run: |
           php artisan wayfinder:generate --with-form
