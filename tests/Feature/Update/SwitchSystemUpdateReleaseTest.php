@@ -87,7 +87,7 @@ class SwitchSystemUpdateReleaseTest extends TestCase
 
     public function test_switch_activates_exact_target_and_does_not_run_migrations_in_source_request(): void
     {
-        $beforeMigrations = DB::table('migrations')->orderBy('id')->get(['migration', 'batch'])->all();
+        $beforeMigrations = $this->migrationHistory();
 
         $result = $this->app->make(SwitchSystemUpdateRelease::class)->handle($this->packageDigest);
 
@@ -103,7 +103,7 @@ class SwitchSystemUpdateReleaseTest extends TestCase
         $this->assertIsArray($state);
         $this->assertSame('target_active', $state['phase']);
         $this->assertFalse($state['migration_started'] ?? true);
-        $this->assertSame($beforeMigrations, DB::table('migrations')->orderBy('id')->get(['migration', 'batch'])->all());
+        $this->assertSame($beforeMigrations, $this->migrationHistory());
     }
 
     public function test_switch_rejects_package_changed_after_staging_before_pointer_mutation(): void
@@ -195,5 +195,18 @@ class SwitchSystemUpdateReleaseTest extends TestCase
             'launcher_schema' => 'seo-launcher/1',
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         @chmod($slot.'/release.json', 0600);
+    }
+
+    /** @return list<array{migration: string, batch: int}> */
+    private function migrationHistory(): array
+    {
+        return DB::table('migrations')
+            ->orderBy('id')
+            ->get(['migration', 'batch'])
+            ->map(static fn (object $row): array => [
+                'migration' => (string) $row->migration,
+                'batch' => (int) $row->batch,
+            ])
+            ->all();
     }
 }
