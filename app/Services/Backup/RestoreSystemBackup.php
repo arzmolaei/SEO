@@ -494,8 +494,8 @@ final class RestoreSystemBackup
     }
 
     /**
-     * @param resource $source
-     * @param resource $target
+     * @param  resource  $source
+     * @param  resource  $target
      */
     private function copyStream($source, $target): void
     {
