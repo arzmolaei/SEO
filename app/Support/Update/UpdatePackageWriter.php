@@ -25,9 +25,9 @@ final class UpdatePackageWriter
     }
 
     /**
-     * @param resource $output
-     * @param array<string, mixed> $manifestFields
-     * @param list<array{path:string,stream:resource,media_type:string}> $entries
+     * @param  resource  $output
+     * @param  array<string, mixed>  $manifestFields
+     * @param  list<array{path:string,stream:resource,media_type:string}>  $entries
      */
     public function write($output, array $manifestFields, array $entries): UpdateManifest
     {
@@ -175,7 +175,7 @@ final class UpdatePackageWriter
         }
     }
 
-    /** @param resource $stream */
+    /** @param resource $stream @param \HashContext $hash */
     private function hashStream($stream, \HashContext $hash): void
     {
         while (! feof($stream)) {
