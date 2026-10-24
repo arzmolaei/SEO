@@ -27,6 +27,11 @@ final class ActiveReleasePointer
         $this->releaseRoot = $releaseRoot ?? $this->installationRoot.'/storage/app/lifecycle/update/releases';
     }
 
+    public function installationRoot(): string
+    {
+        return $this->installationRoot;
+    }
+
     public function activateSlot(string $releaseId, string $version, string $packageDigest): void
     {
         $this->assertReleaseId($releaseId);

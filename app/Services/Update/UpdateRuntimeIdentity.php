@@ -11,16 +11,17 @@ final class UpdateRuntimeIdentity
 {
     public function __construct(private readonly InstallationState $installationState) {}
 
-    /** @return array{runtime_key_sha256:string,environment_sha256:string,database_configuration_sha256:string,installation_identity_sha256:string} */
+    /** @return array<string, string> */
     public function capture(): array
     {
         try {
             $metadata = $this->installationState->details();
             $key = config('app.key');
+            $cipher = config('app.cipher');
             $environment = app()->environmentFilePath();
             $configuration = DB::connection()->getConfig();
             if (
-                $metadata === null || ! is_string($key) || $key === ''
+                $metadata === null || ! is_string($key) || $key === '' || ! is_string($cipher) || $cipher === ''
                 || ! is_array($configuration) || is_link($environment) || ! is_file($environment)
             ) {
                 throw $this->invalidState();
@@ -34,6 +35,7 @@ final class UpdateRuntimeIdentity
 
             return [
                 'runtime_key_sha256' => hash('sha256', $key),
+                'crypto_configuration_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['cipher' => $cipher, 'key_sha256' => hash('sha256', $key)])),
                 'environment_sha256' => $environmentDigest,
                 'database_configuration_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson($configuration)),
                 'installation_identity_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson($metadata)),
