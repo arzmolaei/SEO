@@ -296,9 +296,10 @@ PHP);
         }
 
         $resultPath = $this->directory.'/recovery-result-'.bin2hex(random_bytes(6)).'.json';
-        $process = new Process([PHP_BINARY, $runner, $this->stableRoot, $resultPath], $this->stableRoot, [
-            'APP_ENV' => 'testing',
-        ]);
+        // A real release process must not inherit this test runner's ambient
+        // APP_KEY/DB_* (Dotenv never overrides existing variables). Pin its
+        // environment to exactly what the stable installation .env declares.
+        $process = new Process([PHP_BINARY, $runner, $this->stableRoot, $resultPath], $this->stableRoot, $this->stableEnvironment());
         $process->setTimeout(60);
         $exitCode = $process->run();
         $this->assertSame(0, $exitCode, $process->getErrorOutput()."\n".$process->getOutput());
@@ -307,6 +308,23 @@ PHP);
         $this->assertIsArray($decoded);
 
         return $decoded;
+    }
+
+    /** @return array<string, string> */
+    private function stableEnvironment(): array
+    {
+        $environment = [];
+        foreach (preg_split('/\R/', trim(File::get($this->stableRoot.'/.env'))) ?: [] as $line) {
+            if ($line === '' || ! str_contains($line, '=')) {
+                continue;
+            }
+
+            [$name, $value] = explode('=', $line, 2);
+            $environment[$name] = $value;
+        }
+        $this->assertArrayHasKey('APP_KEY', $environment);
+
+        return $environment;
     }
 
     private function buildRuntimeFixture(string $destination, string $version, string $asset): void
