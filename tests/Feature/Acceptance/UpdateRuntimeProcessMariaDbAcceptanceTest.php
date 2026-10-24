@@ -252,6 +252,7 @@ use App\Services\Update\RecoverInterruptedUpdate;
 use Illuminate\Contracts\Console\Kernel;
 
 $root = $argv[1] ?? '';
+$resultPath = $argv[2] ?? '';
 require_once $root.'/bootstrap/runtime-release.php';
 $release = (new SeoOsRuntimeReleaseLocator($root))->resolve();
 define('SEO_OS_INSTALLATION_ROOT', $root);
@@ -259,22 +260,24 @@ require $release['release_root'].'/vendor/autoload.php';
 $app = require $release['release_root'].'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 $result = $app->make(RecoverInterruptedUpdate::class)->handle();
-echo json_encode([
+file_put_contents($resultPath, json_encode([
     'pid' => getmypid(),
     'base_path' => base_path(),
     'release' => $release,
     'result' => $result,
-], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
 PHP);
         }
 
-        $process = new Process([PHP_BINARY, $runner, $this->stableRoot], $this->stableRoot, [
+        $resultPath = $this->directory.'/recovery-result-'.bin2hex(random_bytes(6)).'.json';
+        $process = new Process([PHP_BINARY, $runner, $this->stableRoot, $resultPath], $this->stableRoot, [
             'APP_ENV' => 'testing',
         ]);
         $process->setTimeout(60);
         $exitCode = $process->run();
         $this->assertSame(0, $exitCode, $process->getErrorOutput()."\n".$process->getOutput());
-        $decoded = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertFileExists($resultPath);
+        $decoded = json_decode(File::get($resultPath), true, flags: JSON_THROW_ON_ERROR);
         $this->assertIsArray($decoded);
 
         return $decoded;
