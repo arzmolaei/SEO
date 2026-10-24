@@ -63,7 +63,7 @@ class UpdateAuthorizationTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($owner)
-            ->get('/settings/update')
+            ->getJson('/settings/update')
             ->assertOk()
             ->assertJson([
                 'current_product_version' => (new ProductVersion)->requireDistributable(),

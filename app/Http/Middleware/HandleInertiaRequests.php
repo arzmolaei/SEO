@@ -70,6 +70,7 @@ class HandleInertiaRequests extends Middleware
             'systemBackup' => [
                 'canManage' => $canManageSystemBackup,
             ],
+            'systemUpdate' => ['canManage' => $canManageSystemBackup],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
