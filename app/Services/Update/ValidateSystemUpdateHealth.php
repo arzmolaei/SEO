@@ -110,7 +110,7 @@ final class ValidateSystemUpdateHealth
         }
         $rawKey = str_starts_with($key, 'base64:') ? base64_decode(substr($key, 7), true) : $key;
         $encrypter = app('encrypter');
-        if (! is_string($rawKey) || ! $encrypter instanceof Encrypter || ! hash_equals($rawKey, $encrypter->getKey())) {
+        if (! is_string($rawKey) || ! hash_equals($rawKey, $encrypter->getKey())) {
             return false;
         }
         $cipher = config('app.cipher');

@@ -7,10 +7,12 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\ApplicationSchemaFingerprint;
+use App\Services\Backup\CaptureSystemState;
 use App\Services\Backup\RestoreJournal;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateRuntimeIdentity;
 use App\Support\InstallationState;
+use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -22,6 +24,8 @@ use Tests\TestCase;
 abstract class UpdateTargetTestCase extends TestCase
 {
     use RefreshDatabase;
+
+    protected bool $withSafetySnapshot = false;
 
     protected string $directory;
 
@@ -94,6 +98,10 @@ abstract class UpdateTargetTestCase extends TestCase
             'product_version' => '0.1.0-alpha.2', 'package_digest_sha256' => str_repeat('d', 64),
             'launcher_schema' => 'seo-launcher/1',
         ], JSON_THROW_ON_ERROR));
+        $this->app->setBasePath($this->stableRoot);
+        if ($this->withSafetySnapshot) {
+            $this->captureSourceSafety();
+        }
         $this->pointer->activateSlot('target-probe', '0.1.0-alpha.2', str_repeat('d', 64));
         $this->evidence = [
             ...$this->app->make(UpdateRuntimeIdentity::class)->capture(),
@@ -118,5 +126,38 @@ abstract class UpdateTargetTestCase extends TestCase
         Schema::dropIfExists('unrecognized_probe');
         File::deleteDirectory($this->directory);
         parent::tearDown();
+    }
+
+    private function captureSourceSafety(): void
+    {
+        $safety = $this->stableRoot.'/storage/app/lifecycle/update/safety';
+        $uploads = $this->stableRoot.'/storage/app/lifecycle/update/uploads';
+        $private = $this->stableRoot.'/storage/app/private/uploads';
+        $public = $this->stableRoot.'/storage/app/public/uploads';
+        foreach ([$safety, $uploads, $private, $public] as $path) {
+            File::ensureDirectoryExists($path, 0700);
+        }
+        config([
+            'backup.lifecycle_mutex_path' => $this->stableRoot.'/storage/app/lifecycle/lifecycle.lock',
+            'backup.durable_file_roots' => ['storage/app/private/uploads' => $private, 'storage/app/public/uploads' => $public],
+            'update.safety_path' => $safety,
+            'update.upload_path' => $uploads,
+            'update.retention_path' => $this->stableRoot.'/storage/app/lifecycle/update/last-complete.json',
+        ]);
+        File::put($private.'/source.txt', 'source durable content');
+        $ownership = (new LifecycleMutex)->acquire('update-test-snapshot');
+        try {
+            $captured = $this->app->make(CaptureSystemState::class)->handle($ownership);
+            try {
+                $captured->rewind();
+                File::put($safety.'/'.str_repeat('c', 32).'.seobak', stream_get_contents($captured->stream()));
+            } finally {
+                $captured->close();
+            }
+            File::put($safety.'/'.str_repeat('c', 32).'.json', json_encode((new InstallationState)->details(), JSON_THROW_ON_ERROR));
+            File::put($uploads.'/'.str_repeat('c', 32).'.seoupdate', 'verified fixture upload');
+        } finally {
+            $ownership->release();
+        }
     }
 }
