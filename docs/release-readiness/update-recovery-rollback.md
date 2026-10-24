@@ -25,8 +25,8 @@ All values below were read from GitHub on 2026-10-24.
 - Exact-head PR CI: workflow `CI` run `40074249167` (pull_request) and `40074245436` (push), both success; workflow `Update Rollback MariaDB` run `40074249250` (pull_request) and `40074245432` (push), both success.
 - PR #8 merged into `main` at `2026-10-24T07:29:14Z` as `43342c667859d68a2bfe62b1fb2258aafedb6a5c`.
 - Independent post-merge `main` CI at that merge commit:
-  - workflow `CI` run `40074320817`: success across `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB;
-  - workflow `Update Rollback MariaDB` run `40074320854`: success (connected exact-suffix rollback acceptance and connected fresh-runtime recovery acceptance, both with `--fail-on-skipped`).
+    - workflow `CI` run `40074320817`: success across `verify`, PHP 8.4, PHP 8.5, Self-host Installer MariaDB, Persian Export MariaDB and Backup/Restore MariaDB;
+    - workflow `Update Rollback MariaDB` run `40074320854`: success (connected exact-suffix rollback acceptance and connected fresh-runtime recovery acceptance, both with `--fail-on-skipped`).
 
 Deviation from the plan text: the Update/Rollback MariaDB gate is a separate workflow file (`.github/workflows/update-rollback-mariadb.yml`), not a seventh job inside `ci.yml`. It runs on `main`, `feature/**` and pull requests, so it is a permanent gate; branch protection must require it explicitly if merge protection is configured.
 
