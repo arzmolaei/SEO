@@ -41,6 +41,11 @@ final class SeoOsUpdateMaintenanceGate
             return false;
         }
 
+        return ! self::isRecoveryHttpPath($path);
+    }
+
+    public static function isRecoveryHttpPath(string $path): bool
+    {
         $path = parse_url($path, PHP_URL_PATH) ?: '/';
         foreach ([
             '/settings/update',
@@ -51,11 +56,11 @@ final class SeoOsUpdateMaintenanceGate
             '/two-factor-challenge',
         ] as $allowed) {
             if ($path === $allowed || ($allowed === '/settings/update' && str_starts_with($path, '/settings/update/'))) {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     public function shouldBlockCli(): bool

@@ -3,12 +3,17 @@
 namespace Tests\Feature\Acceptance;
 
 use App\Services\Update\UpdateException;
+use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateMigrationRunner;
+use App\Services\Update\UpdateQuiescence;
+use App\Support\Lifecycle\LifecycleMutex;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Queue;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -162,6 +167,60 @@ PHPCHILD);
         }
         $this->assertSame(1, DB::table('cache')->where('key', 'process-probe')->value('expiration'));
         $this->assertFileExists($this->directory.'/attempt.json');
+    }
+
+    public function test_queue_admission_commits_reservations_before_releasing_lifecycle_ownership_on_mariadb(): void
+    {
+        config([
+            'backup.lifecycle_mutex_path' => $this->directory.'/lifecycle.lock',
+            'queue.default' => 'database',
+            'queue.connections.database.connection' => 'update_migrations',
+            'database.connections.update_migrations_observer' => config('database.connections.update_migrations'),
+        ]);
+        $this->app->instance(UpdateJournal::class, new UpdateJournal($this->directory.'/update-state.json'));
+        $observer = DB::connection('update_migrations_observer');
+        try {
+            $queue = Queue::connection('database');
+            $id = $queue->pushRaw('{"job":"connected-probe"}');
+            $ownership = (new LifecycleMutex)->acquire('update');
+            try {
+                $this->app->make(UpdateQuiescence::class)->assertReady();
+                $this->assertTrue($queue->pop() === null, 'No reservation may cross exclusive safety capture.');
+                $this->assertNull($observer->table('jobs')->where('id', $id)->value('reserved_at'));
+            } finally {
+                $ownership->release();
+            }
+            DB::beginTransaction();
+            try {
+                try {
+                    $queue->pop();
+                    $this->fail('An outer transaction could hide reservation commit from safety capture.');
+                } catch (RuntimeException $exception) {
+                    $this->assertSame('Queue reservation requires an independent transaction.', $exception->getMessage());
+                }
+                $this->assertNull($observer->table('jobs')->where('id', $id)->value('reserved_at'));
+            } finally {
+                DB::rollBack();
+            }
+            $job = $queue->pop();
+            $this->assertNotNull($job);
+            $ownership = (new LifecycleMutex)->acquire('update');
+            try {
+                $this->assertNotNull($observer->table('jobs')->where('id', $id)->value('reserved_at'));
+                try {
+                    $this->app->make(UpdateQuiescence::class)->assertReady();
+                    $this->fail('A committed reserved job must block safety capture.');
+                } catch (UpdateException $exception) {
+                    $this->assertSame('update_quiescence_required', $exception->codeName());
+                }
+            } finally {
+                $ownership->release();
+            }
+            $job->delete();
+            $this->app->make(UpdateQuiescence::class)->assertReady();
+        } finally {
+            DB::purge('update_migrations_observer');
+        }
     }
 
     private function writeMigration(string $name, string $up, string $down, bool $fail = false): void

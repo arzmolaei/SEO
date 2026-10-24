@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureApplicationInstalled;
+use App\Http\Middleware\EnsureLifecycleRequestAdmission;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(
             prepend: [
+                EnsureLifecycleRequestAdmission::class,
                 EnsureApplicationInstalled::class,
             ],
             append: [

@@ -123,4 +123,23 @@ class LifecycleMutexTest extends TestCase
         $this->expectExceptionMessage('Lifecycle mutex ownership is no longer active.');
         $handle->assertActive();
     }
+
+    public function test_shared_request_leases_coexist_and_exclude_lifecycle_mutation_until_all_are_released(): void
+    {
+        $mutex = new LifecycleMutex($this->path);
+        $first = $mutex->acquireReadLease();
+        $second = $mutex->acquireReadLease();
+        $first->release();
+        try {
+            $unexpected = $mutex->acquire('update');
+            $unexpected->release();
+            $this->fail('A remaining request lease must exclude destructive ownership.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Another lifecycle operation is already running.', $exception->getMessage());
+        } finally {
+            $second->release();
+        }
+        $ownership = $mutex->acquire('update');
+        $ownership->release();
+    }
 }
