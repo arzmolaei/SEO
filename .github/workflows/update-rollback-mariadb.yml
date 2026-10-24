@@ -64,4 +64,8 @@ jobs:
           php artisan key:generate --ansi
 
       - name: Run connected update rollback acceptance
-        run: php artisan test tests/Feature/Acceptance/UpdateRollbackMariaDbAcceptanceTest.php --fail-on-skipped
+        run: >-
+          php artisan test
+          tests/Feature/Acceptance/UpdateRollbackMariaDbAcceptanceTest.php
+          tests/Feature/Acceptance/UpdateRuntimeProcessMariaDbAcceptanceTest.php
+          --fail-on-skipped
