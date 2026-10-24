@@ -268,12 +268,25 @@ try {
         'result' => $result,
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
 } catch (Throwable $exception) {
+    $chain = [];
+    $cursor = $exception;
+    while ($cursor !== null) {
+        $chain[] = [
+            'class' => $cursor::class,
+            'message' => $cursor->getMessage(),
+            'code' => method_exists($cursor, 'codeName') ? $cursor->codeName() : null,
+            'file' => $cursor->getFile(),
+            'line' => $cursor->getLine(),
+        ];
+        $cursor = $cursor->getPrevious();
+    }
     $failure = [
         'error_class' => $exception::class,
         'error_message' => $exception->getMessage(),
         'error_code' => method_exists($exception, 'codeName') ? $exception->codeName() : null,
         'error_file' => $exception->getFile(),
         'error_line' => $exception->getLine(),
+        'chain' => $chain,
     ];
     @file_put_contents($resultPath, json_encode($failure, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
     fwrite(STDERR, json_encode($failure, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL);
