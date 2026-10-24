@@ -4,12 +4,15 @@ namespace Tests\Feature\Update;
 
 use App\Models\User;
 use App\Services\Backup\ApplicationSchemaFingerprint;
+use App\Services\Backup\CaptureSystemState;
 use App\Services\Update\ContinueSystemUpdate;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateMigrationRunner;
 use App\Services\Update\UpdateMigrationState;
 use App\Support\InstallationState;
+use App\Support\Lifecycle\LifecycleMutex;
+use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -50,6 +53,7 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
             'source_schema_fingerprint' => $this->app->make(ApplicationSchemaFingerprint::class)->forConnection(DB::connection()),
             'target_schema_fingerprint' => $targetSchema,
             'safety_snapshot_id' => str_repeat('c', 32),
+            'safety_snapshot_sha256' => hash_file('sha256', $this->safetyPath()),
             'lifecycle_mutex_path_sha256' => hash('sha256', (string) realpath((string) config('backup.lifecycle_mutex_path'))),
             'pre_update_migration_history_sha256' => $this->before->digestSha256,
             'pre_update_migration_state' => $this->before->toArray(),
@@ -222,6 +226,59 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         }
         $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
         $this->assertSame('recovery_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+    }
+
+    public function test_a_valid_foreign_snapshot_cannot_replace_this_updates_captured_bundle(): void
+    {
+        $details = (new InstallationState)->details();
+        $originalName = $this->owner->name;
+        (new InstallationState)->restoreRecoverySnapshot([...$details, 'installation_id' => str_repeat('e', 32)]);
+        $this->owner->update(['name' => 'foreign snapshot owner']);
+        $this->app->instance(ProductVersion::class, new ProductVersion($this->stableRoot.'/VERSION'));
+        $ownership = (new LifecycleMutex)->acquire('foreign-snapshot-fixture');
+        try {
+            $captured = $this->app->make(CaptureSystemState::class)->handle($ownership);
+            try {
+                $captured->rewind();
+                File::put($this->safetyPath(), stream_get_contents($captured->stream()));
+            } finally {
+                $captured->close();
+            }
+        } finally {
+            $ownership->release();
+            (new InstallationState)->restoreRecoverySnapshot($details);
+            $this->owner->update(['name' => $originalName]);
+            $this->app->forgetInstance(ProductVersion::class);
+        }
+        try {
+            $this->app->make(ContinueSystemUpdate::class)->handle();
+            $this->fail('A valid but foreign backup is not this update safety snapshot.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
+        $this->assertSame('recovery_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+    }
+
+    public function test_receipt_write_failure_after_metadata_update_retains_retryable_finalization(): void
+    {
+        $path = (string) config('update.retention_path');
+        symlink($this->directory.'/receipt-write-blocked', $path);
+        try {
+            try {
+                $this->app->make(ContinueSystemUpdate::class)->handle();
+                $this->fail('An unsafe receipt path must not be written through.');
+            } catch (UpdateException $exception) {
+                $this->assertSame('update_finalization_retry', $exception->codeName());
+            }
+            $this->assertSame('0.1.0-alpha.2', (new InstallationState)->details()['product_version']);
+            $this->assertSame('validating', $this->app->make(UpdateJournal::class)->state()['phase']);
+            $this->assertFileExists($this->uploadPath());
+        } finally {
+            unlink($path);
+        }
+        $this->assertSame('complete', $this->app->make(ContinueSystemUpdate::class)->handle()['status']);
+        $this->assertNull($this->app->make(UpdateJournal::class)->state());
     }
 
     private function writeState(array $state): void

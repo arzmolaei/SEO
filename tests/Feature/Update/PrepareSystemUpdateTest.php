@@ -172,6 +172,7 @@ class PrepareSystemUpdateTest extends TestCase
         $safetyBundle = $this->safetyRoot.'/'.$preview->uploadId.'.seobak';
         $safetyMetadata = $this->safetyRoot.'/'.$preview->uploadId.'.json';
         $this->assertFileExists($safetyBundle);
+        $this->assertSame(hash_file('sha256', $safetyBundle), $state['safety_snapshot_sha256'] ?? null);
         $this->assertFileExists($safetyMetadata);
         $this->assertGreaterThan(0, filesize($safetyBundle));
         $metadata = json_decode((string) File::get($safetyMetadata), true, flags: JSON_THROW_ON_ERROR);
