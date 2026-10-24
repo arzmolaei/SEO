@@ -257,6 +257,27 @@ class UpdateMigrationRunnerTest extends TestCase
         }
     }
 
+    public function test_deleted_data_only_migration_log_is_not_proof_of_a_completed_reverse_step(): void
+    {
+        DB::table('cache')->insert(['key' => 'history-proof', 'value' => 'retained', 'expiration' => 0]);
+        $up = "\\Illuminate\\Support\\Facades\\DB::table('cache')->where('key', 'history-proof')->increment('expiration');";
+        $down = "\\Illuminate\\Support\\Facades\\DB::table('cache')->where('key', 'history-proof')->decrement('expiration');";
+        $this->writeMigration('2099_01_01_000001_first', $up, $down);
+        $this->writeMigration('2099_01_01_000002_second', $up, $down);
+        $before = $this->runner->snapshot();
+        $after = $this->runner->runPending($before, static function (): void {});
+        DB::table('migrations')->where('migration', '2099_01_01_000002_second')->delete();
+        $drifted = $this->runner->snapshot();
+        try {
+            $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+            $this->fail('Deleted data-only history is not a durable completed down receipt.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertSame(2, DB::table('cache')->where('key', 'history-proof')->value('expiration'));
+        $this->assertSame($drifted->ran, $this->runner->snapshot()->ran);
+    }
+
     private function writeMigration(string $name, string $up, string $down): void
     {
         File::put($this->directory.'/'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { {$up} } public function down(): void { {$down} } };\n");
