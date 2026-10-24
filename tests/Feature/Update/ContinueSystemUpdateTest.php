@@ -258,6 +258,17 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         }
         $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
         $this->assertSame('recovery_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+        // Independently pin manifest identity even if a supplied digest matches
+        // the replacement file: metadata still belongs to the original install.
+        $this->evidence['safety_snapshot_sha256'] = hash_file('sha256', $this->safetyPath());
+        $this->writeState($this->evidence);
+        try {
+            $this->app->make(ContinueSystemUpdate::class)->handle();
+            $this->fail('Snapshot manifest identity must match recorded installation metadata.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
     }
 
     public function test_receipt_write_failure_after_metadata_update_retains_retryable_finalization(): void

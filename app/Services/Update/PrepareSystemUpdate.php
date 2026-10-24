@@ -146,11 +146,16 @@ final class PrepareSystemUpdate
             $uploadId,
             $details,
         );
+        $safetyDigest = hash_file('sha256', $safetyBundlePath);
+        if (! is_string($safetyDigest)) {
+            throw $this->invalidState();
+        }
         $migrationState = $this->migrationRunner->snapshot();
         $migrationHistoryDigest = $migrationState->digestSha256;
 
         $this->journal->transition('quiescing', 'snapshot_ready', [
             'safety_snapshot_id' => $uploadId,
+            'safety_snapshot_sha256' => $safetyDigest,
             'pre_update_migration_history_sha256' => $migrationHistoryDigest,
             'pre_update_migration_state' => $migrationState->toArray(),
         ]);

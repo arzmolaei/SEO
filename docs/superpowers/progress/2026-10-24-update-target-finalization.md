@@ -14,3 +14,11 @@ Base: active Update/Rollback branch at 1a016f93b6cb275cd3e95692f6d2a510ec7cdb52.
 ## Current boundary
 
 Starting source-identity capture tests. Target health/coordinator/controller continuation and Tasks 10–11/13 remain incomplete. Local execution environment disconnected; repository connector + exact-head CI remain available, and no local success is inferred.
+
+## Review corrections and downstream acceptance boundaries
+
+- Source identity RED c3dce4f / CI40058257165: four correct missing-evidence/API failures, 509 passing tests. Health RED59a286 / CI40058502209: sixteen missing validator failures, 513 passed. Cipher/legacy-ring RED190666 / CI40058942233: three reproduced false-positive health checks, 530 passed. Fixed by hashing effective prior keys and independently cross-decrypting current/legacy probes with the configured cipher and complete resolved key ring.
+- Continuation/checkpoint RED6dfac5 / CI40059321960: ten correct missing API failures, 533 passed. The first implementation passed both PHP backend suites; PHPStan identified a redundant nullable access after an earlier guard, corrected from its exact diagnostic.
+- Independent review requires pinning the exact captured safety bundle SHA-256 and validating its installation/owner identity, rather than accepting any valid same-version/schema bundle. It also requires a receipt-write failure after accepted health/version update to retain retryable validating state instead of entering recovery_required. Regression tests were committed before these corrections.
+- Before full Task10 acceptance, close the independently confirmed shorter-prefix gap in rollbackExactSuffix: without a completed-attempt marker, deleted DATA-ONLY migration history must not be inferred as a completed down merely because schema is unchanged. Exact caller-recorded remaining state is required unless durable completion evidence proves reconciliation.
+- Task10 must consume the exact safety digest, opt into queue preservation, and prove source encryption compatibility including legacy keys. Full cross-install Backup/Restore legacy-key behavior also needs coverage in final lifecycle acceptance; a healthy self-round-trip of only the active APP_KEY is insufficient evidence for older ciphertext.

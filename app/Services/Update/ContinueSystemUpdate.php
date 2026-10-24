@@ -50,6 +50,7 @@ final class ContinueSystemUpdate
                 return $this->result();
             }
             $this->quiescence->assertReady();
+            $healthAccepted = false;
             try {
                 if (($state['lifecycle_mutex_path_sha256'] ?? null) !== $ownership->pathFingerprint()) {
                     throw $this->recoveryRequired();
@@ -91,10 +92,14 @@ final class ContinueSystemUpdate
 
                     throw new UpdateException('update_health_failed', 'سلامت نسخه جدید تأیید نشد؛ بازیابی نسخه قبلی لازم است.');
                 }
+                $healthAccepted = true;
                 $this->installationState->updateMetadata(['product_version' => $this->productVersion->requireDistributable()]);
                 $this->writeCompletion($state);
                 $state = $this->journal->transition('validating', 'complete');
             } catch (UpdateException $exception) {
+                if ($healthAccepted) {
+                    throw $this->finalizationRetry($exception);
+                }
                 $code = in_array($exception->codeName(), ['update_health_failed', 'update_migration_failed'], true)
                     ? $exception->codeName() : 'update_recovery_required';
                 $this->recordFailure($code);
@@ -103,6 +108,9 @@ final class ContinueSystemUpdate
                 }
                 throw $this->recoveryRequired($exception);
             } catch (Throwable $exception) {
+                if ($healthAccepted) {
+                    throw $this->finalizationRetry($exception);
+                }
                 $this->recordFailure('update_recovery_required');
 
                 throw $this->recoveryRequired($exception);
@@ -125,7 +133,7 @@ final class ContinueSystemUpdate
             || ($current['product_version'] ?? null) !== $this->requiredString($state, 'target_product_version')
             || ($current['package_digest_sha256'] ?? null) !== $this->requiredString($state, 'package_digest_sha256')
             || ($current['release_root'] ?? null) !== realpath(base_path())
-            || $this->productVersion->requireDistributable() !== ($current['product_version'] ?? null)
+            || $this->productVersion->requireDistributable() !== $current['product_version']
         ) {
             throw $this->invalidState();
         }
@@ -151,6 +159,11 @@ final class ContinueSystemUpdate
         if (is_link($root) || is_link($bundle) || is_link($metadataPath) || ! is_file($bundle) || ! is_file($metadataPath)) {
             throw $this->recoveryRequired();
         }
+        $actualDigest = hash_file('sha256', $bundle);
+        $expectedDigest = $state['safety_snapshot_sha256'] ?? null;
+        if (! is_string($actualDigest) || ! is_string($expectedDigest) || ! hash_equals($expectedDigest, $actualDigest)) {
+            throw $this->recoveryRequired();
+        }
         $stream = @fopen($bundle, 'rb');
         if ($stream === false) {
             throw $this->recoveryRequired();
@@ -163,6 +176,10 @@ final class ContinueSystemUpdate
         }
         $metadata = $this->readPrivateJson($metadataPath);
         if (($metadata['product_version'] ?? null) !== ($state['source_product_version'] ?? null)) {
+            throw $this->recoveryRequired();
+        }
+        $manifestData = $manifest->toArray();
+        if (($manifestData['source_installation_id'] ?? null) !== ($metadata['installation_id'] ?? null) || ($manifestData['source_owner_user_id'] ?? null) !== ($metadata['owner_user_id'] ?? null)) {
             throw $this->recoveryRequired();
         }
         unset($metadata['product_version']);
@@ -316,6 +333,11 @@ final class ContinueSystemUpdate
     private function result(): array
     {
         return ['status' => 'complete', 'product_version' => $this->productVersion->requireDistributable()];
+    }
+
+    private function finalizationRetry(Throwable $previous): UpdateException
+    {
+        return new UpdateException('update_finalization_retry', 'سلامت نسخه جدید تأیید شده است؛ ثبت نهایی را دوباره ادامه دهید.', $previous);
     }
 
     private function invalidState(): UpdateException
