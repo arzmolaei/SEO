@@ -75,6 +75,9 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
             'installer.lock_path' => $this->stableRoot.'/storage/app/.installed',
             'app.key' => $appKey,
             'app.previous_keys' => [$previousKey],
+            'app.locale' => 'en',
+            'app.fallback_locale' => 'en',
+            'installer.public_registration' => false,
             'backup.lifecycle_mutex_path' => $this->stableRoot.'/storage/app/lifecycle/lifecycle.lock',
             'backup.durable_file_roots' => [
                 'storage/app/private/uploads' => $this->stableRoot.'/storage/app/private/uploads',
@@ -96,6 +99,8 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
             'APP_KEY='.$appKey,
             'APP_PREVIOUS_KEYS='.$previousKey,
             'APP_LOCALE=en',
+            'APP_FALLBACK_LOCALE=en',
+            'SELF_HOST_REGISTRATION=false',
             'DB_URL=(null)',
             'DB_CONNECTION=mysql',
             'DB_HOST='.$this->connectedValue('HOST'),
