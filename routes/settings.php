@@ -48,6 +48,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(EnsureSystemOwner::class)
         ->name('settings.update');
 
+    Route::get('settings/update/authorize', [SystemUpdateController::class, 'authorize'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class])
+        ->name('settings.update.authorize');
+
     Route::post('settings/update/verify', [SystemUpdateController::class, 'verify'])
         ->middleware([
             RequirePassword::class,
@@ -62,11 +66,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('settings.update.confirm');
 
     Route::post('settings/update/continue', [SystemUpdateController::class, 'continueUpdate'])
-        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-verify'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
         ->name('settings.update.continue');
 
     Route::post('settings/update/recover', [SystemUpdateController::class, 'recover'])
-        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-verify'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
         ->name('settings.update.recover');
 
     Route::put('settings/password', [SecurityController::class, 'update'])

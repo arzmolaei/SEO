@@ -11,7 +11,9 @@ use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\VerifyUpdatePackage;
 use App\Support\Lifecycle\ProductVersion;
+use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +39,7 @@ final class SystemUpdateController extends Controller
         $data = [
             'current_product_version' => $productVersion->requireDistributable(),
             'status' => $status,
-            'preview' => $status === 'verified' ? $this->safePreview($state['preview'] ?? null) : null,
+            'preview' => $this->safePreview($state['preview'] ?? null),
             'canContinue' => in_array($status, ['target_active', 'migrating', 'validating', 'complete'], true),
             'canRecover' => $bootstrapRecovery || in_array($status, ['rollback_required', 'migration_rollback', 'source_switch_pending', 'snapshot_restore_required'], true),
         ];
@@ -48,6 +50,11 @@ final class SystemUpdateController extends Controller
         $response->headers->add($this->privateHeaders());
 
         return $response;
+    }
+
+    public function authorize(): RedirectResponse
+    {
+        return redirect()->route('settings.update');
     }
 
     public function verify(Request $request, VerifyUpdatePackage $verifier): JsonResponse
@@ -121,19 +128,34 @@ final class SystemUpdateController extends Controller
         }
     }
 
-    public function continueUpdate(Request $request, ContinueSystemUpdate $continue): JsonResponse
-    {
-        return $this->performLifecycle($request, fn (): array => $continue->handle());
+    public function continueUpdate(
+        Request $request,
+        ContinueSystemUpdate $continue,
+        RuntimeReleaseAdmission $admission,
+    ): JsonResponse {
+        return $this->performLifecycle($request, $admission, fn (): array => $continue->handle());
     }
 
-    public function recover(Request $request, RecoverInterruptedUpdate $recover): JsonResponse
-    {
-        return $this->performLifecycle($request, fn (): array => $recover->handle());
+    public function recover(
+        Request $request,
+        RecoverInterruptedUpdate $recover,
+        RuntimeReleaseAdmission $admission,
+    ): JsonResponse {
+        return $this->performLifecycle($request, $admission, fn (): array => $recover->handle());
     }
 
     /** @param callable(): array<string, mixed> $operation */
-    private function performLifecycle(Request $request, callable $operation): JsonResponse
+    private function performLifecycle(Request $request, RuntimeReleaseAdmission $admission, callable $operation): JsonResponse
     {
+        try {
+            $admission->assertCurrent();
+        } catch (Throwable) {
+            return response()->json([
+                'code' => 'update_invalid_state',
+                'message' => 'درخواست باید از نسخه فعال برنامه دوباره ارسال شود.',
+            ], 409, $this->privateHeaders());
+        }
+
         try {
             $result = $operation();
             $loginRequired = ($result['status'] ?? null) === 'rolled_back';
