@@ -28,6 +28,10 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         parent::setUp();
         File::ensureDirectoryExists($this->targetRoot.'/database/migrations', 0700);
         File::ensureDirectoryExists($this->stableRoot.'/bootstrap/cache', 0700);
+        File::ensureDirectoryExists($this->stableRoot.'/vendor', 0700);
+        foreach (['bootstrap/app.php', 'bootstrap/runtime-release.php', 'vendor/autoload.php'] as $path) {
+            File::put($this->stableRoot.'/'.$path, 'source runtime fixture');
+        }
         // Source health must inspect the actual source assets, never target assets.
         File::put($this->stableRoot.'/public/build/manifest.json', json_encode([
             'resources/js/app.tsx' => ['file' => 'assets/source-hash.js', 'isEntry' => true],
@@ -198,6 +202,72 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         $this->assertRecoveryBlocked();
         $this->assertStringContainsString('locally-changed', File::get($this->stableRoot.'/.env'));
         $this->assertTrue(Schema::hasColumn('projects', 'recovery_probe_1'));
+    }
+
+    public function test_missing_source_autoloader_blocks_before_any_reverse_migration(): void
+    {
+        File::delete($this->stableRoot.'/vendor/autoload.php');
+        $this->assertRecoveryBlocked();
+        $this->assertTrue(Schema::hasColumn('projects', 'recovery_probe_1'));
+        $this->assertSame('target-probe', $this->pointer->current()['release_id']);
+    }
+
+    public function test_checkpoint_publication_failure_preserves_completed_down_evidence_for_retry(): void
+    {
+        $path = $this->targetRoot.'/database/migrations/2099_01_01_000002_second.php';
+        $block = $this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp';
+        $text = File::get($path);
+        File::put($path, str_replace("Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('recovery_probe_1'));", "Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('recovery_probe_1')); mkdir(".var_export($block, true).");", $text));
+        try {
+            $this->recover();
+            $this->fail('Checkpoint publication must fail at the injected interruption.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_retry', $exception->codeName());
+        }
+        $this->assertFalse(Schema::hasColumn('projects', 'recovery_probe_1'));
+        $this->assertTrue(Schema::hasColumn('projects', 'recovery_probe_0'));
+        $this->assertFileExists($this->stableRoot.'/storage/app/lifecycle/update/migration-attempt.json');
+        rmdir($block);
+        $this->assertSame('snapshot_restore_required', $this->recover()['status']);
+    }
+
+    public function test_publication_failure_after_source_pointer_switch_preserves_a_retryable_source_phase(): void
+    {
+        $before = \App\Services\Update\UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
+        $this->app->make(UpdateMigrationRunner::class)->rollbackExactSuffix($before, $this->evidence['migration_state']['applied_suffix']);
+        $this->evidence['phase'] = 'source_switch_pending';
+        $this->evidence['rollback_migration_state'] = $before->toArray();
+        $this->saveState();
+        $block = $this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp';
+        mkdir($block);
+        try {
+            $this->recover();
+            $this->fail('Publishing the post-switch phase must fail.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_retry', $exception->codeName());
+        }
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertSame('source_switch_pending', $this->app->make(UpdateJournal::class)->state()['phase']);
+        rmdir($block);
+        $this->bootSource();
+        $this->assertSame('rolled_back', $this->recover()['status']);
+    }
+
+    public function test_source_snapshot_staging_failure_is_retryable_without_losing_safety_evidence(): void
+    {
+        $this->recover();
+        $this->bootSource();
+        $block = $this->stableRoot.'/storage/app/lifecycle/update/recovery';
+        File::put($block, 'temporary filesystem obstruction');
+        try {
+            $this->recover();
+            $this->fail('Staging must fail before applying the protected snapshot.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_retry', $exception->codeName());
+        }
+        $this->assertSame('snapshot_restore_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+        File::delete($block);
+        $this->assertSame('rolled_back', $this->recover()['status']);
     }
 
     private function assertRecoveryBlocked(): void
