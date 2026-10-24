@@ -63,9 +63,14 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
 
-      - name: Run connected update rollback acceptance
+      - name: Run connected exact-suffix rollback acceptance
         run: >-
           php artisan test
           tests/Feature/Acceptance/UpdateRollbackMariaDbAcceptanceTest.php
+          --fail-on-skipped
+
+      - name: Run connected fresh-runtime recovery acceptance
+        run: >-
+          php artisan test
           tests/Feature/Acceptance/UpdateRuntimeProcessMariaDbAcceptanceTest.php
           --fail-on-skipped
