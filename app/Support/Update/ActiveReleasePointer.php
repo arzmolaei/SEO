@@ -79,7 +79,7 @@ final class ActiveReleasePointer
     /** @return array<string, mixed> */
     public function current(): array
     {
-        $launcher = dirname(__DIR__, 3).'/bootstrap/runtime-release.php';
+        $launcher = $this->installationRoot.'/bootstrap/runtime-release.php';
         if (! is_file($launcher)) {
             throw $this->invalidState();
         }
