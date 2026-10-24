@@ -27,7 +27,7 @@ class UpdateRuntimeIdentityTest extends TestCase
             'installer.lock_path' => $this->directory.'/.installed',
             'app.key' => 'base64:'.base64_encode(str_repeat('s', 32)),
         ]);
-        File::put($this->directory.'/.env', "APP_KEY=".config('app.key')."\nDB_PASSWORD=local-private-value\n");
+        File::put($this->directory.'/.env', 'APP_KEY='.config('app.key')."\nDB_PASSWORD=local-private-value\n");
         (new InstallationState)->markInstalled([
             'installer_schema_version' => 2,
             'product_version' => '0.1.0-alpha.1',
