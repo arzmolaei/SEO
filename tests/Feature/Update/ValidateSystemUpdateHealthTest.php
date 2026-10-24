@@ -20,8 +20,10 @@ class ValidateSystemUpdateHealthTest extends UpdateTargetTestCase
         $before = (new InstallationState)->details();
         $report = $this->app->make(ValidateSystemUpdateHealth::class)->handle($this->evidence);
         $this->assertInstanceOf(UpdateHealthReport::class, $report);
-        $this->assertTrue($report->healthy);
+        $this->assertTrue($report->healthy, implode(',', $report->failures));
         $this->assertSame([], $report->failures);
+        $legacy = (new Encrypter(str_repeat('p', 32), 'AES-256-CBC'))->encryptString('source two-factor secret');
+        $this->assertSame('source two-factor secret', app('encrypter')->decryptString($legacy));
         $this->assertSame($before, (new InstallationState)->details());
         $this->assertSame('source asset', File::get($this->stableRoot.'/public/build/assets/source-hash.js'));
         $this->assertReportIsSafe($report);
@@ -45,6 +47,9 @@ class ValidateSystemUpdateHealthTest extends UpdateTargetTestCase
             'invalid Vite manifest' => ['manifest', 'assets'],
             'storage rebound to slot' => ['storage', 'stable_storage'],
             'cached wrong encrypter' => ['encrypter', 'encryption'],
+            'cached wrong cipher with correct keys' => ['cached_cipher', 'encryption'],
+            'missing configured previous keys' => ['previous_keys', 'runtime_identity'],
+            'missing cached previous keys' => ['cached_previous_keys', 'encryption'],
             'owner no longer verified' => ['owner', 'owner'],
             'conflicting restore' => ['restore', 'lifecycle'],
         ];
@@ -68,6 +73,9 @@ class ValidateSystemUpdateHealthTest extends UpdateTargetTestCase
             'manifest' => File::put($this->targetRoot.'/public/build/manifest.json', '{invalid'),
             'storage' => $this->app->useStoragePath($this->targetRoot.'/storage'),
             'encrypter' => $this->replaceEncrypter(),
+            'cached_cipher' => $this->replaceEncrypter('AES-256-GCM', true),
+            'previous_keys' => config(['app.previous_keys' => []]),
+            'cached_previous_keys' => $this->replaceEncrypter('AES-256-CBC', false),
             'owner' => $this->owner->forceFill(['email_verified_at' => null])->save(),
             'restore' => $this->writeRestoreState(),
         };
@@ -77,9 +85,13 @@ class ValidateSystemUpdateHealthTest extends UpdateTargetTestCase
         $this->assertReportIsSafe($report);
     }
 
-    private function replaceEncrypter(): void
+    private function replaceEncrypter(?string $cipher = null, bool $withPreviousKeys = true): void
     {
-        $this->app->instance('encrypter', new Encrypter(str_repeat('x', 32), 'AES-256-CBC'));
+        $encrypter = new Encrypter(str_repeat($cipher === null ? 'x' : 's', 32), $cipher ?? 'AES-256-CBC');
+        if ($withPreviousKeys) {
+            $encrypter->previousKeys([str_repeat('p', 32)]);
+        }
+        $this->app->instance('encrypter', $encrypter);
         Crypt::clearResolvedInstance('encrypter');
     }
 

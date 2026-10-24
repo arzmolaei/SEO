@@ -73,12 +73,13 @@ abstract class UpdateTargetTestCase extends TestCase
             'installer.assume_installed' => false,
             'installer.lock_path' => $this->stableRoot.'/storage/app/installer/.installed',
             'app.key' => 'base64:'.base64_encode(str_repeat('s', 32)),
+            'app.previous_keys' => ['base64:'.base64_encode(str_repeat('p', 32))],
         ]);
         $this->app->forgetInstance('encrypter');
         Crypt::clearResolvedInstance('encrypter');
         $this->app->useEnvironmentPath($this->stableRoot);
         $this->app->useStoragePath($this->stableRoot.'/storage');
-        File::put($this->stableRoot.'/.env', 'APP_KEY='.config('app.key')."\nDB_PASSWORD=local-private-value\n");
+        File::put($this->stableRoot.'/.env', 'APP_KEY='.config('app.key')."\nAPP_PREVIOUS_KEYS=".implode(',', config('app.previous_keys'))."\nDB_PASSWORD=local-private-value\n");
         $this->owner = User::factory()->create(['onboarded_at' => now()]);
         $workspace = Workspace::query()->create(['name' => 'فضای مالک']);
         Membership::query()->create(['workspace_id' => $workspace->id, 'user_id' => $this->owner->id, 'role' => WorkspaceRole::Owner]);
@@ -118,5 +119,4 @@ abstract class UpdateTargetTestCase extends TestCase
         File::deleteDirectory($this->directory);
         parent::tearDown();
     }
-
 }
