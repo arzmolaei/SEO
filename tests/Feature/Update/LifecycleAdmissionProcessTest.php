@@ -33,6 +33,8 @@ class LifecycleAdmissionProcessTest extends TestCase
         $this->installationRoot = $this->directory.'/installation';
         File::ensureDirectoryExists($this->installationRoot, 0700);
         File::put($this->installationRoot.'/VERSION', "0.1.0-alpha.1\n");
+        File::ensureDirectoryExists($this->installationRoot.'/bootstrap', 0700);
+        File::copy(base_path('bootstrap/runtime-release.php'), $this->installationRoot.'/bootstrap/runtime-release.php');
         $this->pointer = new ActiveReleasePointer($this->installationRoot);
         $this->mutex = new LifecycleMutex($this->directory.'/lifecycle.lock', new RuntimeReleaseAdmission($this->pointer, $this->installationRoot));
         config([
@@ -171,6 +173,7 @@ class LifecycleAdmissionProcessTest extends TestCase
     {
         $autoload = var_export(base_path('vendor/autoload.php'), true);
         $bootstrap = var_export(base_path('bootstrap/app.php'), true);
+        $launcher = var_export($this->installationRoot.'/bootstrap/runtime-release.php', true);
         $directory = var_export($this->directory, true);
         $installationRoot = var_export($this->installationRoot, true);
         $database = var_export(config('database.connections.admission_process'), true);
@@ -196,6 +199,7 @@ REQUEST;
         File::put($this->directory.'/child.php', <<<PHPCHILD
 <?php
 require {$autoload};
+require_once {$launcher};
 \$app = require {$bootstrap};
 \$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 \$directory = {$directory};

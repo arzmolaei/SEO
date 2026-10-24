@@ -7,6 +7,7 @@ use App\Support\Update\ActiveReleasePointer;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class ActiveReleasePointerTest extends TestCase
@@ -78,6 +79,33 @@ class ActiveReleasePointerTest extends TestCase
             $this->assertSame('update_invalid_state', $exception->codeName());
             $this->assertSame($releaseId, $pointer->current()['release_id']);
         }
+    }
+
+    public function test_current_never_redeclares_a_second_launcher_copy_in_a_booted_process(): void
+    {
+        // The test bootstrap mirrors public/index.php and artisan: the stable
+        // launcher is already loaded from another path. A copy under the
+        // installation root must be ignored instead of fatally redeclaring it.
+        mkdir($this->root.'/bootstrap', 0755, true);
+        copy(dirname(__DIR__, 3).'/bootstrap/runtime-release.php', $this->root.'/bootstrap/runtime-release.php');
+
+        $current = (new ActiveReleasePointer($this->root))->current();
+
+        $this->assertSame('root', $current['kind']);
+        $this->assertSame('0.1.0-alpha.1', $current['product_version']);
+    }
+
+    public function test_fresh_process_without_an_installation_launcher_fails_closed(): void
+    {
+        $script = $this->root.'/fresh-process.php';
+        file_put_contents($script, '<?php'."\n".'require '.var_export(dirname(__DIR__, 3).'/vendor/autoload.php', true).";\n"
+            .'try { (new App\\Support\\Update\\ActiveReleasePointer('.var_export($this->root, true).'))->current(); echo "resolved"; }'."\n"
+            .'catch (App\\Services\\Update\\UpdateException $e) { echo $e->codeName(); }'."\n");
+
+        $process = new Process([PHP_BINARY, $script], timeout: 30);
+        $process->run();
+
+        $this->assertSame('update_invalid_state', trim($process->getOutput()), $process->getErrorOutput());
     }
 
     public function test_slot_marker_must_match_exact_release_version_digest_and_launcher_schema(): void
