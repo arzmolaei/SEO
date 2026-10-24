@@ -59,6 +59,38 @@ final class ValidateSystemUpdateHealth
     }
 
     /** @param array<string, mixed> $expected */
+    public function handleSourceRecovery(array $expected): UpdateHealthReport
+    {
+        $failures = [];
+        try {
+            $current = $this->pointer->current();
+            if (($current['kind'] ?? null) !== ($expected['source_release_kind'] ?? null)
+                || ($current['release_id'] ?? null) !== ($expected['source_release_id'] ?? null)
+                || ($current['product_version'] ?? null) !== ($expected['source_product_version'] ?? null)
+                || ($current['release_root'] ?? null) !== realpath(base_path())
+                || $this->productVersion->requireDistributable() !== ($expected['source_product_version'] ?? null)) {
+                $failures[] = 'source_release';
+            }
+            if ($this->schemaFingerprint->forConnection(DB::connection()) !== ($expected['source_schema_fingerprint'] ?? null)) {
+                $failures[] = 'schema';
+            }
+            if (! $this->identityMatches($expected) || ! $this->ownerReady() || ! $this->encryptionReady()) {
+                $failures[] = 'source_identity';
+            }
+            if (! $this->storageReady() || ! $this->assetsReady(requireCleanRelease: false)) {
+                $failures[] = 'source_runtime';
+            }
+            if ($this->restoreJournal->state() !== null || ($this->journal->state()['phase'] ?? null) !== 'snapshot_restore_required') {
+                $failures[] = 'lifecycle';
+            }
+        } catch (Throwable) {
+            $failures[] = 'source_health';
+        }
+
+        return new UpdateHealthReport($failures);
+    }
+
+    /** @param array<string, mixed> $expected */
     private function targetMatches(array $expected): bool
     {
         $current = $this->pointer->current();
@@ -184,11 +216,11 @@ final class ValidateSystemUpdateHealth
         }
     }
 
-    private function assetsReady(): bool
+    private function assetsReady(bool $requireCleanRelease = true): bool
     {
         $current = $this->pointer->current();
         $root = $current['release_root'] ?? null;
-        if (! is_string($root) || ! $this->releaseContract->inspect($root)['valid']) {
+        if (! is_string($root) || ($requireCleanRelease && ! $this->releaseContract->inspect($root)['valid'])) {
             return false;
         }
         $path = $root.'/public/build/manifest.json';
