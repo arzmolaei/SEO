@@ -77,9 +77,10 @@ class UpdateRollbackMariaDbAcceptanceTest extends TestCase
             File::ensureDirectoryExists(dirname($this->targetRoot.'/'.$path), 0700);
             File::put($this->targetRoot.'/'.$path, 'target runtime fixture');
         }
-        foreach (['bootstrap/app.php', 'bootstrap/runtime-release.php', 'vendor/autoload.php'] as $path) {
+        foreach (['bootstrap/app.php', 'vendor/autoload.php'] as $path) {
             File::put($this->stableRoot.'/'.$path, 'source runtime fixture');
         }
+        File::copy($this->originalBase.'/bootstrap/runtime-release.php', $this->stableRoot.'/bootstrap/runtime-release.php');
 
         File::put($this->stableRoot.'/public/build/manifest.json', json_encode([
             'resources/js/app.tsx' => ['file' => 'assets/source-hash.js', 'isEntry' => true],
