@@ -29,6 +29,7 @@ final class ApplySystemStateSnapshot
         string $stagingRoot,
         LifecycleMutexHandle $ownership,
         bool $preserveQueuedWork = false,
+        bool $preserveRuntimeSettings = false,
     ): void {
         $ownership->assertActive();
 
@@ -44,6 +45,10 @@ final class ApplySystemStateSnapshot
         $installationSnapshot = $this->loadInstallationSnapshot($metadataPath);
         $manifest = $this->stageSafetyBundle($bundlePath, $stagingRoot, $ownership);
 
+        if ($preserveRuntimeSettings) {
+            $this->assertRuntimeSettingsUnchanged($stagingRoot);
+        }
+
         $ownership->assertActive();
         $this->restoreDatabase($manifest, $stagingRoot, $ownership, $preserveQueuedWork);
 
@@ -51,7 +56,9 @@ final class ApplySystemStateSnapshot
         $this->restoreDurableFiles($stagingRoot);
 
         $ownership->assertActive();
-        $this->restoreRuntimeSettings($stagingRoot);
+        if (! $preserveRuntimeSettings) {
+            $this->restoreRuntimeSettings($stagingRoot);
+        }
 
         $ownership->assertActive();
         $this->installationState->restoreRecoverySnapshot($installationSnapshot);
@@ -287,6 +294,29 @@ final class ApplySystemStateSnapshot
             }
 
             $this->ensureDirectory($filesystemRoot);
+        }
+    }
+
+    private function assertRuntimeSettingsUnchanged(string $stagingRoot): void
+    {
+        $raw = @file_get_contents($this->stagedPath($stagingRoot, 'settings/runtime.json'));
+        if (! is_string($raw)) {
+            throw $this->invalidState();
+        }
+        $settings = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+        $expected = [
+            'APP_KEY' => (string) config('app.key'),
+            'APP_LOCALE' => (string) config('app.locale'),
+            'APP_FALLBACK_LOCALE' => (string) config('app.fallback_locale'),
+            'SELF_HOST_REGISTRATION' => (bool) config('installer.public_registration', false),
+        ];
+        if (! is_array($settings) || count($settings) !== count($expected)) {
+            throw $this->invalidState();
+        }
+        foreach ($expected as $key => $value) {
+            if (! array_key_exists($key, $settings) || $settings[$key] !== $value) {
+                throw $this->invalidState();
+            }
         }
     }
 

@@ -135,6 +135,22 @@ final class UpdateJournal
         return $next;
     }
 
+    /** @return array<string, mixed> */
+    public function resumeBootstrapRecovery(): array
+    {
+        $state = $this->state();
+        if ($state === null || $state['phase'] !== 'recovery_required'
+            || ($state['recovery_code'] ?? null) !== 'update_target_bootstrap_failed'
+            || ($state['recovery_reverted_to_source'] ?? null) !== true
+            || ($state['migration_started'] ?? null) !== false) {
+            throw $this->invalidState();
+        }
+        $state['phase'] = 'snapshot_restore_required';
+        $this->write($state);
+
+        return $state;
+    }
+
     public function clear(): void
     {
         @unlink($this->resolvedPath());

@@ -79,12 +79,20 @@ final class ActiveReleasePointer
     /** @return array<string, mixed> */
     public function current(): array
     {
-        $launcher = dirname(__DIR__, 3).'/bootstrap/runtime-release.php';
-        if (! is_file($launcher)) {
-            throw $this->invalidState();
-        }
+        // Every real entrypoint (public/index.php, artisan) loads the stable
+        // installation launcher before the application boots. A second copy,
+        // such as the active slot's own launcher, must never be loaded: the
+        // dependency-free classes are not redeclarable. Only a fresh process
+        // that has not loaded the launcher falls back to the installation
+        // root's file, and it fails closed when that file is absent.
+        if (! class_exists(\SeoOsRuntimeReleaseLocator::class, false)) {
+            $launcher = $this->installationRoot.'/bootstrap/runtime-release.php';
+            if (is_link($launcher) || ! is_file($launcher)) {
+                throw $this->invalidState();
+            }
 
-        require_once $launcher;
+            require_once $launcher;
+        }
 
         try {
             return (new \SeoOsRuntimeReleaseLocator($this->installationRoot))->resolve();

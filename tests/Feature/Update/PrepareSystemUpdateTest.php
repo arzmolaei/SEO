@@ -298,6 +298,7 @@ class PrepareSystemUpdateTest extends TestCase
         $this->assertSame('0.1.0-alpha.2', $prepared->sourceProductVersion);
         $this->assertSame($before, $this->pointer->current());
         $this->assertSame($sourceReleaseId, $this->journal->state()['source_release_id'] ?? null);
+        $this->assertSame($sourceDigest, $this->journal->state()['source_package_digest_sha256'] ?? null);
     }
 
     private function seedInstalledSource(string $version): void

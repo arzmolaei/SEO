@@ -3,34 +3,58 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\Update\ContinueSystemUpdate;
 use App\Services\Update\PrepareSystemUpdate;
+use App\Services\Update\RecoverInterruptedUpdate;
 use App\Services\Update\SwitchSystemUpdateRelease;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\VerifyUpdatePackage;
 use App\Support\Lifecycle\ProductVersion;
+use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 final class SystemUpdateController extends Controller
 {
-    public function show(ProductVersion $productVersion, UpdateJournal $journal): JsonResponse
+    public function show(Request $request, ProductVersion $productVersion, UpdateJournal $journal): Response
     {
         try {
             $state = $journal->state();
-            $status = is_array($state) && is_string($state['phase'] ?? null)
-                ? $state['phase']
-                : 'ready';
+            $status = is_string($state['phase'] ?? null) ? $state['phase'] : 'ready';
         } catch (Throwable) {
+            $state = null;
             $status = 'recovery_required';
         }
-
-        return response()->json([
+        $bootstrapRecovery = $status === 'recovery_required'
+            && ($state['recovery_code'] ?? null) === 'update_target_bootstrap_failed'
+            && ($state['recovery_reverted_to_source'] ?? null) === true
+            && ($state['migration_started'] ?? null) === false;
+        $data = [
             'current_product_version' => $productVersion->requireDistributable(),
             'status' => $status,
-        ], 200, $this->privateHeaders());
+            'preview' => $this->safePreview($state['preview'] ?? null),
+            'canContinue' => in_array($status, ['target_active', 'migrating', 'validating', 'complete'], true),
+            'canRecover' => $bootstrapRecovery || in_array($status, ['rollback_required', 'migration_rollback', 'source_switch_pending', 'snapshot_restore_required'], true),
+        ];
+        if ($request->expectsJson()) {
+            return response()->json($data, 200, $this->privateHeaders());
+        }
+        $response = Inertia::render('settings/update-recovery', ['update' => $data])->toResponse($request);
+        $response->headers->add($this->privateHeaders());
+
+        return $response;
+    }
+
+    public function authorize(): RedirectResponse
+    {
+        return redirect()->route('settings.update');
     }
 
     public function verify(Request $request, VerifyUpdatePackage $verifier): JsonResponse
@@ -102,6 +126,82 @@ final class SystemUpdateController extends Controller
                 'message' => 'ادامه به‌روزرسانی متوقف شد؛ وضعیت عملیات را بررسی کنید.',
             ], 409, $this->privateHeaders());
         }
+    }
+
+    public function continueUpdate(
+        Request $request,
+        ContinueSystemUpdate $continue,
+        RuntimeReleaseAdmission $admission,
+    ): JsonResponse {
+        return $this->performLifecycle($request, $admission, fn (): array => $continue->handle());
+    }
+
+    public function recover(
+        Request $request,
+        RecoverInterruptedUpdate $recover,
+        RuntimeReleaseAdmission $admission,
+    ): JsonResponse {
+        return $this->performLifecycle($request, $admission, fn (): array => $recover->handle());
+    }
+
+    /** @param callable(): array<string, mixed> $operation */
+    private function performLifecycle(Request $request, RuntimeReleaseAdmission $admission, callable $operation): JsonResponse
+    {
+        try {
+            $admission->assertCurrent();
+        } catch (Throwable) {
+            return response()->json([
+                'code' => 'update_invalid_state',
+                'message' => 'درخواست باید از نسخه فعال برنامه دوباره ارسال شود.',
+            ], 409, $this->privateHeaders());
+        }
+
+        try {
+            $result = $operation();
+            $loginRequired = ($result['status'] ?? null) === 'rolled_back';
+            if ($loginRequired) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+
+            return response()->json([
+                ...$result,
+                'requires_reload' => ($result['status'] ?? null) === 'snapshot_restore_required',
+                'requires_login' => $loginRequired,
+                'continue_url' => route('settings.update'),
+            ], 200, $this->privateHeaders());
+        } catch (UpdateException $exception) {
+            return response()->json(['code' => $exception->codeName(), 'message' => $exception->userMessage()], 409, $this->privateHeaders());
+        } catch (Throwable) {
+            return response()->json(['code' => 'update_operation_failed', 'message' => 'عملیات کامل نشد؛ وضعیت سرور را بررسی و دوباره تلاش کنید.'], 409, $this->privateHeaders());
+        }
+    }
+
+    /** @return array<string, mixed>|null */
+    private function safePreview(mixed $preview): ?array
+    {
+        if (! is_array($preview)) {
+            return null;
+        }
+        $result = [];
+        foreach (['package_digest_sha256', 'source_product_version', 'target_product_version', 'channel', 'minimum_php_version'] as $key) {
+            if (! is_string($preview[$key] ?? null)) {
+                return null;
+            }
+            $result[$key] = $preview[$key];
+        }
+        $extensions = $preview['required_php_extensions'] ?? null;
+        if (! is_array($extensions) || ! array_is_list($extensions) || ! is_int($preview['migration_count'] ?? null)) {
+            return null;
+        }
+        foreach ($extensions as $extension) {
+            if (! is_string($extension)) {
+                return null;
+            }
+        }
+
+        return [...$result, 'required_php_extensions' => $extensions, 'migration_count' => $preview['migration_count']];
     }
 
     /** @return array<string, string> */

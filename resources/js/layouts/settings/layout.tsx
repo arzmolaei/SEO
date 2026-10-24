@@ -11,6 +11,7 @@ import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
 type PageProps = {
+    systemUpdate?: { canManage: boolean };
     systemBackup?: {
         canManage: boolean;
     };
@@ -36,7 +37,7 @@ const accountNavItems: NavItem[] = [
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
-    const { systemBackup } = usePage<PageProps>().props;
+    const { systemBackup, systemUpdate } = usePage<PageProps>().props;
     const sidebarNavItems: NavItem[] = systemBackup?.canManage
         ? [
               ...accountNavItems,
@@ -46,7 +47,15 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                   icon: null,
               },
           ]
-        : accountNavItems;
+        : [...accountNavItems];
+
+    if (systemUpdate?.canManage) {
+        sidebarNavItems.push({
+            title: 'به‌روزرسانی و بازیابی نسخه',
+            href: '/settings/update',
+            icon: null,
+        });
+    }
 
     return (
         <div className="px-4 py-6">
