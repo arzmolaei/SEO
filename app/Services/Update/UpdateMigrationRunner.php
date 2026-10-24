@@ -110,7 +110,7 @@ final class UpdateMigrationRunner
             if ($current->ran === $expected->ran && $current->schemaFingerprintSha256 === $expected->schemaFingerprintSha256) {
                 break;
             }
-            if ($suffix === []) {
+            if ($suffix === [] || $completed === null) {
                 throw $this->recoveryRequired();
             }
             array_pop($suffix);
