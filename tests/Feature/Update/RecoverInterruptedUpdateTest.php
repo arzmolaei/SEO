@@ -8,7 +8,7 @@ use App\Services\Update\RecoverInterruptedUpdate;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateMigrationRunner;
-use App\Services\Update\UpdateRuntimeIdentity;
+use App\Services\Update\UpdateMigrationState;
 use App\Support\InstallationState;
 use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Database\Schema\Blueprint;
@@ -51,7 +51,8 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         ];
         foreach (['first', 'second'] as $index => $name) {
             $column = 'recovery_probe_'.$index;
-            File::put($this->targetRoot.'/database/migrations/2099_01_01_00000'.($index + 1).'_'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->string('{$column}')->nullable()); } public function down(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('{$column}')); } };\n");
+            $injection = $index === 1 ? "if (is_file(".var_export($this->stableRoot.'/inject-down-publication', true).")) { mkdir(".var_export($this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp', true)."); }" : '';
+            File::put($this->targetRoot.'/database/migrations/2099_01_01_00000'.($index + 1).'_'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->string('{$column}')->nullable()); } public function down(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('{$column}')); {$injection} } };\n");
         }
         $cursor = $runner->runPending($before, static function (): void {});
         $this->evidence['migration_state'] = $cursor->toArray();
@@ -123,7 +124,7 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         $this->evidence['phase'] = 'migration_rollback';
         $this->evidence['rollback_migration_state'] = $this->evidence['migration_state'];
         $this->saveState();
-        $before = \App\Services\Update\UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
+        $before = UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
         try {
             $this->app->make(UpdateMigrationRunner::class)->rollbackExactSuffix($before, $this->evidence['migration_state']['applied_suffix'], static function (): void {
                 throw new \RuntimeException('interrupted before checkpoint');
@@ -139,7 +140,7 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
 
     public function test_interruption_after_source_pointer_switch_resumes_in_source_instead_of_loading_target_code(): void
     {
-        $before = \App\Services\Update\UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
+        $before = UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
         $this->app->make(UpdateMigrationRunner::class)->rollbackExactSuffix($before, $this->evidence['migration_state']['applied_suffix']);
         $this->evidence['phase'] = 'source_switch_pending';
         $this->evidence['rollback_migration_state'] = $before->toArray();
@@ -214,10 +215,8 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
 
     public function test_checkpoint_publication_failure_preserves_completed_down_evidence_for_retry(): void
     {
-        $path = $this->targetRoot.'/database/migrations/2099_01_01_000002_second.php';
         $block = $this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp';
-        $text = File::get($path);
-        File::put($path, str_replace("Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('recovery_probe_1'));", "Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('recovery_probe_1')); mkdir(".var_export($block, true).");", $text));
+        File::put($this->stableRoot.'/inject-down-publication', 'armed');
         try {
             $this->recover();
             $this->fail('Checkpoint publication must fail at the injected interruption.');
@@ -228,12 +227,13 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         $this->assertTrue(Schema::hasColumn('projects', 'recovery_probe_0'));
         $this->assertFileExists($this->stableRoot.'/storage/app/lifecycle/update/migration-attempt.json');
         rmdir($block);
+        File::delete($this->stableRoot.'/inject-down-publication');
         $this->assertSame('snapshot_restore_required', $this->recover()['status']);
     }
 
     public function test_publication_failure_after_source_pointer_switch_preserves_a_retryable_source_phase(): void
     {
-        $before = \App\Services\Update\UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
+        $before = UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
         $this->app->make(UpdateMigrationRunner::class)->rollbackExactSuffix($before, $this->evidence['migration_state']['applied_suffix']);
         $this->evidence['phase'] = 'source_switch_pending';
         $this->evidence['rollback_migration_state'] = $before->toArray();
@@ -270,6 +270,38 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         $this->assertSame('rolled_back', $this->recover()['status']);
     }
 
+    public function test_bootstrap_failure_proven_before_migrations_restores_source_from_its_protected_snapshot(): void
+    {
+        $before = UpdateMigrationState::fromArray($this->evidence['pre_update_migration_state']);
+        $this->app->make(UpdateMigrationRunner::class)->rollbackExactSuffix($before, $this->evidence['migration_state']['applied_suffix']);
+        $this->evidence['phase'] = 'recovery_required';
+        $this->evidence['migration_started'] = false;
+        $this->evidence['recovery_reverted_to_source'] = true;
+        $this->evidence['recovery_code'] = 'update_target_bootstrap_failed';
+        unset($this->evidence['migration_state']);
+        $this->saveState();
+        $this->pointer->activateRoot('0.1.0-alpha.1');
+        $this->bootSource();
+        $this->assertSame('rolled_back', $this->recover()['status']);
+        $this->assertNull($this->app->make(UpdateJournal::class)->state());
+    }
+
+    public function test_recovery_required_after_ambiguous_migration_never_uses_the_bootstrap_only_escape(): void
+    {
+        $this->evidence['phase'] = 'recovery_required';
+        $this->evidence['recovery_reverted_to_source'] = true;
+        $this->evidence['recovery_code'] = 'update_target_bootstrap_failed';
+        $this->saveState();
+        try {
+            $this->recover();
+            $this->fail('A bootstrap failure after migration began cannot authorize automatic source restore.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_invalid_state', $exception->codeName());
+        }
+        $this->assertTrue(Schema::hasColumn('projects', 'recovery_probe_1'));
+        $this->assertSame('target-probe', $this->pointer->current()['release_id']);
+    }
+
     private function assertRecoveryBlocked(): void
     {
         try {
@@ -300,6 +332,7 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         ], JSON_THROW_ON_ERROR));
         File::put($slot.'/public/build/manifest.json', File::get($this->stableRoot.'/public/build/manifest.json'));
         File::put($slot.'/public/build/assets/source-hash.js', 'source asset');
+
         return $slot;
     }
 
