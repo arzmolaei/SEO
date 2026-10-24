@@ -30,3 +30,8 @@ Observed HTTP/shared-lease/stable-pointer RED: `cfbdfe21`, CI `40027177798`, 5 f
 Independent implementation review found no concrete Important findings. Permanent real-process tests now pin an already-admitted HTTP mutation blocking exclusive safety capture, an idle actual Laravel worker denied reservation under the updater's ownership, and paused source request/worker rejection after a completed pointer switch with maintenance cleared. Connector defaults and ambient transaction behavior have direct integration tests; connected multi-connection MariaDB acceptance remains required before the full lifecycle release.
 
 Queue-retention PR #13 was reviewed and merged at `b9999976f5273342ecf233318a966635bd70eb6e` after combined-tree CI `40027046367` passed all six jobs. This branch now combines that accepted boundary before final admission verification. Task 9 is still next after these confirmed Task 6/10 acceptance corrections; no main integration or full-product claim.
+
+
+## Verified code boundary
+
+Code head `3b2864baa93ec0df1af89e1b9d1369839361ca2a` passed all six permanent gates in CI `40057637639`. The connected log confirms eight MariaDB cases (32 assertions), including the two-connection queue reservation test, and the ordinary suite executes the real paused request/worker cases. Independent review found no Important issues in the incremental process/connected tests. Final documentation-head CI remains required before expected-head integration of PR #14; next planned task is target health/finalization. Main and full lifecycle release status remain unchanged.
