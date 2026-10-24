@@ -45,13 +45,13 @@ class UpdateSettingsPageTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/settings/update')->assertForbidden();
         $this->actingAs($this->owner)->get('/settings/update')
             ->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('settings/update-recovery')
-                ->where('systemUpdate.canManage', true)
-                ->where('update.status', 'ready')
-                ->where('update.current_product_version', (new ProductVersion)->requireDistributable())
-                ->where('update.preview', null)
-                ->where('update.canContinue', false)
-                ->where('update.canRecover', false));
+            ->component('settings/update-recovery')
+            ->where('systemUpdate.canManage', true)
+            ->where('update.status', 'ready')
+            ->where('update.current_product_version', (new ProductVersion)->requireDistributable())
+            ->where('update.preview', null)
+            ->where('update.canContinue', false)
+            ->where('update.canRecover', false));
         $this->actingAs(User::factory()->create())->get('/settings/profile')
             ->assertInertia(fn (Assert $page) => $page->where('systemUpdate.canManage', false));
     }
@@ -79,6 +79,12 @@ class UpdateSettingsPageTest extends TestCase
             ->assertJsonPath('status', 'verified')
             ->assertJsonMissing(['credential' => 'private-credential'])
             ->assertHeader('Cache-Control', 'no-cache, no-store, private');
+        $state = json_decode(File::get($this->directory.'/state.json'), true, flags: JSON_THROW_ON_ERROR);
+        $state['phase'] = 'staged';
+        File::put($this->directory.'/state.json', json_encode($state, JSON_THROW_ON_ERROR));
+        $this->get('/settings/update')->assertInertia(fn (Assert $page) => $page
+            ->where('update.status', 'staged')
+            ->where('update.preview.package_digest_sha256', str_repeat('d', 64)));
     }
 
     public function test_server_phase_controls_continuation_and_ambiguous_recovery_never_exposes_an_automatic_recovery_action(): void
@@ -92,6 +98,27 @@ class UpdateSettingsPageTest extends TestCase
         File::put($this->directory.'/state.json', json_encode(['phase' => 'recovery_required', 'migration_started' => true], JSON_THROW_ON_ERROR));
         $this->get('/settings/update')
             ->assertInertia(fn (Assert $page) => $page->where('update.status', 'recovery_required')->where('update.canContinue', false)->where('update.canRecover', false));
+    }
+
+    public function test_password_reconfirmation_returns_to_update_during_maintenance(): void
+    {
+        File::put($this->directory.'/state.json', json_encode(['phase' => 'target_active'], JSON_THROW_ON_ERROR));
+        $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => 0])
+            ->get('/settings/update/authorize')->assertRedirect(route('password.confirm'))
+            ->assertSessionHas('url.intended', url('/settings/update/authorize'));
+        $this->post('/user/confirm-password', ['password' => 'password'])
+            ->assertRedirect('/settings/update/authorize');
+        $this->get('/settings/update/authorize')->assertRedirect('/settings/update');
+        $this->get('/settings/update')->assertOk();
+    }
+
+    public function test_lifecycle_budget_allows_a_multi_request_recovery_and_still_limits_repeated_attempts(): void
+    {
+        $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->postJson('/settings/update/continue')->assertStatus(409);
+        }
+        $this->postJson('/settings/update/continue')->assertTooManyRequests();
     }
 
     public function test_continuation_and_recovery_routes_enforce_recent_password_and_system_owner_and_sanitize_invalid_state(): void

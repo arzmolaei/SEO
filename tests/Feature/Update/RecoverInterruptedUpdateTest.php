@@ -302,6 +302,19 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         $this->assertSame('target-probe', $this->pointer->current()['release_id']);
     }
 
+    public function test_http_recovery_requires_a_source_reload_then_restores_and_demands_fresh_login(): void
+    {
+        $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/recover')->assertOk()
+            ->assertJsonPath('status', 'snapshot_restore_required')->assertJsonPath('requires_reload', true);
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->bootSource();
+        $this->postJson('/settings/update/recover')->assertOk()
+            ->assertJsonPath('status', 'rolled_back')->assertJsonPath('requires_login', true);
+        $this->assertGuest();
+        $this->assertNull($this->app->make(UpdateJournal::class)->state());
+    }
+
     private function assertRecoveryBlocked(): void
     {
         try {

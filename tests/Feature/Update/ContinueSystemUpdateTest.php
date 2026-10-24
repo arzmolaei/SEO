@@ -292,6 +292,19 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         $this->assertNull($this->app->make(UpdateJournal::class)->state());
     }
 
+    public function test_http_continuation_rejects_source_request_then_finalizes_on_a_fresh_target_request(): void
+    {
+        $this->app->setBasePath($this->stableRoot);
+        $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/continue')->assertStatus(409)->assertJsonPath('code', 'update_invalid_state');
+        $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
+        $this->app->setBasePath($this->targetRoot);
+        $this->postJson('/settings/update/continue')->assertOk()
+            ->assertJsonPath('status', 'complete')->assertJsonPath('requires_reload', false)
+            ->assertHeader('Cache-Control', 'no-cache, no-store, private');
+        $this->assertSame('0.1.0-alpha.2', (new InstallationState)->details()['product_version']);
+    }
+
     private function writeState(array $state): void
     {
         File::put($this->stableRoot.'/storage/app/lifecycle/update/state.json', json_encode($state, JSON_THROW_ON_ERROR));
