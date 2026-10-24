@@ -50,6 +50,7 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
             'source_schema_fingerprint' => $this->app->make(ApplicationSchemaFingerprint::class)->forConnection(DB::connection()),
             'target_schema_fingerprint' => $targetSchema,
             'safety_snapshot_id' => str_repeat('c', 32),
+            'lifecycle_mutex_path_sha256' => hash('sha256', (string) realpath((string) config('backup.lifecycle_mutex_path'))),
             'pre_update_migration_history_sha256' => $this->before->digestSha256,
             'pre_update_migration_state' => $this->before->toArray(),
         ];
@@ -203,6 +204,19 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         try {
             $this->app->make(ContinueSystemUpdate::class)->handle();
             $this->fail('Changed source runtime evidence must block target mutation.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
+        $this->assertSame('recovery_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+    }
+
+    public function test_target_cannot_replace_the_source_lifecycle_lock_path_before_migration(): void
+    {
+        config(['backup.lifecycle_mutex_path' => $this->directory.'/different-lifecycle.lock']);
+        try {
+            $this->app->make(ContinueSystemUpdate::class)->handle();
+            $this->fail('Target ownership must prove the exact source lifecycle lock.');
         } catch (UpdateException $exception) {
             $this->assertSame('update_recovery_required', $exception->codeName());
         }

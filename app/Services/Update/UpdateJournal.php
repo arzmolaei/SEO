@@ -113,6 +113,28 @@ final class UpdateJournal
         return $next;
     }
 
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @return array<string, mixed>
+     */
+    public function checkpoint(string $expectedPhase, array $evidence): array
+    {
+        $state = $this->state();
+        if ($state === null || $state['phase'] !== $expectedPhase || ! in_array($expectedPhase, ['migrating', 'migration_rollback', 'validating', 'snapshot_restore_required'], true)) {
+            throw $this->invalidState();
+        }
+        foreach (array_keys($evidence) as $key) {
+            if (! in_array($key, ['migration_state', 'rollback_migration_state', 'health_failures'], true)) {
+                throw $this->invalidState();
+            }
+        }
+        $this->assertSafeEvidence($evidence);
+        $next = array_merge($state, $evidence);
+        $this->write($next);
+
+        return $next;
+    }
+
     public function clear(): void
     {
         @unlink($this->resolvedPath());
