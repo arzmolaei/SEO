@@ -51,7 +51,7 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         ];
         foreach (['first', 'second'] as $index => $name) {
             $column = 'recovery_probe_'.$index;
-            $injection = $index === 1 ? "if (is_file(".var_export($this->stableRoot.'/inject-down-publication', true).")) { mkdir(".var_export($this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp', true)."); }" : '';
+            $injection = $index === 1 ? 'if (is_file('.var_export($this->stableRoot.'/inject-down-publication', true).')) { mkdir('.var_export($this->stableRoot.'/storage/app/lifecycle/update/state.json.tmp', true).'); }' : '';
             File::put($this->targetRoot.'/database/migrations/2099_01_01_00000'.($index + 1).'_'.$name.'.php', "<?php\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\nreturn new class extends Migration { public \$withinTransaction = false; public function up(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->string('{$column}')->nullable()); } public function down(): void { Schema::table('projects', fn (Blueprint \$table) => \$table->dropColumn('{$column}')); {$injection} } };\n");
         }
         $cursor = $runner->runPending($before, static function (): void {});

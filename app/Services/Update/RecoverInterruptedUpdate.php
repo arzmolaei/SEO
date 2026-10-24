@@ -3,8 +3,8 @@
 namespace App\Services\Update;
 
 use App\Services\Backup\ApplicationSchemaFingerprint;
-use App\Services\Backup\BackupException;
 use App\Services\Backup\ApplySystemStateSnapshot;
+use App\Services\Backup\BackupException;
 use App\Services\Backup\RestoreJournal;
 use App\Support\Backup\BackupBundleReader;
 use App\Support\InstallationState;
