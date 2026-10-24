@@ -196,7 +196,7 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
                 return;
             }
             if (response.status === 423) {
-                window.location.assign('/confirm-password');
+                window.location.assign('/settings/update/authorize');
                 return;
             }
             const result = (await response.json()) as Result;
