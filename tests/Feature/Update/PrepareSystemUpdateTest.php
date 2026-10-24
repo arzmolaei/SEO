@@ -159,6 +159,9 @@ class PrepareSystemUpdateTest extends TestCase
         $this->assertNull($state['source_release_id']);
         $this->assertSame($prepared->targetReleaseId, $state['target_release_id']);
         $this->assertSame($preview->packageDigestSha256, $state['package_digest_sha256']);
+        foreach (['runtime_key_sha256', 'environment_sha256', 'database_configuration_sha256', 'installation_identity_sha256'] as $identityField) {
+            $this->assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/', $state[$identityField] ?? '');
+        }
         $this->assertArrayHasKey('pre_update_migration_history_sha256', $state);
         $this->assertSame($state['pre_update_migration_history_sha256'], $state['pre_update_migration_state']['digest_sha256']);
         $this->assertNotEmpty($state['pre_update_migration_state']['ran']);
