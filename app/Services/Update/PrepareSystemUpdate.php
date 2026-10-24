@@ -31,6 +31,7 @@ final class PrepareSystemUpdate
         private readonly UpdateReleaseStager $stager,
         private readonly ActiveReleasePointer $activeReleasePointer,
         private readonly UpdateMigrationRunner $migrationRunner,
+        private readonly UpdateRuntimeIdentity $runtimeIdentity,
     ) {}
 
     public function handle(string $expectedPackageDigest): PreparedSystemUpdate
@@ -124,7 +125,9 @@ final class PrepareSystemUpdate
             );
         }
 
+        $identity = $this->runtimeIdentity->capture();
         $this->journal->transition('verified', 'preparing', [
+            ...$identity,
             'lifecycle_mutex_path_sha256' => $ownership->pathFingerprint(),
             'source_release_kind' => $sourceKind,
             'source_release_id' => $sourceReleaseId,
