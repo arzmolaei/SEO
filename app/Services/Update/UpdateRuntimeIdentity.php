@@ -18,6 +18,7 @@ final class UpdateRuntimeIdentity
             $metadata = $this->installationState->details();
             $key = config('app.key');
             $cipher = config('app.cipher');
+            $previousKeys = config('app.previous_keys', []);
             $environment = app()->environmentFilePath();
             $configuration = DB::connection()->getConfig();
             if (
@@ -25,6 +26,16 @@ final class UpdateRuntimeIdentity
                 || ! is_array($configuration) || is_link($environment) || ! is_file($environment)
             ) {
                 throw $this->invalidState();
+            }
+            if (! is_array($previousKeys) || ! array_is_list($previousKeys)) {
+                throw $this->invalidState();
+            }
+            $previousDigests = [];
+            foreach ($previousKeys as $previousKey) {
+                if (! is_string($previousKey) || $previousKey === '') {
+                    throw $this->invalidState();
+                }
+                $previousDigests[] = hash('sha256', $previousKey);
             }
             $environmentDigest = hash_file('sha256', $environment);
             if (! is_string($environmentDigest)) {
@@ -35,7 +46,7 @@ final class UpdateRuntimeIdentity
 
             return [
                 'runtime_key_sha256' => hash('sha256', $key),
-                'crypto_configuration_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['cipher' => $cipher, 'key_sha256' => hash('sha256', $key)])),
+                'crypto_configuration_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson(['cipher' => $cipher, 'key_sha256' => hash('sha256', $key), 'previous_key_sha256s' => $previousDigests])),
                 'environment_sha256' => $environmentDigest,
                 'database_configuration_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson($configuration)),
                 'installation_identity_sha256' => hash('sha256', UpdatePackageFormat::canonicalMetadataJson($metadata)),

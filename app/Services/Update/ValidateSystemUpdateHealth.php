@@ -113,9 +113,41 @@ final class ValidateSystemUpdateHealth
         if (! is_string($rawKey) || ! $encrypter instanceof Encrypter || ! hash_equals($rawKey, $encrypter->getKey())) {
             return false;
         }
+        $cipher = config('app.cipher');
+        $previous = config('app.previous_keys', []);
+        if (! is_string($cipher) || ! is_array($previous) || ! array_is_list($previous)) {
+            return false;
+        }
+        $rawPrevious = [];
+        foreach ($previous as $previousKey) {
+            if (! is_string($previousKey)) {
+                return false;
+            }
+            $decoded = str_starts_with($previousKey, 'base64:') ? base64_decode(substr($previousKey, 7), true) : $previousKey;
+            if (! is_string($decoded)) {
+                return false;
+            }
+            $rawPrevious[] = $decoded;
+        }
+        $reference = (new Encrypter($rawKey, $cipher))->previousKeys($rawPrevious);
+        if ($encrypter->getAllKeys() !== $reference->getAllKeys()) {
+            return false;
+        }
         $probe = bin2hex(random_bytes(32));
+        if (
+            ! hash_equals($probe, $reference->decryptString($encrypter->encryptString($probe)))
+            || ! hash_equals($probe, $encrypter->decryptString($reference->encryptString($probe)))
+        ) {
+            return false;
+        }
+        foreach ($rawPrevious as $previousKey) {
+            $legacy = (new Encrypter($previousKey, $cipher))->encryptString($probe);
+            if (! hash_equals($probe, $encrypter->decryptString($legacy))) {
+                return false;
+            }
+        }
 
-        return hash_equals($probe, $encrypter->decryptString($encrypter->encryptString($probe)));
+        return true;
     }
 
     private function storageReady(): bool
