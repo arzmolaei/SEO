@@ -253,19 +253,32 @@ use Illuminate\Contracts\Console\Kernel;
 
 $root = $argv[1] ?? '';
 $resultPath = $argv[2] ?? '';
-require_once $root.'/bootstrap/runtime-release.php';
-$release = (new SeoOsRuntimeReleaseLocator($root))->resolve();
-define('SEO_OS_INSTALLATION_ROOT', $root);
-require $release['release_root'].'/vendor/autoload.php';
-$app = require $release['release_root'].'/bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
-$result = $app->make(RecoverInterruptedUpdate::class)->handle();
-file_put_contents($resultPath, json_encode([
-    'pid' => getmypid(),
-    'base_path' => base_path(),
-    'release' => $release,
-    'result' => $result,
-], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
+try {
+    require_once $root.'/bootstrap/runtime-release.php';
+    $release = (new SeoOsRuntimeReleaseLocator($root))->resolve();
+    define('SEO_OS_INSTALLATION_ROOT', $root);
+    require $release['release_root'].'/vendor/autoload.php';
+    $app = require $release['release_root'].'/bootstrap/app.php';
+    $app->make(Kernel::class)->bootstrap();
+    $result = $app->make(RecoverInterruptedUpdate::class)->handle();
+    file_put_contents($resultPath, json_encode([
+        'pid' => getmypid(),
+        'base_path' => base_path(),
+        'release' => $release,
+        'result' => $result,
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
+} catch (Throwable $exception) {
+    $failure = [
+        'error_class' => $exception::class,
+        'error_message' => $exception->getMessage(),
+        'error_code' => method_exists($exception, 'codeName') ? $exception->codeName() : null,
+        'error_file' => $exception->getFile(),
+        'error_line' => $exception->getLine(),
+    ];
+    @file_put_contents($resultPath, json_encode($failure, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
+    fwrite(STDERR, json_encode($failure, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL);
+    exit(91);
+}
 PHP);
         }
 
