@@ -1,6 +1,6 @@
 # SEO OS — handoff to the next implementation agent
 
-Checkpoint: 2026-10-23. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
+Checkpoint: 2026-10-24. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
 
 ## Start here
 
@@ -13,7 +13,8 @@ Read `AGENTS.md`, `docs/PROJECT_STATE.md`, `docs/DELIVERY_PLAN.md`, release-read
 - Persian Export: merged through PR #5 at `a6924d77b3a9b7f74b484f7e303c8168905c520c`.
 - Backup + Restore: merged through PR #7 at `761aede4927dd21ba6384b4d714cc80f2292019e`.
 - Backup + Restore post-merge `main` CI: `39978951778`, success across all six permanent jobs.
-- Next subsystem: **Update + Interrupted Recovery/Rollback**.
+- Update + Interrupted Recovery/Rollback: merged through PR #8 at `43342c667859d68a2bfe62b1fb2258aafedb6a5c` (2026-10-24); post-merge `CI` run `40074320817` and `Update Rollback MariaDB` run `40074320854` both success.
+- Next slice: **Final end-to-end lifecycle acceptance** (plus the open Update/Rollback items listed in `docs/release-readiness/update-recovery-rollback.md`).
 
 Do not restart Backup/Restore Tasks 1–10. They are integrated and independently verified on `main`.
 
@@ -63,32 +64,20 @@ Final evidence:
 - merge commit `761aede4927dd21ba6384b4d714cc80f2292019e`;
 - post-merge main CI `39978951778`: success.
 
-## Exact next actions — Update + Interrupted Recovery/Rollback
+## Update + Interrupted Recovery/Rollback — integrated boundary
 
-1. Audit existing lifecycle/release/package/migration/health primitives on current `main`; do not create parallel abstractions.
-2. Run mandatory brainstorming/architecture for Update/Rollback using the integrated Backup/Restore safety model.
-3. Write and review an Update/Rollback design spec before product code.
-4. Write and review an implementation plan with explicit RED -> GREEN tasks.
-5. Implement on one feature branch with permanent PHP 8.4/8.5, connected MariaDB and runtime release-tree gates.
-6. Require exact-head PR CI, expected-head merge and independent post-merge `main` CI before calling Update/Rollback integrated.
+Do not restart Update/Rollback Tasks 1–13. Code, design, plan and the Persian UI are on `main`. Evidence, coverage map and **known gaps** are in `docs/release-readiness/update-recovery-rollback.md`; operator behavior is in `docs/update-recovery-operations.md`.
 
-The design must cover at minimum:
+Open items before Update/Rollback can be called fully release-ready:
 
-- source/target ProductVersion compatibility and release metadata;
-- mandatory verified pre-update backup/snapshot;
-- global lifecycle serialization;
-- safe release staging/switching without runtime Composer/Node/npm/shell assumptions;
-- migration ordering and compatibility;
-- durable update journal phases;
-- interruption semantics before and after destructive boundaries;
-- health validation after code/schema transition;
-- rollback of code/data/settings where safe;
-- exact behavior when automatic rollback cannot prove a safe result;
-- session/cache/queue effects;
-- operator-visible Persian-first status/recovery actions;
-- connected MariaDB acceptance and packaged-runtime acceptance.
+1. connected-MariaDB acceptance of the full successful update path;
+2. connected-MariaDB acceptance for bootstrap failure, post-migration health failure, hard interruption between target migration and rollback, and drift -> `recovery_required` at whole-update level;
+3. a recorded whole-branch review (launcher fail-open, secret leakage, migration guesses, maintenance bypass, stale safety snapshot);
+4. release-signing remains out of V1 scope and **NEEDS VERIFICATION before public/commercial automatic distribution**.
 
-## After Update/Rollback
+Reuse `LifecycleMutex`, `MaintenanceWindow`, the shared snapshot recovery kernel and `ProductVersion`; never add a parallel lifecycle stack.
+
+## Next: Final end-to-end lifecycle acceptance
 
 Complete final end-to-end lifecycle acceptance:
 
