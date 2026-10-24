@@ -143,4 +143,3 @@ Only after that first usable self-host lifecycle gate is trustworthy should the 
 ## Definition of trustworthy progress
 
 Code existence is not completion. Applicable frontend check/TypeScript/build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits, project isolation, connected MariaDB acceptance and release/runtime smoke must be green on the current head. Subsystem integration additionally requires its merge commit on `main` to receive independent permanent CI success.
-
