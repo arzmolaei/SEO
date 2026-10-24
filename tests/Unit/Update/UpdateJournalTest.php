@@ -216,6 +216,24 @@ class UpdateJournalTest extends TestCase
     }
 
     /** @param array<string, mixed> $state */
+    public function test_checkpoint_preserves_phase_and_upload_identity_and_rejects_stale_or_secret_updates(): void
+    {
+        $this->writeState(['phase' => 'migrating', 'upload_id' => str_repeat('d', 32)]);
+        $journal = new UpdateJournal($this->path);
+        $state = $journal->checkpoint('migrating', ['migration_state' => ['digest_sha256' => str_repeat('a', 64)]]);
+        $this->assertSame('migrating', $state['phase']);
+        $this->assertSame(str_repeat('d', 32), $state['upload_id']);
+        $this->assertSame($state, (new UpdateJournal($this->path))->state());
+        foreach ([['validating', ['safe' => true]], ['migrating', ['APP_KEY' => 'private']], ['migrating', ['phase' => 'complete']], ['migrating', ['upload_id' => str_repeat('f', 32)]]] as [$phase, $changes]) {
+            try {
+                $journal->checkpoint($phase, $changes);
+                $this->fail('Stale, secret or identity-changing checkpoint must be rejected.');
+            } catch (UpdateException) {
+                $this->assertSame($state, $journal->state());
+            }
+        }
+    }
+
     private function writeState(array $state): void
     {
         if (! is_dir($this->root)) {
