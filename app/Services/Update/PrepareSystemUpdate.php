@@ -131,6 +131,7 @@ final class PrepareSystemUpdate
             'lifecycle_mutex_path_sha256' => $ownership->pathFingerprint(),
             'source_release_kind' => $sourceKind,
             'source_release_id' => $sourceReleaseId,
+            'source_package_digest_sha256' => $sourceRelease['package_digest_sha256'] ?? null,
             'source_product_version' => $currentVersion,
             'source_schema_fingerprint' => $currentSchema,
         ]);
