@@ -70,7 +70,13 @@ jobs:
           --fail-on-skipped
 
       - name: Run connected fresh-runtime recovery acceptance
-        run: >-
-          php artisan test
-          tests/Feature/Acceptance/UpdateRuntimeProcessMariaDbAcceptanceTest.php
-          --fail-on-skipped
+        shell: bash
+        run: |
+          set +e
+          php artisan test tests/Feature/Acceptance/UpdateRuntimeProcessMariaDbAcceptanceTest.php --fail-on-skipped
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo '--- fresh runtime fixture logs ---'
+            find storage/framework/testing -type f -path '*/installation/storage/logs/*.log' -print -exec tail -n 200 {} \; 2>/dev/null || true
+          fi
+          exit "$status"
