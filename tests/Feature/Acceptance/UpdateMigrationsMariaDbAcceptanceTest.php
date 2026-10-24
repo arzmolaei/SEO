@@ -223,6 +223,27 @@ PHPCHILD);
         }
     }
 
+    public function test_data_only_history_drift_is_not_mistaken_for_an_interrupted_completed_down_on_mariadb(): void
+    {
+        DB::table('cache')->insert(['key' => 'history-proof', 'value' => 'retained', 'expiration' => 0]);
+        $up = "UPDATE cache SET expiration = expiration + 1 WHERE `key` = 'history-proof'";
+        $down = "UPDATE cache SET expiration = expiration - 1 WHERE `key` = 'history-proof'";
+        $this->writeMigration('2099_01_01_000001_first', $up, $down);
+        $this->writeMigration('2099_01_01_000002_second', $up, $down);
+        $before = $this->runner->snapshot();
+        $after = $this->runner->runPending($before, static function (): void {});
+        DB::table('migrations')->where('migration', '2099_01_01_000002_second')->delete();
+        $drifted = $this->runner->snapshot();
+        try {
+            $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
+            $this->fail('Unexpected data-only history drift must not authorize a guessed down.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_recovery_required', $exception->codeName());
+        }
+        $this->assertSame(2, DB::table('cache')->where('key', 'history-proof')->value('expiration'));
+        $this->assertSame($drifted->ran, $this->runner->snapshot()->ran);
+    }
+
     private function writeMigration(string $name, string $up, string $down, bool $fail = false): void
     {
         $up = var_export($up, true);
