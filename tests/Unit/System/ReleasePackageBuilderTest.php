@@ -27,6 +27,7 @@ class ReleasePackageBuilderTest extends TestCase
         $this->writeFixture('.env.example', 'APP_ENV=production');
         $this->writeFixture('app/Foo.php', '<?php');
         $this->writeFixture('bootstrap/app.php', '<?php');
+        $this->writeFixture('bootstrap/runtime-release.php', '<?php');
         $this->writeFixture('config/app.php', '<?php return [];');
         $this->writeFixture('database/migrations/0001_example.php', '<?php');
         $this->writeFixture('public/index.php', '<?php');
@@ -64,6 +65,7 @@ class ReleasePackageBuilderTest extends TestCase
 
         $this->assertFileExists($this->destination.'/VERSION');
         $this->assertFileExists($this->destination.'/artisan');
+        $this->assertFileExists($this->destination.'/bootstrap/runtime-release.php');
         $this->assertFileExists($this->destination.'/vendor/autoload.php');
         $this->assertFileExists($this->destination.'/public/build/manifest.json');
         $this->assertFileExists($this->destination.'/public/fonts/open/vazirmatn/Vazirmatn[wght].woff2');

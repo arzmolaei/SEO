@@ -1,0 +1,82 @@
+name: Update Rollback MariaDB
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-rollback-mariadb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-rollback-mariadb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-secret
+          MARIADB_DATABASE: seo_update_rollback
+          MARIADB_USER: seo_update
+          MARIADB_PASSWORD: update-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      UPDATE_ROLLBACK_CONNECTED: '1'
+      UPDATE_ROLLBACK_DB_HOST: 127.0.0.1
+      UPDATE_ROLLBACK_DB_PORT: '3306'
+      UPDATE_ROLLBACK_DB_DATABASE: seo_update_rollback
+      UPDATE_ROLLBACK_DB_USERNAME: seo_update
+      UPDATE_ROLLBACK_DB_PASSWORD: update-secret
+      INSTALLER_ASSUME_INSTALLED: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application key
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Run connected exact-suffix rollback acceptance
+        run: >-
+          php artisan test
+          tests/Feature/Acceptance/UpdateRollbackMariaDbAcceptanceTest.php
+          --fail-on-skipped
+
+      - name: Run connected fresh-runtime recovery acceptance
+        shell: bash
+        run: |
+          set +e
+          php artisan test tests/Feature/Acceptance/UpdateRuntimeProcessMariaDbAcceptanceTest.php --fail-on-skipped
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo '--- fresh runtime fixture logs ---'
+            find storage/framework/testing -type f -path '*/installation/storage/logs/*.log' -print -exec tail -n 200 {} \; 2>/dev/null || true
+          fi
+          exit "$status"

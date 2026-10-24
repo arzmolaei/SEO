@@ -6,6 +6,7 @@ parameters:
     paths:
         - app/
         - bootstrap/app.php
+        - bootstrap/runtime-release.php
         - config/
         - database/
         - routes/

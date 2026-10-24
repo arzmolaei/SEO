@@ -33,6 +33,19 @@ final class LifecycleMutexHandle
         return is_resource($this->stream);
     }
 
+    public function pathFingerprint(): string
+    {
+        $this->assertActive();
+        $metadata = stream_get_meta_data($this->stream);
+        $uri = $metadata['uri'] ?? null;
+        $path = is_string($uri) ? realpath($uri) : false;
+        if ($path === false) {
+            throw new RuntimeException('Unable to verify lifecycle mutex identity.');
+        }
+
+        return hash('sha256', $path);
+    }
+
     public function assertActive(): void
     {
         if (! $this->isActive()) {

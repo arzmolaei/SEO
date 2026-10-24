@@ -63,6 +63,18 @@ class ReleasePackageContractTest extends TestCase
         $this->assertContains('public/build/manifest.json', $report['missing']);
     }
 
+    public function test_stable_runtime_release_locator_is_required(): void
+    {
+        $this->seedRequiredRuntimeFiles([
+            'bootstrap/runtime-release.php',
+        ]);
+
+        $report = (new ReleasePackageContract)->inspect($this->root);
+
+        $this->assertFalse($report['valid']);
+        $this->assertContains('bootstrap/runtime-release.php', $report['missing']);
+    }
+
     public function test_development_and_secret_artifacts_are_rejected(): void
     {
         $this->seedRequiredRuntimeFiles();
@@ -114,6 +126,7 @@ class ReleasePackageContractTest extends TestCase
             'VERSION',
             'artisan',
             'bootstrap/app.php',
+            'bootstrap/runtime-release.php',
             'vendor/autoload.php',
             'public/build/manifest.json',
             'public/fonts/open/vazirmatn/Vazirmatn[wght].woff2',

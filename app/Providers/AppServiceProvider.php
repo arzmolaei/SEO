@@ -5,10 +5,15 @@ namespace App\Providers;
 use App\Contracts\SystemProbe;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
+use App\Services\Update\UpdateJournal;
+use App\Support\Lifecycle\LifecycleMutex;
+use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use App\Support\NativeSystemProbe;
+use App\Support\Queue\LifecycleDatabaseConnector;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,6 +29,14 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
         $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
+        $this->app->bind(RuntimeReleaseAdmission::class, static fn () => new RuntimeReleaseAdmission);
+        $this->callAfterResolving('queue', function (QueueManager $queue): void {
+            $queue->addConnector('database', fn () => new LifecycleDatabaseConnector(
+                $this->app->make('db'),
+                $this->app->make(LifecycleMutex::class),
+                $this->app->make(UpdateJournal::class),
+            ));
+        });
     }
 
     /**
@@ -49,6 +62,12 @@ class AppServiceProvider extends ServiceProvider
             ->by($request->ip().'|'.$request->path()));
 
         RateLimiter::for('backup-restore', fn (Request $request): Limit => Limit::perMinute(3)
+            ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('update-verify', fn (Request $request): Limit => Limit::perMinute(3)
+            ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('update-lifecycle', fn (Request $request): Limit => Limit::perMinute(10)
             ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
         Password::defaults(fn (): ?Password => app()->isProduction()

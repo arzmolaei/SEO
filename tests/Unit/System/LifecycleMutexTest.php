@@ -62,6 +62,15 @@ class LifecycleMutexTest extends TestCase
         }
     }
 
+    public function test_active_handle_proves_its_actual_lock_path_without_exposing_the_path(): void
+    {
+        $handle = (new LifecycleMutex($this->path))->acquire('update');
+        $this->assertSame(hash('sha256', realpath($this->path)), $handle->pathFingerprint());
+        $handle->release();
+        $this->expectException(RuntimeException::class);
+        $handle->pathFingerprint();
+    }
+
     public function test_release_is_idempotent_and_allows_a_later_operation_to_acquire(): void
     {
         $mutex = new LifecycleMutex($this->path);
@@ -113,5 +122,24 @@ class LifecycleMutexTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Lifecycle mutex ownership is no longer active.');
         $handle->assertActive();
+    }
+
+    public function test_shared_request_leases_coexist_and_exclude_lifecycle_mutation_until_all_are_released(): void
+    {
+        $mutex = new LifecycleMutex($this->path);
+        $first = $mutex->acquireReadLease();
+        $second = $mutex->acquireReadLease();
+        $first->release();
+        try {
+            $unexpected = $mutex->acquire('update');
+            $unexpected->release();
+            $this->fail('A remaining request lease must exclude destructive ownership.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Another lifecycle operation is already running.', $exception->getMessage());
+        } finally {
+            $second->release();
+        }
+        $ownership = $mutex->acquire('update');
+        $ownership->release();
     }
 }

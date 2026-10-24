@@ -4,6 +4,8 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SystemBackupController;
 use App\Http\Controllers\Settings\SystemRestoreController;
+use App\Http\Controllers\Settings\SystemUpdateController;
+use App\Http\Middleware\EnsureNoConflictingLifecycleRecovery;
 use App\Http\Middleware\EnsureSystemOwner;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +43,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/backup/restore/recover', [SystemRestoreController::class, 'recover'])
         ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:backup-restore'])
         ->name('settings.backup.restore.recover');
+
+    Route::get('settings/update', [SystemUpdateController::class, 'show'])
+        ->middleware(EnsureSystemOwner::class)
+        ->name('settings.update');
+
+    Route::get('settings/update/authorize', [SystemUpdateController::class, 'authorize'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class])
+        ->name('settings.update.authorize');
+
+    Route::post('settings/update/verify', [SystemUpdateController::class, 'verify'])
+        ->middleware([
+            RequirePassword::class,
+            EnsureSystemOwner::class,
+            EnsureNoConflictingLifecycleRecovery::class,
+            'throttle:update-verify',
+        ])
+        ->name('settings.update.verify');
+
+    Route::post('settings/update/confirm', [SystemUpdateController::class, 'confirm'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-verify'])
+        ->name('settings.update.confirm');
+
+    Route::post('settings/update/continue', [SystemUpdateController::class, 'continueUpdate'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
+        ->name('settings.update.continue');
+
+    Route::post('settings/update/recover', [SystemUpdateController::class, 'recover'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
+        ->name('settings.update.recover');
 
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
