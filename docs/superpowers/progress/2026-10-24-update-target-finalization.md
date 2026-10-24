@@ -22,3 +22,10 @@ Starting source-identity capture tests. Target health/coordinator/controller con
 - Independent review requires pinning the exact captured safety bundle SHA-256 and validating its installation/owner identity, rather than accepting any valid same-version/schema bundle. It also requires a receipt-write failure after accepted health/version update to retain retryable validating state instead of entering recovery_required. Regression tests were committed before these corrections.
 - Before full Task10 acceptance, close the independently confirmed shorter-prefix gap in rollbackExactSuffix: without a completed-attempt marker, deleted DATA-ONLY migration history must not be inferred as a completed down merely because schema is unchanged. Exact caller-recorded remaining state is required unless durable completion evidence proves reconciliation.
 - Task10 must consume the exact safety digest, opt into queue preservation, and prove source encryption compatibility including legacy keys. Full cross-install Backup/Restore legacy-key behavior also needs coverage in final lifecycle acceptance; a healthy self-round-trip of only the active APP_KEY is insufficient evidence for older ciphertext.
+
+
+## Verified Task 9 code boundary
+
+Independent review closed the reported Important findings. Code head `efbd766c70a86ba285a755c86d5acfbc5de5c90e`, CI `40060127622`, passed all six permanent gates: 546 backend tests (4070 assertions), PHP 8.4/8.5, frontend/TypeScript/build, Pint/PHPStan, runtime dependency audits, existing connected regressions, eight focused MariaDB lifecycle cases and actual no-dev root -> private slot -> root smoke. Review regression RED45ff07 / CI40059975338 reproduced three snapshot/publication failures (543 passed) before the fixes. Final documentation-head CI remains required before PR15 integration.
+
+Continuation services/health are implemented; browser continuation/recovery routes are connected with Tasks10/11. Task10's shorter-prefix proof correction is independently underway in PR16 with SQLite and connected MariaDB regressions. Full update recovery/UI/seventh acceptance gate and main integration remain incomplete.
