@@ -174,11 +174,16 @@ class UpdateMigrationRunnerTest extends TestCase
                 $this->runner->runPending($before, static function (): void {});
                 $this->fail('An ambiguous data mutation must not run again.');
             } catch (UpdateException $exception) {
-                $this->assertSame('update_recovery_required', $exception->codeName());
+                // No DDL/history residue: handed to exact rollback + snapshot restore.
+                $this->assertSame('update_migration_failed', $exception->codeName());
             }
             $this->assertSame('changed', $owner->fresh()->name);
             $this->assertFileExists($this->directory.'/attempt.json');
         }
+
+        // Exact rollback consumes the failed record from its unchanged checkpoint.
+        $this->runner->rollbackExactSuffix($before, []);
+        $this->assertFileDoesNotExist($this->directory.'/attempt.json');
     }
 
     public function test_unlogged_data_only_down_is_not_repeated_after_failure(): void

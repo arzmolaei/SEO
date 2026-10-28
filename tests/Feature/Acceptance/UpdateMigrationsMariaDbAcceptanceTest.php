@@ -161,9 +161,11 @@ PHPCHILD);
             } else {
                 $this->runner->rollbackExactSuffix($before, $after->appliedSuffix);
             }
-            $this->fail('Process interruption must retain an unresolved attempt.');
+            $this->fail('Process interruption must never be resumed by repeating the migration.');
         } catch (UpdateException $exception) {
-            $this->assertSame('update_recovery_required', $exception->codeName());
+            // An interrupted forward step that left no DDL/history residue is handed to
+            // exact rollback + safety-snapshot restore; an interrupted reverse step is not.
+            $this->assertSame($direction === 'up' ? 'update_migration_failed' : 'update_recovery_required', $exception->codeName());
         }
         $this->assertSame(1, DB::table('cache')->where('key', 'process-probe')->value('expiration'));
         $this->assertFileExists($this->directory.'/attempt.json');
