@@ -44,14 +44,16 @@ class ProjectWorkspaceContext
             'navigation' => array_map(
                 fn (string $section): array => [
                     'key' => $section,
-                    'href' => $section === 'imports'
+                    'href' => $section === 'site-audit'
+                        ? route('projects.crawls.index', $project)
+                        : ($section === 'imports'
                         ? route('projects.keyword-imports.index', $project)
                         : ($section === 'overview'
                         ? route('projects.overview', $project)
                         : route('projects.section', [
                             'project' => $project,
                             'section' => $section,
-                        ])),
+                        ]))),
                 ],
                 self::SECTIONS,
             ),

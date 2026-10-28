@@ -172,21 +172,21 @@ class CrawlRunEngineTest extends TestCase
         $controls = app(CrawlRunControls::class);
 
         $run = $this->start();
-        $controls->pause($run);
+        $controls->pause($run, $this->owner);
         $this->assertSame('done', app(CrawlRunProcessor::class)->processBatch($run->id));
         $this->assertSame('paused', $run->refresh()->status);
         $this->assertSame('pending', $this->url($run, '/')->state);
 
-        $controls->resume($run);
+        $controls->resume($run, $this->owner);
         Queue::assertPushed(ProcessCrawlRun::class, 2);
         $this->assertSame('queued', $run->refresh()->status);
 
-        $controls->cancel($run);
+        $controls->cancel($run, $this->owner);
         $this->assertSame('cancelled', $run->refresh()->status, 'a queued run with no worker is cancelled at once');
         $this->assertSame('skipped', $this->url($run, '/')->state);
 
         $this->expectException(CrawlRunException::class);
-        $controls->resume($run);
+        $controls->resume($run, $this->owner);
     }
 
     public function test_duplicate_workers_do_not_fetch_another_url_while_a_run_is_owned(): void

@@ -48,3 +48,13 @@ after 100 records so completion remains resumable. RED observed missing page_id;
 GREEN focused engine/page tests 19 passed; ordinary backend 736 passed / 16
 connected-only skips (5,120 assertions), PHPStan and Pint passed. Exact-head CI
 still required. HTTP/UI and connected worker concurrency remain next.
+
+Task 8 implemented: project-scoped crawl routes and Persian/English RTL/LTR page,
+real server counters/timestamps, queued-worker explanation, automatic partial
+polling, start/pause/resume/cancel, server-filtered/sorted/paginated URL results and
+bounded details/history. HTTP RED observed missing routes before implementation;
+invalid-prefix RED prevents silently broadening a crawl. Twenty HTTP/engine tests
+pass, including viewer/outsider denial, foreign IDs, audit attribution and atomic
+database-queue failure rollback. PHPStan, TypeScript, frontend check/build and
+Pint passed. Ordinary backend: 745 passed / 19 connected-only skips (5,221
+assertions). Browser UI visual review and final-head CI are not yet claimed.

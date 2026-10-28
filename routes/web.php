@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BulkKeywordStatusController;
+use App\Http\Controllers\CrawlController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\KeywordChangeSetController;
@@ -50,6 +51,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
     Route::get('projects/{project}/exports/seo-plan.csv', ProjectSeoExportController::class)->name('projects.exports.seo-plan');
+
+    Route::get('projects/{project}/crawls', [CrawlController::class, 'index'])->name('projects.crawls.index');
+    Route::post('projects/{project}/crawls', [CrawlController::class, 'store'])->name('projects.crawls.store');
+    Route::post('projects/{project}/crawls/{crawlRun}/{action}', [CrawlController::class, 'control'])
+        ->whereIn('action', ['pause', 'resume', 'cancel'])->scopeBindings()->name('projects.crawls.control');
 
     Route::get('projects/{project}/imports', [KeywordImportController::class, 'index'])->name('projects.keyword-imports.index');
     Route::post('projects/{project}/imports', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.store');

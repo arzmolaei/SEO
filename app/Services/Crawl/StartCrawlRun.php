@@ -10,6 +10,7 @@ use App\Models\CrawlUrl;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
 /**
@@ -23,6 +24,7 @@ class StartCrawlRun
      */
     public function handle(Project $project, User $user, array $input): CrawlRun
     {
+        Gate::forUser($user)->authorize('crawl', $project);
         try {
             $start = (new NormalizePageUrl)->normalize($input['start_url']);
         } catch (InvalidArgumentException) {
@@ -90,10 +92,11 @@ class StartCrawlRun
             }
             $run->forceFill(['discovered_count' => count($rows)])->save();
 
+            CrawlRunActivity::record($run, $user, 'started');
+            ProcessCrawlRun::dispatch($run->id)->beforeCommit();
+
             return $run;
         });
-
-        ProcessCrawlRun::dispatch($run->id);
 
         return $run;
     }
