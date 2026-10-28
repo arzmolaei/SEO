@@ -303,6 +303,55 @@ class KeywordImportFlowTest extends TestCase
             ->assertJsonCount(1, 'props.activeBatch.preview');
     }
 
+    public function test_status_polling_partial_reload_returns_only_fresh_server_state(): void
+    {
+        Queue::fake();
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        [$stranger] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", ['text' => "یک\nدو\n"]);
+        $batch = ImportBatch::query()->sole();
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/mapping", ['keyword' => 'Keyword']);
+        $this->assertSame('queued', $batch->refresh()->status);
+        $url = route('projects.keyword-imports.index', ['project' => $project, 'batch' => $batch->id]);
+        $poll = [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(Request::create('/')),
+            'X-Inertia-Partial-Component' => 'projects/imports',
+            'X-Inertia-Partial-Data' => 'activeBatch,batches',
+        ];
+
+        $this->actingAs($owner)->get($url, $poll)
+            ->assertOk()
+            ->assertJsonPath('props.activeBatch.status', 'queued')
+            ->assertJsonMissingPath('props.canImport')
+            ->assertJsonMissingPath('props.maxBytes');
+
+        // The worker advances the batch; the next poll reflects only that truth.
+        (new ProcessKeywordImportFile($batch->id))->handle(app(ProcessKeywordCsvImport::class));
+        $this->actingAs($owner)->get($url, $poll)
+            ->assertOk()
+            ->assertJsonPath('props.activeBatch.status', 'staged')
+            ->assertJsonPath('props.activeBatch.valid_rows', 2)
+            ->assertJsonPath('props.batches.data.0.status', 'staged');
+
+        // Polling is an ordinary authorized read: project boundaries still apply.
+        $this->actingAs($stranger)->get($url, $poll)->assertForbidden();
+    }
+
+    public function test_status_poll_from_a_stale_release_forces_a_full_page_load(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+
+        $this->actingAs($owner)->get("/projects/{$project->id}/imports", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => 'previous-release-assets',
+            'X-Inertia-Partial-Component' => 'projects/imports',
+            'X-Inertia-Partial-Data' => 'activeBatch,batches',
+        ])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location');
+    }
+
     /** @return array{User, Project} */
     private function projectMember(WorkspaceRole $role): array
     {
