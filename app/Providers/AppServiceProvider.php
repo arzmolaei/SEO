@@ -91,14 +91,20 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('update-lifecycle', fn (Request $request): Limit => Limit::perMinute(10)
             ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
+        // Local structural rules only: the offline core must not depend on an
+        // external breach-check service unless the operator opts in.
+        Password::defaults(function (): ?Password {
+            if (! app()->isProduction()) {
+                return null;
+            }
+
+            $rule = Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+                ->symbols();
+
+            return config('auth.password_breach_check') === true ? $rule->uncompromised() : $rule;
+        });
     }
 }

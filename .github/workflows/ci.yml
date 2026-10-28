@@ -112,6 +112,8 @@ jobs:
           test -f "$RELEASE_ROOT/app/Services/Backup/RecoverInterruptedRestore.php"
           test -f "$RELEASE_ROOT/app/Support/Lifecycle/LifecycleMutex.php"
           test -f "$RELEASE_ROOT/config/backup.php"
+          test -f "$RELEASE_ROOT/lang/fa/validation.php"
+          test -f "$RELEASE_ROOT/lang/fa.json"
           test -f "$RELEASE_ROOT/routes/settings.php"
           grep -q 'backup-restore' "$RELEASE_ROOT/public/build/manifest.json"
           (

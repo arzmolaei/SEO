@@ -56,6 +56,25 @@ class InstallerPreflightTest extends TestCase
         $this->assertFalse($report['checks']['disk']['required']);
     }
 
+    public function test_low_php_upload_limits_warn_without_blocking_installation(): void
+    {
+        $report = (new InstallerPreflight($this->probe(), static fn (): ?int => 8 * 1024 * 1024))->check();
+
+        $this->assertTrue($report['ready']);
+        $this->assertSame('warning', $report['checks']['upload_limit']['status']);
+        $this->assertFalse($report['checks']['upload_limit']['required']);
+        $this->assertSame(8 * 1024 * 1024, $report['checks']['upload_limit']['value']);
+        $this->assertStringContainsString('upload_max_filesize', $report['checks']['upload_limit']['message']);
+    }
+
+    public function test_sufficient_or_unlimited_upload_limits_pass(): void
+    {
+        foreach ([256 * 1024 * 1024, null] as $limit) {
+            $report = (new InstallerPreflight($this->probe(), static fn (): ?int => $limit))->check();
+            $this->assertSame('pass', $report['checks']['upload_limit']['status']);
+        }
+    }
+
     /**
      * @param array{
      *   phpVersion?: string,

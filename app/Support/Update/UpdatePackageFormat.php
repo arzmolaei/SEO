@@ -89,6 +89,7 @@ final class UpdatePackageFormat
             'bootstrap',
             'config',
             'database/migrations',
+            'lang',
             'resources/views',
             'routes',
             'vendor',

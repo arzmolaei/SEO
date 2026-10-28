@@ -126,6 +126,41 @@ const messages = {
         'auth.registerDescription':
             'حساب اولیه را برای مدیریت پروژه‌های سئو بسازید.',
         'auth.haveAccount': 'از قبل حساب دارید؟',
+        'auth.emailAddress': 'نشانی ایمیل',
+        'auth.confirmTitle': 'تأیید رمز عبور',
+        'auth.confirmDescription':
+            'این بخش امن است. پیش از ادامه، رمز عبور خود را تأیید کنید.',
+        'auth.confirmButton': 'تأیید رمز عبور',
+        'auth.confirmPasskey': 'تأیید با کلید عبور',
+        'auth.confirming': 'در حال تأیید…',
+        'auth.confirmWithPassword': 'یا با رمز عبور تأیید کنید',
+        'auth.forgotTitle': 'فراموشی رمز عبور',
+        'auth.forgotDescription':
+            'ایمیل خود را وارد کنید تا پیوند بازنشانی رمز عبور برایتان ارسال شود.',
+        'auth.sendResetLink': 'ارسال پیوند بازنشانی رمز عبور',
+        'auth.returnTo': 'یا بازگشت به',
+        'auth.loginLink': 'صفحه ورود',
+        'auth.resetTitle': 'بازنشانی رمز عبور',
+        'auth.resetDescription': 'رمز عبور تازه خود را وارد کنید.',
+        'auth.resetButton': 'بازنشانی رمز عبور',
+        'auth.verifyTitle': 'تأیید ایمیل',
+        'auth.verifyDescription':
+            'نشانی ایمیل خود را با کلیک روی پیوندی که برایتان فرستادیم تأیید کنید.',
+        'auth.verificationSent':
+            'پیوند تأیید تازه\u200cای به نشانی ایمیلی که هنگام ثبت\u200cنام وارد کردید ارسال شد.',
+        'auth.resendVerification': 'ارسال دوباره ایمیل تأیید',
+        'auth.logout': 'خروج',
+        'auth.twoFactorTitle': 'ورود دو مرحله\u200cای',
+        'auth.authCodeTitle': 'کد احراز هویت',
+        'auth.authCodeDescription':
+            'کد احراز هویت برنامه احراز هویت خود را وارد کنید.',
+        'auth.recoveryTitle': 'کد بازیابی',
+        'auth.recoveryDescription':
+            'برای تأیید دسترسی به حساب، یکی از کدهای بازیابی اضطراری خود را وارد کنید.',
+        'auth.recoveryPlaceholder': 'کد بازیابی را وارد کنید',
+        'auth.useRecoveryCode': 'ورود با کد بازیابی',
+        'auth.useAuthCode': 'ورود با کد احراز هویت',
+        'auth.orYouCan': 'یا می\u200cتوانید',
         'onboarding.title': 'فضای کاری سئو را آماده کنیم',
         'onboarding.description':
             'در مرحله بعد فضای کاری، پروژه و تنظیمات اولیه شما ساخته می‌شود.',
@@ -325,6 +360,41 @@ const messages = {
         'auth.registerDescription':
             'Create the initial account for your SEO workspace.',
         'auth.haveAccount': 'Already have an account?',
+        'auth.emailAddress': 'Email address',
+        'auth.confirmTitle': 'Confirm password',
+        'auth.confirmDescription':
+            'This is a secure area of the application. Please confirm your password before continuing.',
+        'auth.confirmButton': 'Confirm password',
+        'auth.confirmPasskey': 'Confirm with passkey',
+        'auth.confirming': 'Confirming…',
+        'auth.confirmWithPassword': 'Or confirm with password',
+        'auth.forgotTitle': 'Forgot password',
+        'auth.forgotDescription':
+            'Enter your email to receive a password reset link.',
+        'auth.sendResetLink': 'Email password reset link',
+        'auth.returnTo': 'Or, return to',
+        'auth.loginLink': 'log in',
+        'auth.resetTitle': 'Reset password',
+        'auth.resetDescription': 'Please enter your new password below.',
+        'auth.resetButton': 'Reset password',
+        'auth.verifyTitle': 'Email verification',
+        'auth.verifyDescription':
+            'Please verify your email address by clicking on the link we just emailed to you.',
+        'auth.verificationSent':
+            'A new verification link has been sent to the email address you provided during registration.',
+        'auth.resendVerification': 'Resend verification email',
+        'auth.logout': 'Log out',
+        'auth.twoFactorTitle': 'Two-factor authentication',
+        'auth.authCodeTitle': 'Authentication code',
+        'auth.authCodeDescription':
+            'Enter the authentication code provided by your authenticator application.',
+        'auth.recoveryTitle': 'Recovery code',
+        'auth.recoveryDescription':
+            'Please confirm access to your account by entering one of your emergency recovery codes.',
+        'auth.recoveryPlaceholder': 'Enter recovery code',
+        'auth.useRecoveryCode': 'log in using a recovery code',
+        'auth.useAuthCode': 'log in using an authentication code',
+        'auth.orYouCan': 'or you can',
         'onboarding.title': 'Set up your SEO workspace',
         'onboarding.description':
             'Next we will create your workspace, first project, and core defaults.',
