@@ -114,4 +114,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Breached Password Check (optional integration)
+    |--------------------------------------------------------------------------
+    |
+    | The offline-capable core never calls an external service by default.
+    | Operators with reliable international connectivity may opt in to the
+    | k-anonymity breached-password lookup (api.pwnedpasswords.com).
+    |
+    */
+
+    'password_breach_check' => (bool) env('AUTH_PASSWORD_BREACH_CHECK', false),
+
 ];

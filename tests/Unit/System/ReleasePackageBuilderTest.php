@@ -30,6 +30,7 @@ class ReleasePackageBuilderTest extends TestCase
         $this->writeFixture('bootstrap/runtime-release.php', '<?php');
         $this->writeFixture('config/app.php', '<?php return [];');
         $this->writeFixture('database/migrations/0001_example.php', '<?php');
+        $this->writeFixture('lang/fa/validation.php', '<?php return [];');
         $this->writeFixture('public/index.php', '<?php');
         $this->writeFixture('public/build/manifest.json', '{}');
         $this->writeFixture('public/fonts/open/vazirmatn/Vazirmatn[wght].woff2', 'font');
@@ -71,6 +72,8 @@ class ReleasePackageBuilderTest extends TestCase
         $this->assertFileExists($this->destination.'/public/fonts/open/vazirmatn/Vazirmatn[wght].woff2');
         $this->assertFileExists($this->destination.'/resources/views/app.blade.php');
         $this->assertFileExists($this->destination.'/database/migrations/0001_example.php');
+        // Persian framework/validation strings are runtime code, not dev assets.
+        $this->assertFileExists($this->destination.'/lang/fa/validation.php');
 
         $this->assertFileDoesNotExist($this->destination.'/.env');
         $this->assertFileDoesNotExist($this->destination.'/auth.json');
