@@ -1,0 +1,24 @@
+name: Owner Intent Format Probe
+
+on:
+  push:
+    branches:
+      - probe/owner-intent-format
+
+permissions:
+  contents: read
+
+jobs:
+  format-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit
+      - name: Show formatter diff
+        run: |
+          npx vp fmt docs/OWNER_INTENT.md --write
+          git diff -- docs/OWNER_INTENT.md
