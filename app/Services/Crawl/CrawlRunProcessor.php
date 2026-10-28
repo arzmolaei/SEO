@@ -14,6 +14,7 @@ use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Processes one bounded batch of a run. Every URL row is claimed with a
@@ -35,6 +36,38 @@ class CrawlRunProcessor
 
     /** @return 'more'|'later'|'done' */
     public function processBatch(int $runId): string
+    {
+        // Like the instance lifecycle lock, this lease lives on shared local
+        // storage and is released by the OS if a worker dies. Never unlink it:
+        // replacing an inode would let two workers own different locks.
+        $directory = storage_path('app/crawl/locks');
+        if (is_link($directory) || (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory))) {
+            throw new RuntimeException('Crawl worker lock is unavailable.');
+        }
+        $path = $directory.'/run-'.$runId.'.lock';
+        if (is_link($path)) {
+            throw new RuntimeException('Crawl worker lock is unavailable.');
+        }
+        $lease = fopen($path, 'c+');
+        if ($lease === false) {
+            throw new RuntimeException('Crawl worker lock is unavailable.');
+        }
+        chmod($path, 0600);
+        if (! flock($lease, LOCK_EX | LOCK_NB)) {
+            fclose($lease);
+
+            return 'later';
+        }
+        try {
+            return $this->processOwnedBatch($runId);
+        } finally {
+            flock($lease, LOCK_UN);
+            fclose($lease);
+        }
+    }
+
+    /** @return 'more'|'later'|'done' */
+    private function processOwnedBatch(int $runId): string
     {
         $run = CrawlRun::query()->find($runId);
         if ($run === null || ! $run->isActive()) {
@@ -61,7 +94,11 @@ class CrawlRunProcessor
         $fetcher = $this->factory->fetcher($run);
         $robots = $this->robots($run);
         if (! ($run->settings['sitemaps_read'] ?? false) && $run->mode !== 'list') {
-            $this->discoverSitemaps($run, $policy, $robots);
+            if (! $this->discoverSitemaps($run, $policy)) {
+                $this->refreshCounters($run);
+
+                return 'more';
+            }
         }
 
         $deadline = microtime(true) + (int) config('crawler.batch_seconds');
@@ -339,18 +376,21 @@ class CrawlRunProcessor
         return array_slice($matches[1], 0, 50);
     }
 
-    /** @param  array<string, RobotsTxt>  $robots */
-    private function discoverSitemaps(CrawlRun $run, CrawlTargetPolicy $policy, array $robots): void
+    /** Process at most one sitemap per job; retain the frontier across restarts. */
+    private function discoverSitemaps(CrawlRun $run, CrawlTargetPolicy $policy): bool
     {
         $fetcher = $this->factory->fetcher($run, 10_485_760);
         $scheme = (string) parse_url($run->normalized_start_url, PHP_URL_SCHEME);
-        $queue = [];
-        foreach ($run->allowed_hosts as $authority) {
-            $queue = [...$queue, ...($this->sitemapHints[$authority] ?? []), $scheme.'://'.$authority.'/sitemap.xml'];
+        $queue = $run->settings['sitemap_queue'] ?? [];
+        if (! isset($run->settings['sitemap_seen'])) {
+            foreach ($run->allowed_hosts as $authority) {
+                $queue = [...$queue, ...($this->sitemapHints[$authority] ?? []), $scheme.'://'.$authority.'/sitemap.xml'];
+            }
         }
-        $seen = [];
-        $files = 0;
-        while ($queue !== [] && $files < (int) config('crawler.max_sitemap_files')) {
+        $seen = array_fill_keys($run->settings['sitemap_seen'] ?? [], true);
+        $files = count($seen);
+        $limit = (int) config('crawler.max_sitemap_files');
+        while ($queue !== [] && $files < $limit) {
             $location = array_shift($queue);
             try {
                 $location = (new NormalizePageUrl)->normalize($location);
@@ -363,12 +403,11 @@ class CrawlRunProcessor
             $seen[$location] = true;
             $files++;
             $result = $fetcher->fetch($location);
-            if ($result->errorCode !== null || $result->response === null || $result->response->status !== 200) {
-                continue;
-            }
-            $sitemap = SitemapReader::read($result->response->body);
+            $sitemap = $result->errorCode === null && $result->response?->status === 200
+                ? SitemapReader::read($result->response->body)
+                : ['type' => 'invalid', 'locations' => []];
             if ($sitemap['type'] === 'index') {
-                $queue = [...$queue, ...$sitemap['locations']];
+                $queue = array_slice(array_values(array_unique([...$queue, ...$sitemap['locations']])), 0, $limit);
             } elseif ($sitemap['type'] === 'urlset') {
                 $inScope = array_values(array_filter($sitemap['locations'], function (string $url) use ($policy): bool {
                     try {
@@ -379,13 +418,21 @@ class CrawlRunProcessor
                 }));
                 $this->enqueue($run, $inScope, $run->mode === 'site' ? 1 : 0, 'sitemap');
             }
+            break;
         }
 
-        DB::transaction(function () use ($run): void {
+        $complete = $queue === [] || $files >= $limit;
+        DB::transaction(function () use ($run, $queue, $seen, $complete): void {
             $locked = CrawlRun::query()->lockForUpdate()->findOrFail($run->id);
-            $locked->forceFill(['settings' => [...$locked->settings, 'sitemaps_read' => true]])->save();
+            $locked->forceFill(['settings' => [...$locked->settings,
+                'sitemaps_read' => $complete,
+                'sitemap_queue' => $complete ? [] : $queue,
+                'sitemap_seen' => array_keys($seen),
+            ]])->save();
         });
         $run->refresh();
+
+        return $complete;
     }
 
     private function refreshCounters(CrawlRun $run): void

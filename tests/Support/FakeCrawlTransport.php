@@ -31,7 +31,7 @@ final class FakeCrawlTransport implements CrawlTransport
         return new TransportResponse($status, ['location' => [$location]], '', 5);
     }
 
-    public function get(string $url, array $addresses, int $maxBytes): TransportResponse
+    public function get(string $url, array $addresses, int $maxBytes, int $timeoutMs = 20_000): TransportResponse
     {
         $this->requests[] = $url;
         $route = $this->routes[$url] ?? self::text('missing', 404);

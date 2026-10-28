@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $start_url
  * @property string $normalized_start_url
  * @property list<string> $allowed_hosts
- * @property array{include: list<string>, exclude: list<string>, max_depth: int, max_urls: int, delay_ms: int, include_www: bool, sitemaps_read?: bool} $settings
+ * @property array{include: list<string>, exclude: list<string>, max_depth: int, max_urls: int, delay_ms: int, include_www: bool, sitemaps_read?: bool, sitemap_queue?: list<string>, sitemap_seen?: list<string>} $settings
  * @property string $status
  * @property int $discovered_count
  * @property int $fetched_count

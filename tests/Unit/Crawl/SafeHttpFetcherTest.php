@@ -107,6 +107,39 @@ class SafeHttpFetcherTest extends TestCase
         $this->assertFalse($result->isHtml());
     }
 
+    public function test_the_whole_redirect_chain_has_one_network_time_budget(): void
+    {
+        $policy = new CrawlTargetPolicy(['site.test:'.self::$port], true, static fn (): array => ['127.0.0.1']);
+        $fetcher = new SafeHttpFetcher($policy, new CurlCrawlTransport, 2_097_152, 100);
+
+        $result = $fetcher->fetch($this->url('/slow-redirect'));
+
+        $this->assertSame('timeout', $result->errorCode);
+        $this->assertTrue($result->transient);
+        $this->assertNull($result->response);
+    }
+
+    public function test_an_environment_proxy_cannot_bypass_connection_pinning(): void
+    {
+        $saved = [];
+        foreach (['http_proxy', 'no_proxy', 'NO_PROXY'] as $key) {
+            $saved[$key] = getenv($key);
+        }
+        try {
+            putenv('http_proxy=http://127.0.0.1:9');
+            putenv('no_proxy=');
+            putenv('NO_PROXY=');
+            $result = $this->fetcher()->fetch($this->url('/ok'));
+
+            $this->assertSame('proxy_not_supported', $result->errorCode);
+            $this->assertNull($result->response);
+        } finally {
+            foreach ($saved as $key => $value) {
+                putenv($value === false ? $key : $key.'='.$value);
+            }
+        }
+    }
+
     public function test_a_site_resolving_to_a_private_address_is_never_contacted_by_default(): void
     {
         $result = $this->fetcher(allowPrivate: false)->fetch($this->url('/ok'));

@@ -110,3 +110,20 @@ sortable URL table per run. Large runs are never sent wholesale to the browser.
 JS rendering; crawl diff/change sets and history views (§17); technical issue engine (§18);
 architecture views (§19); link graph storage and internal linking (§20); scheduling of recurring
 crawls; authenticated crawling.
+
+## Resumed engine review decisions — 2026-10-28
+
+- A per-run, nonblocking filesystem lease serializes the entire batch, including
+  robots and sitemap requests. It uses stable shared application storage like the
+  existing lifecycle mutex; an OS process exit releases it. URL claim tokens still
+  checkpoint hard-killed work. Workers must share the installation storage.
+- Sitemap discovery processes one file per job and persists its bounded queue and
+  seen set in run settings. A large sitemap index cannot consume fifty network
+  requests before a checkpoint.
+- A redirect chain shares a single 20-second network budget. DNS resolution remains
+  the host resolver's responsibility and can still exceed that budget before curl;
+  worker timeout remains the final process bound.
+- Forward proxies cannot guarantee the checked destination address. A configured
+  proxy is refused with `proxy_not_supported`, unless the destination is explicitly
+  excluded by the operator's no-proxy configuration. No proxy settings are changed
+  by the crawler. This is deliberate fail-closed behaviour, not proxy support.

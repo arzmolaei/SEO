@@ -18,6 +18,7 @@ final class SafeHttpFetcher
         private readonly CrawlTargetPolicy $policy,
         private readonly CrawlTransport $transport,
         private readonly int $maxBytes = 2_097_152,
+        private readonly int $timeoutMs = 20_000,
     ) {}
 
     public function fetch(string $url): FetchResult
@@ -25,11 +26,16 @@ final class SafeHttpFetcher
         $current = $url;
         $redirects = [];
         $seen = [];
+        $deadline = hrtime(true) + $this->timeoutMs * 1_000_000;
 
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
             try {
                 $addresses = $this->policy->connectableAddresses($current);
-                $response = $this->transport->get($current, $addresses, $this->maxBytes);
+                $remainingMs = (int) (($deadline - hrtime(true)) / 1_000_000);
+                if ($remainingMs <= 0) {
+                    throw new CrawlRefusal('timeout');
+                }
+                $response = $this->transport->get($current, $addresses, $this->maxBytes, $remainingMs);
             } catch (CrawlRefusal $refusal) {
                 return new FetchResult($url, $current, $redirects, null, $refusal->reason, self::isTransient($refusal->reason));
             }

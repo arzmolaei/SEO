@@ -32,3 +32,11 @@ skips (5,053 assertions); connected backup/migration/isolation 11 passed with
 Task 6 remains in progress pending exact-head CI and concurrency/batch review.
 Tasks 7–9 remain pending. The sandbox needs local TCP permission for socket tests;
 only the loopback-pinned `site.test` fixture was excluded from proxy routing.
+
+Engine hardening adds observed RED→GREEN tests for one worker per run, checkpointed
+sitemap discovery and a shared redirect-chain network budget. Inherited forward
+proxies are refused unless the operator excludes the destination explicitly.
+Local verification after merging current main: crawler 89 passed; ordinary suite
+735 passed / 16 connected-only skips (5,111 assertions); PHPStan/Pint/frontend
+check passed. Page linking, HTTP/UI and connected worker-concurrency acceptance
+are still unimplemented; this is not a completed crawler claim.

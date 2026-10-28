@@ -25,6 +25,10 @@ switch ($path) {
         header('Content-Type: text/html');
         echo str_repeat('a', 3 * 1024 * 1024);
         break;
+    case '/slow-redirect':
+        usleep(300_000);
+        header('Location: /ok', true, 302);
+        break;
     case '/slow':
         sleep(4);
         echo 'late';

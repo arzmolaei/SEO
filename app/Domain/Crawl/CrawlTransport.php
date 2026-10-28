@@ -11,5 +11,5 @@ interface CrawlTransport
      *
      * @throws CrawlRefusal on timeouts, connection or size failures
      */
-    public function get(string $url, array $addresses, int $maxBytes): TransportResponse;
+    public function get(string $url, array $addresses, int $maxBytes, int $timeoutMs = 20_000): TransportResponse;
 }

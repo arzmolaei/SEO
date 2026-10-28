@@ -16,7 +16,7 @@ final class CurlCrawlTransport implements CrawlTransport
         private readonly int $timeoutSeconds = 20,
     ) {}
 
-    public function get(string $url, array $addresses, int $maxBytes): TransportResponse
+    public function get(string $url, array $addresses, int $maxBytes, int $timeoutMs = 20_000): TransportResponse
     {
         if (! function_exists('curl_init')) {
             throw new CrawlRefusal('transport_unavailable');
@@ -29,6 +29,33 @@ final class CurlCrawlTransport implements CrawlTransport
             throw new CrawlRefusal('invalid_url');
         }
         $host = trim($parts['host'], '[]');
+        // A forward proxy resolves/connects independently of CURLOPT_RESOLVE.
+        // Refuse it rather than silently making the SSRF checks ineffective.
+        // Honour only explicit no-proxy exclusions; never change process proxy
+        // configuration or try to bypass an operator's network policy.
+        $proxyNames = strtolower($parts['scheme']) === 'https'
+            ? ['https_proxy', 'HTTPS_PROXY', 'all_proxy', 'ALL_PROXY']
+            : ['http_proxy', 'HTTP_PROXY', 'all_proxy', 'ALL_PROXY'];
+        $hasProxy = false;
+        foreach ($proxyNames as $name) {
+            $proxy = getenv($name);
+            $hasProxy = $hasProxy || (is_string($proxy) && trim($proxy) !== '');
+        }
+        $exclusions = getenv('no_proxy');
+        if ($exclusions === false) {
+            $exclusions = getenv('NO_PROXY');
+        }
+        $excluded = false;
+        foreach (explode(',', $exclusions === false ? '' : $exclusions) as $pattern) {
+            $pattern = strtolower(trim($pattern));
+            if ($pattern === '*' || $pattern === strtolower($host)
+                || ($pattern !== '' && str_ends_with(strtolower($host), '.'.ltrim($pattern, '.')))) {
+                $excluded = true;
+            }
+        }
+        if ($hasProxy && ! $excluded) {
+            throw new CrawlRefusal('proxy_not_supported');
+        }
         $port = $parts['port'] ?? (strtolower($parts['scheme']) === 'https' ? 443 : 80);
         $pins = array_map(
             static fn (string $address): string => $host.':'.$port.':'.(str_contains($address, ':') ? '['.$address.']' : $address),
@@ -44,8 +71,8 @@ final class CurlCrawlTransport implements CrawlTransport
             CURLOPT_RESOLVE => $pins,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-            CURLOPT_CONNECTTIMEOUT => $this->connectTimeoutSeconds,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
+            CURLOPT_CONNECTTIMEOUT_MS => min($this->connectTimeoutSeconds * 1000, max(1, $timeoutMs)),
+            CURLOPT_TIMEOUT_MS => min($this->timeoutSeconds * 1000, max(1, $timeoutMs)),
             CURLOPT_USERAGENT => self::USER_AGENT,
             CURLOPT_ENCODING => '',
             CURLOPT_HTTPHEADER => ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.5'],

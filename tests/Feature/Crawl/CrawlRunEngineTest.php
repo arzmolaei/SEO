@@ -186,6 +186,42 @@ class CrawlRunEngineTest extends TestCase
         $controls->resume($run);
     }
 
+    public function test_duplicate_workers_do_not_fetch_another_url_while_a_run_is_owned(): void
+    {
+        $run = $this->start(['mode' => 'list', 'urls' => [self::SITE.'/', self::SITE.'/second']]);
+        $secondWorker = null;
+        $transport = $this->site([
+            self::SITE.'/' => function () use ($run, &$secondWorker) {
+                $secondWorker = app(CrawlRunProcessor::class)->processBatch($run->id);
+                $this->assertSame('pending', $this->url($run, '/second')->state, 'Only one request per run may be in flight.');
+
+                return FakeCrawlTransport::html('<title>first</title>');
+            },
+            self::SITE.'/second' => FakeCrawlTransport::html('<title>second</title>'),
+        ]);
+
+        $this->assertSame('done', $this->drain($run));
+        $this->assertSame('later', $secondWorker);
+        $this->assertCount(1, array_filter($transport->requests, fn (string $url): bool => $url === self::SITE.'/second'));
+    }
+
+    public function test_sitemap_discovery_checkpoints_between_bounded_jobs(): void
+    {
+        $transport = $this->site([
+            self::SITE.'/sitemap.xml' => FakeCrawlTransport::text('<sitemapindex><sitemap><loc>'.self::SITE.'/child.xml</loc></sitemap></sitemapindex>', 200, 'application/xml'),
+            self::SITE.'/child.xml' => FakeCrawlTransport::text('<urlset><url><loc>'.self::SITE.'/found</loc></url></urlset>', 200, 'application/xml'),
+            self::SITE.'/found' => FakeCrawlTransport::html('<title>found</title>'),
+        ]);
+        $run = $this->start(['mode' => 'sitemap']);
+
+        $this->assertSame('more', app(CrawlRunProcessor::class)->processBatch($run->id));
+        $this->assertNotContains(self::SITE.'/child.xml', $transport->requests, 'Discovery must yield instead of holding a worker across fifty network requests.');
+        $this->assertSame('running', $run->refresh()->status);
+        $this->assertSame('done', $this->drain($run));
+        $this->assertSame('fetched', $this->url($run, '/found')->state);
+        $this->assertCount(1, array_filter($transport->requests, fn (string $url): bool => $url === self::SITE.'/sitemap.xml'));
+    }
+
     public function test_max_urls_caps_discovery(): void
     {
         $links = implode('', array_map(static fn (int $i): string => '<a href="/p'.$i.'">'.$i.'</a>', range(1, 20)));
