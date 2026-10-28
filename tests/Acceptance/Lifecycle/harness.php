@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 /*
  * Build/CI acceptance helper for the end-to-end lifecycle run (run.mjs).
- * It prepares disposable fixtures and reads evidence; it never ships in a
- * runtime release and production code never invokes it.
+ * It prepares disposable infrastructure, injects controlled update faults,
+ * and reads evidence. Ordinary product workflows are driven through the UI.
  *
  * Commands (all output one JSON document on stdout):
  *   db:reset <database>
@@ -17,16 +17,7 @@ declare(strict_types=1);
  *   inspect <installation-root>
  */
 
-use App\Enums\WorkspaceRole;
-use App\Models\ImportBatch;
-use App\Models\Keyword;
-use App\Models\Membership;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Services\Backup\ApplicationSchemaFingerprint;
-use App\Services\Keywords\CommitKeywordImportBatch;
-use App\Services\Keywords\ProcessKeywordCsvImport;
-use App\Services\Projects\CreateProject;
 use App\Services\Update\BuildSystemUpdatePackage;
 use App\Support\ReleasePackageBuilder;
 use Illuminate\Contracts\Console\Kernel;
@@ -135,7 +126,6 @@ try {
             }
             $slug = str_replace(['.', '-'], '_', $version);
             $column = 'lifecycle_'.$slug;
-            // 'slow' leaves a window before any DDL for a hard process interruption.
             $sleep = $scenario === 'slow' ? 'sleep(20);' : '';
             preg_match('/(\d+)\z/', $version, $sequence);
             File::put($destination.'/database/migrations/2099_01_01_'.str_pad($sequence[1] ?? '0', 6, '0', STR_PAD_LEFT).'_lifecycle_'.$slug.'.php', <<<PHP
@@ -190,7 +180,7 @@ PHP);
 
         case 'package':
             [$releaseRoot, $output, $sourceVersion, $sourceFingerprint, $targetFingerprint] = $args;
-            $manifest = $app->make(BuildSystemUpdatePackage::class)->build($releaseRoot, $output, [
+            $app->make(BuildSystemUpdatePackage::class)->build($releaseRoot, $output, [
                 'source_product_version' => $sourceVersion,
                 'source_schema_fingerprint' => $sourceFingerprint,
                 'target_schema_fingerprint' => $targetFingerprint,
@@ -200,31 +190,6 @@ PHP);
                 'created_at_utc' => '2026-10-28T00:00:00Z',
             ]);
             $out(['package' => $output, 'sha256' => hash_file('sha256', $output)]);
-
-        case 'seed':
-            // Realistic domain data through the application's own services.
-            [$root, $csv] = $args;
-            $environment = $parseEnv($root);
-            $connect($safeName($environment['DB_DATABASE'] ?? ''));
-            config(['database.default' => 'lifecycle']);
-            DB::setDefaultConnection('lifecycle');
-            $workspace = Workspace::query()->orderBy('id')->firstOrFail();
-            $owner = User::query()->findOrFail(
-                Membership::query()->where('workspace_id', $workspace->id)->where('role', WorkspaceRole::Owner)->value('user_id'),
-            );
-            $project = $app->make(CreateProject::class)->handle($owner, $workspace, 'example.ir');
-            $batch = ImportBatch::query()->create([
-                'project_id' => $project->id,
-                'source' => 'generic_csv',
-                'original_filename' => basename($csv),
-                'mapping' => ['keyword' => 'Keyword', 'volume' => 'Search Volume'],
-                'status' => 'queued',
-                'total_rows' => 0, 'valid_rows' => 0, 'invalid_rows' => 0,
-                'warning_count' => 0, 'error_count' => 0, 'warnings' => [], 'errors' => [],
-            ]);
-            $app->make(ProcessKeywordCsvImport::class)->handle($batch, $csv, chunkSize: 50);
-            $app->make(CommitKeywordImportBatch::class)->handle($owner, $batch->refresh());
-            $out(['project_id' => $project->id, 'keywords' => Keyword::query()->where('project_id', $project->id)->count()]);
 
         case 'inspect':
             $root = $args[0];
