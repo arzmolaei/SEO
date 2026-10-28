@@ -2,6 +2,18 @@
 
 Checkpoint: 2026-10-28. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
 
+## PAUSE NOTE — 2026-10-28 13:15 (+03:30), read before anything below
+
+- `main` = `810ec45` is **RED**: PR #23 was merged while its CI failed (unformatted `run.mjs`; Lifecycle E2E BOM assertion).
+- Branch `fix/main-green` (PR open, not merged) fixes main:
+    - `test(lifecycle)`: export BOM checked on raw bytes (`response.text()` strips a BOM); formatting restored.
+    - `fix(update)`: a completed restore (terminal restore journal `complete`) no longer blocks every later update — `RestoreJournal::hasActiveOperation()` used by all update entry points and `EnsureNoConflictingLifecycleRecovery`. RED→GREEN tests in `VerifyUpdatePackageTest` and `UpdateAuthorizationTest`. Found by the lifecycle E2E (restore → update failed with 409).
+    - Local: full PHP suite green (631 passed, 16 skipped), PHPStan, Pint, `npm run check`.
+    - NOT yet verified: exact-head CI and a local re-run of the full browser lifecycle (stopped by the owner mid-run). Before this fix, the local E2E passed install → project → CSV import → intelligence → Persian export → backup → restore on a 2nd instance, and failed at update with 409.
+- Next: wait for exact-head CI on `fix/main-green` (CI, Update Rollback MariaDB, Lifecycle E2E all green), merge with expected-head protection, verify post-merge main CI. Never merge with red CI.
+- Then: make manual "refresh status" interactions AJAX/auto-polling via Inertia partial reloads (imports processing, installer operations, update status) — the update release switch must remain a full reload; `lang/fa` for framework/auth strings; bilingual launcher 503; then the next master-spec subsystem.
+- Stale remote branches (fully contained in main or temporary) still exist; deleting them needs the owner's explicit permission.
+
 ## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
 
 **Owner requested a clean pause and handoff. All implementation is committed and
