@@ -941,7 +941,7 @@ async function waitForStatus(browser, fragment, timeoutMs = 120000) {
             // operator would, but never while this tab's request is running.
             if (
                 ++polls % 20 === 0 &&
-                (text.startsWith('Application update') ||
+                (text.includes('Application update') ||
                     !(await browser.evaluate(
                         '!!document.querySelector(\'[aria-busy="true"]\')',
                     )))
