@@ -708,6 +708,13 @@ async function exerciseTasks(browser, instance, projectId) {
     await browser.waitForText('عقب‌افتاده (۱)');
     await browser.check('[data-task] input[type="checkbox"]');
     await browser.waitForText('انجام‌شده (۱)');
+
+    // The page's internal link suggestions open focused on that page.
+    await browser.goto(`${instance.base}/projects/${projectId}/pages`);
+    await browser.click(PLANNED_PAGE, { exact: true });
+    await browser.click('پیشنهاد لینک داخلی', { exact: true });
+    await browser.waitForText('لینک‌های مربوط به صفحه');
+    await browser.waitForText('پیشنهادها (');
 }
 
 async function downloadAndValidatePersianExport(browser, instance, projectId) {

@@ -13,6 +13,7 @@ use App\Models\ChangeSet;
 use App\Models\ContentBrief;
 use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
+use App\Models\InternalLinkDecision;
 use App\Models\Keyword;
 use App\Models\KeywordIntentAssignment;
 use App\Models\KeywordMetric;
@@ -39,6 +40,7 @@ use App\Services\Keywords\CommitKeywordImportBatch;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\StageKeywordImport;
+use App\Services\Links\InternalLinks;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
 use App\Services\Tasks\ProjectTasks;
@@ -327,6 +329,10 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'page_id' => $page->id, 'keyword_cluster_id' => $cluster->id,
         ]);
         $taskSnapshot = $task->fresh()?->getRawOriginal();
+        $linkedPage = app(CreatePlannedPage::class)->handle($sourceOwner, $sourceProject, 'صفحه آموزش سئو');
+        app(InternalLinks::class)->decide($sourceProject, $sourceOwner, $linkedPage->id, $page->id, 'done', 'خدمات سئو');
+        $linkDecision = InternalLinkDecision::query()->where('project_id', $sourceProject->id)->sole();
+        $linkSnapshot = $linkDecision->getRawOriginal();
         $crawlSnapshot = $crawl->fresh()->getRawOriginal();
         $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
 
@@ -413,6 +419,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
         $this->assertSame($briefSnapshot, ContentBrief::query()->findOrFail($brief->id)->getRawOriginal());
         $this->assertSame($taskSnapshot, ProjectTask::query()->findOrFail($task->id)->getRawOriginal());
+        $this->assertSame($linkSnapshot, InternalLinkDecision::query()->findOrFail($linkDecision->id)->getRawOriginal());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);
