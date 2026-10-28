@@ -6,6 +6,7 @@ use App\Contracts\SystemProbe;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
 use App\Services\Update\UpdateJournal;
+use App\Support\InstallationState;
 use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use App\Support\NativeSystemProbe;
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->configurePreInstallRuntime();
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
         $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
         $this->app->bind(RuntimeReleaseAdmission::class, static fn () => new RuntimeReleaseAdmission);
@@ -37,6 +39,25 @@ class AppServiceProvider extends ServiceProvider
                 $this->app->make(UpdateJournal::class),
             ));
         });
+    }
+
+    /**
+     * A freshly unpacked runtime has no database yet. Database-backed defaults
+     * must be replaced before any service (e.g. the rate limiter registered in
+     * boot()) resolves a cache store; EnsureApplicationInstalled refines the
+     * session driver per request once the installer reaches finalization.
+     */
+    private function configurePreInstallRuntime(): void
+    {
+        if ((new InstallationState)->isInstalled()) {
+            return;
+        }
+
+        config([
+            'cache.default' => 'file',
+            'session.driver' => 'file',
+            'queue.default' => 'sync',
+        ]);
     }
 
     /**
