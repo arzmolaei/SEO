@@ -6,7 +6,14 @@
 // Build/CI acceptance only. See docs/release-readiness/self-host-lifecycle.md.
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, openSync, rmSync } from 'node:fs';
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    openSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -39,6 +46,14 @@ const OWNER = {
     password: 'Lifecycle#Owner-2026!',
     workspace: 'آژانس سئو تهران',
 };
+const DESTINATION_OWNER = {
+    name: 'مالک مقصد',
+    email: 'destination@example.test',
+    password: 'Lifecycle#Destination-2026!',
+    workspace: 'فضای کاری مقصد',
+};
+const PROJECT_NAME = 'example.ir';
+const PLANNED_PAGE = 'برنامه سئو تهران';
 
 function log(message) {
     console.log(`[lifecycle] ${message}`);
@@ -113,8 +128,6 @@ class Instance {
         const logFile = join(work, `${this.name}-server.log`);
         this.server = spawn(
             php,
-            // Hosts must allow uploads at least as large as a release package (documented
-            // operator requirement); PHP's 2M/8M defaults are too small.
             [
                 '-d',
                 'upload_max_filesize=256M',
@@ -156,7 +169,6 @@ class Instance {
         this.server = null;
     }
 
-    // Cron/worker equivalents a host control panel would run.
     artisan(...args) {
         return execFileSync(php, ['artisan', ...args], {
             cwd: this.root,
@@ -195,7 +207,6 @@ class Instance {
                 },
             };
         };
-        // Exactly the commands the installer tells the operator to schedule.
         this.background.push(loop(['schedule:run', '--no-interaction'], 1000));
         this.background.push(
             loop(
@@ -330,6 +341,446 @@ async function installThroughBrowser(browser, instance, owner) {
 const instances = [];
 const fixtures = join(here, 'fixtures');
 
+async function submitClosestForm(browser, selector) {
+    const submitted = await browser.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        const form = element?.closest('form');
+        if (!form) return false;
+        form.requestSubmit();
+        return true;
+    })()`);
+    assert(submitted, `form exists for ${selector}`);
+}
+
+async function clickSelector(browser, selector) {
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `!!document.querySelector(${JSON.stringify(selector)})`,
+            ),
+        `selector ${selector}`,
+    );
+    const clicked = await browser.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        if (!element || element.disabled) return false;
+        element.click();
+        return true;
+    })()`);
+    assert(clicked, `enabled selector ${selector}`);
+}
+
+async function createProjectThroughBrowser(browser, instance) {
+    log(`${instance.name}: create project through dashboard UI`);
+    await browser.goto(`${instance.base}/dashboard`);
+    await browser.waitFor(
+        () => browser.evaluate('!!document.querySelector("#project_name")'),
+        'project creation form',
+    );
+    await browser.fill('#project_name', PROJECT_NAME);
+    await submitClosestForm(browser, '#project_name');
+    await browser.waitForUrl(
+        (url) => /\/projects\/\d+/.test(url),
+        'created project workspace',
+    );
+    const url = await browser.url();
+    const match = url.match(/\/projects\/(\d+)/);
+    assert(match, 'project id is visible in workspace URL', { url });
+    await browser.waitForText(PROJECT_NAME);
+    return Number(match[1]);
+}
+
+async function importKeywordsThroughBrowser(browser, instance, projectId) {
+    log(`${instance.name}: upload, map, process, and commit CSV through UI`);
+    const path = `/projects/${projectId}/imports`;
+    await browser.goto(`${instance.base}${path}`);
+    await browser.waitFor(
+        () => browser.evaluate('!!document.querySelector("#import-file")'),
+        'keyword import form',
+    );
+    await browser.setFile('#import-file', join(fixtures, 'keywords-fa.csv'));
+    await submitClosestForm(browser, '#import-file');
+    await browser.waitFor(
+        () => browser.evaluate('!!document.querySelector("#keyword-column")'),
+        'column mapping form',
+    );
+    const headers = await browser.evaluate(
+        '[...document.querySelectorAll("#keyword-column option")].map((option) => option.value)',
+    );
+    assert(
+        headers.includes('Keyword') && headers.includes('Search Volume'),
+        'original CSV column identifiers are available for mapping',
+        headers,
+    );
+    await browser.fill('#keyword-column', 'Keyword');
+    await browser.fill('#volume-column', 'Search Volume');
+    await submitClosestForm(browser, '#keyword-column');
+
+    let refreshPolls = 0;
+    await browser.waitFor(
+        async () => {
+            if (
+                await browser.evaluate(
+                    `!![...document.querySelectorAll('form')].find((form) => (form.getAttribute('action') ?? '').endsWith('/commit'))`,
+                )
+            )
+                return true;
+            if (++refreshPolls % 8 === 0) {
+                await browser.evaluate(`(() => {
+                    const button = [...document.querySelectorAll('button')].find((node) => (node.innerText || '').includes('دریافت وضعیت تازه') && !node.disabled);
+                    button?.click();
+                })()`);
+            }
+            return false;
+        },
+        'staged import from real queue worker',
+        120000,
+    );
+    const stagedText = await browser.text();
+    assert(
+        stagedText.includes('آماده بررسی و ثبت'),
+        'server-truth staged status is visible before commit',
+    );
+    const commitSubmitted = await browser.evaluate(`(() => {
+        const form = [...document.querySelectorAll('form')].find((candidate) => (candidate.getAttribute('action') ?? '').endsWith('/commit'));
+        if (!form) return false;
+        form.requestSubmit();
+        return true;
+    })()`);
+    assert(commitSubmitted, 'staged import commit form is submitted through UI');
+
+    refreshPolls = 0;
+    await browser.waitFor(
+        async () => {
+            const text = await browser.text();
+            if (text.includes('ثبت نهایی شد')) return true;
+            if (++refreshPolls % 8 === 0) {
+                await browser.evaluate(`(() => {
+                    const button = [...document.querySelectorAll('button')].find((node) => (node.innerText || '').includes('دریافت وضعیت تازه') && !node.disabled);
+                    button?.click();
+                })()`);
+            }
+            return false;
+        },
+        'committed import from real queue worker',
+        120000,
+    );
+
+    const state = instance.inspect();
+    assert(state.counts.keywords >= 30, 'realistic keyword set committed', state);
+    await assertApplicationServes(browser, instance, projectId, 'سئو سایت');
+    return { project_id: projectId, keywords: state.counts.keywords };
+}
+
+async function exerciseKeywordIntelligence(browser, instance, projectId) {
+    log(`${instance.name}: keyword intelligence review and mapping through UI`);
+    const keywordsUrl = `${instance.base}/projects/${projectId}/keywords`;
+    await browser.goto(keywordsUrl);
+    await browser.click('خوشه‌ها', { exact: true });
+    await browser.waitForText('هوشمندی کلمات کلیدی');
+    await browser.click('ساخت پیشنهاد خوشه');
+    // Let the Inertia mutation finish before navigating to Review Queue.
+    await sleep(750);
+    await browser.click('صف بررسی');
+
+    let reloadPolls = 0;
+    await browser.waitFor(
+        async () => {
+            const clusterReview = await browser.evaluate(`(() => [...document.querySelectorAll('article')].some((article) => (article.innerText || '').includes('پیشنهاد خوشه')))()`);
+            if (clusterReview) return true;
+            if (++reloadPolls % 8 === 0) {
+                await browser.evaluate(`(() => {
+                    const button = [...document.querySelectorAll('button')].find((node) => (node.innerText || '').includes('دریافت آخرین نتایج') && !node.disabled);
+                    button?.click();
+                })()`);
+            }
+            return false;
+        },
+        'cluster suggestion in Review Queue',
+        120000,
+    );
+    const reviewKey = await browser.evaluate(`(() => {
+        const article = [...document.querySelectorAll('article')].find((node) => (node.innerText || '').includes('پیشنهاد خوشه'));
+        if (!article) return '';
+        article.dataset.lifecycleReviewKey = 'accepted-cluster-review';
+        const button = [...article.querySelectorAll('button')].find((node) => (node.innerText || '').includes('پذیرش پیشنهاد') && !node.disabled);
+        if (!button) return '';
+        button.click();
+        return article.dataset.lifecycleReviewKey;
+    })()`);
+    assert(reviewKey, 'cluster suggestion can be accepted through Review Queue');
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `!document.querySelector('[data-lifecycle-review-key="accepted-cluster-review"]')`,
+            ),
+        'cluster review decision',
+        60000,
+    );
+
+    await browser.goto(keywordsUrl);
+    await browser.click('خوشه‌ها', { exact: true });
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `!!document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article')`,
+            ),
+        'accepted cluster card',
+        60000,
+    );
+
+    const businessSet = await browser.evaluate(`(() => {
+        const article = document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article');
+        const select = article?.querySelector('select');
+        if (!select) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+        setter.call(select, '4');
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    })()`);
+    assert(businessSet, 'cluster business relevance control is available');
+    await browser.click('ثبت بررسی');
+    await sleep(750);
+    await browser.waitForText('بررسی‌شده');
+
+    const pageInput = `input[placeholder=${JSON.stringify('عنوان صفحه برنامه‌ریزی‌شده')}]`;
+    await browser.fill(pageInput, PLANNED_PAGE);
+    await browser.click('ساخت صفحه', { exact: true });
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `document.querySelector(${JSON.stringify(pageInput)})?.value === ''`,
+            ),
+        'planned page creation',
+    );
+
+    const searchSelector = `#keyword-intelligence-title ~ * input[placeholder=${JSON.stringify('عنوان یا URL صفحه')}]`;
+    const searchReady = await browser.evaluate(`(() => {
+        const article = document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article');
+        const input = article?.querySelector('input[placeholder="عنوان یا URL صفحه"]');
+        return !!input;
+    })()`);
+    assert(searchReady, 'target page search is available');
+    const filledSearch = await browser.evaluate(`(() => {
+        const article = document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article');
+        const input = article?.querySelector('input[placeholder="عنوان یا URL صفحه"]');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(PLANNED_PAGE)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    })()`);
+    assert(filledSearch, `target search input exists (${searchSelector})`);
+    await browser.click('جستجوی صفحه هدف');
+    await browser.waitForText(PLANNED_PAGE);
+    await browser.click('نگاشت به این صفحه');
+    await browser.waitFor(
+        () =>
+            browser.evaluate(`(() => {
+                const article = document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article');
+                return (article?.innerText || '').includes(${JSON.stringify(PLANNED_PAGE)});
+            })()`),
+        'planned-page mapping',
+    );
+
+    if (await browser.hasControl('اعلام آماده')) {
+        const readyEnabled = await browser.evaluate(`(() => {
+            const article = document.querySelector('#keyword-intelligence-title')?.closest('section')?.querySelector('article');
+            const button = article && [...article.querySelectorAll('button')].find((node) => (node.innerText || '').includes('اعلام آماده'));
+            return !!button && !button.disabled;
+        })()`);
+        if (readyEnabled) await browser.click('اعلام آماده');
+    }
+
+    const state = instance.inspect();
+    assert(
+        state.counts.keyword_clusters >= 1,
+        'human-approved cluster exists after UI review',
+        state.counts,
+    );
+}
+
+async function downloadAndValidatePersianExport(browser, instance, projectId) {
+    log(`${instance.name}: download and validate Persian SEO CSV through UI link`);
+    const path = `/projects/${projectId}/exports/seo-plan.csv`;
+    await browser.goto(`${instance.base}/projects/${projectId}/keywords`);
+    const linkExists = await browser.evaluate(
+        `!!document.querySelector('a[href=${JSON.stringify(path)}]')`,
+    );
+    assert(linkExists, 'normal-browser export link is rendered');
+    const csv = await browser.fetchText(path);
+    assert(csv.status === 200, 'Persian export returns 200', csv);
+    assert(
+        (csv.type ?? '').includes('text/csv'),
+        'Persian export content type is CSV',
+        csv,
+    );
+    assert(
+        (csv.disposition ?? '').includes('.csv'),
+        'Persian export is an attachment',
+        csv,
+    );
+    assert(csv.body.startsWith('\uFEFF'), 'Persian export starts with UTF-8 BOM');
+    const header = csv.body.slice(1).split(/\r?\n/, 1)[0].split(',');
+    assert(
+        header.length === 74 &&
+            header[0] === 'schema_version' &&
+            header.includes('keyword_display_text') &&
+            header.includes('page_title') &&
+            header.at(-1) === 'exact_text_json',
+        'seo-plan/1 ordered header is present',
+        header,
+    );
+    assert(csv.body.includes('seo-plan/1'), 'export rows identify seo-plan/1');
+    assert(csv.body.includes('سئو سایت'), 'export contains Persian keyword text');
+    assert(csv.body.includes('\u200c'), 'export preserves a real Persian ZWNJ');
+    assert(csv.body.includes(PLANNED_PAGE), 'export includes mapped planned page');
+}
+
+async function ensureRecentPassword(browser, instance, owner) {
+    await browser.goto(`${instance.base}/settings/security`);
+    if ((await browser.url()).includes('/confirm-password')) {
+        await browser.fill('#password', owner.password);
+        await submitClosestForm(browser, '#password');
+        await browser.waitForUrl(
+            (url) => !url.includes('/confirm-password'),
+            'recent password confirmation',
+        );
+    }
+}
+
+async function downloadBackupThroughBrowser(browser, instance, owner) {
+    log(`${instance.name}: download full backup through UI`);
+    await ensureRecentPassword(browser, instance, owner);
+    await browser.goto(`${instance.base}/settings/backup`);
+    await browser.waitForText('پشتیبان‌گیری و بازیابی');
+    const linkExists = await browser.evaluate(
+        `document.querySelector('[data-test="download-backup"]')?.getAttribute('href') === '/settings/backup/download'`,
+    );
+    assert(linkExists, 'backup download link is rendered in Persian UI');
+    const download = await browser.fetchBase64('/settings/backup/download');
+    assert(download.status === 200, 'backup download returns 200', download);
+    assert(
+        (download.disposition ?? '').includes('.seobak'),
+        'backup is delivered as .seobak attachment',
+        download,
+    );
+    const backupPath = join(work, `${instance.name}.seobak`);
+    writeFileSync(backupPath, Buffer.from(download.body, 'base64'));
+    assert(existsSync(backupPath), 'disposable backup file was written');
+    return backupPath;
+}
+
+async function restoreBackupThroughBrowser(
+    browser,
+    instance,
+    owner,
+    backupPath,
+) {
+    log(`${instance.name}: verify and restore backup through UI`);
+    await ensureRecentPassword(browser, instance, owner);
+    await browser.goto(`${instance.base}/settings/backup`);
+    await browser.waitForText('بازیابی از فایل پشتیبان');
+    await browser.setFile('#restore-backup', backupPath);
+    await clickSelector(browser, '[data-test="verify-backup"]');
+    await browser.waitFor(
+        () => browser.evaluate('!!document.querySelector("#restore-digest")'),
+        'verified backup preview',
+        120000,
+    );
+    const digest = await browser.evaluate(
+        'document.querySelector("code")?.textContent?.trim() ?? ""',
+    );
+    assert(/^[a-f0-9]{64}$/.test(digest), 'verified backup digest is shown', {
+        digest,
+    });
+    await browser.fill('#restore-digest', digest);
+    await clickSelector(browser, '[data-test="confirm-restore"]');
+    await browser.waitForUrl(
+        (url) => url.includes('/login'),
+        'restore completion redirect to login',
+        180000,
+    );
+}
+
+async function backupRestoreLifecycle(browser, source, workflow) {
+    const sourceState = source.inspect();
+    const backupPath = await downloadBackupThroughBrowser(browser, source, OWNER);
+
+    const destination = await new Instance('instance-b', 'seo_e2e_b').create();
+    instances.push(destination);
+    await browser.clearCookies();
+    const destinationBefore = await installThroughBrowser(
+        browser,
+        destination,
+        DESTINATION_OWNER,
+    );
+    assert(
+        destinationBefore.installed.installation_id !==
+            sourceState.installed.installation_id,
+        'clean destination has a distinct installation identity',
+    );
+    assert(
+        destinationBefore.app_key_sha256 !== sourceState.app_key_sha256,
+        'clean destination starts with a distinct APP_KEY hash',
+    );
+
+    await restoreBackupThroughBrowser(
+        browser,
+        destination,
+        DESTINATION_OWNER,
+        backupPath,
+    );
+    const restored = destination.inspect();
+    assert(
+        restored.database === destinationBefore.database,
+        'restore preserves destination database selection',
+        restored,
+    );
+    assert(
+        restored.installed.installation_id ===
+            destinationBefore.installed.installation_id,
+        'restore preserves destination installation identity',
+        restored.installed,
+    );
+    assert(
+        restored.installed.restored_from_installation_id ===
+            sourceState.installed.installation_id,
+        'restore records source installation provenance',
+        restored.installed,
+    );
+    assert(
+        restored.app_key_sha256 === sourceState.app_key_sha256 &&
+            restored.app_key_sha256 !== destinationBefore.app_key_sha256,
+        'restore applies source APP_KEY without exposing it',
+        {
+            source: sourceState.app_key_sha256,
+            destinationBefore: destinationBefore.app_key_sha256,
+            restored: restored.app_key_sha256,
+        },
+    );
+    assert(
+        restored.counts.projects === sourceState.counts.projects &&
+            restored.counts.keywords === sourceState.counts.keywords &&
+            restored.counts.keyword_clusters ===
+                sourceState.counts.keyword_clusters,
+        'restore carries project, keyword, and cluster data',
+        { source: sourceState.counts, restored: restored.counts },
+    );
+
+    await browser.clearCookies();
+    await login(browser, destination, OWNER);
+    await assertApplicationServes(
+        browser,
+        destination,
+        workflow.project_id,
+        'سئو سایت',
+    );
+    log(`${destination.name}: restored source owner and project are operational`);
+    return destination;
+}
+
 // Target releases are built the way a release host would: from the runtime
 // tree, with an additional nullable column migration and a new hashed asset.
 function buildTarget(name, version, scenario, previous = null) {
@@ -433,14 +884,12 @@ async function uploadAndConfirm(browser, instance, owner, pkg, targetVersion) {
         );
         if ((await browser.text()).includes(pkg.sha256)) break;
         if ((await browser.url()).includes('confirm-password')) {
-            // A stale password confirmation (423) sends the owner to re-authenticate.
             await confirmPasswordIfAsked(browser, owner);
             await browser.waitForUrl(
                 (url) => url.endsWith('/settings/update'),
                 'return to update page',
             );
         } else {
-            // Package verification is deliberately limited to three attempts per minute.
             await sleep(61000);
             await openUpdatePage(browser, instance, owner);
         }
@@ -468,8 +917,6 @@ async function waitForStatus(browser, fragment, timeoutMs = 120000) {
             const text = await browser.text();
             if (text.includes(fragment)) return true;
             if (++polls % 20 === 0) {
-                // The dependency-free launcher answers a failed boot with a bare 503;
-                // an operator reloads the update page, as the browser does here.
                 if (text.startsWith('Application update'))
                     await browser.goto(
                         (await browser.url()).replace(
@@ -495,7 +942,7 @@ async function assertApplicationServes(browser, instance, projectId, keyword) {
     assert(html === 'fa|rtl', 'keyword grid renders Persian/RTL', { html });
 }
 
-async function updateLifecycle(browser, a, seeded) {
+async function updateLifecycle(browser, a, workflow) {
     const before = a.inspect();
     const sourceVersion = before.installed.product_version;
     const sourceFingerprint = harness(
@@ -555,11 +1002,12 @@ async function updateLifecycle(browser, a, seeded) {
         asset.status === 200,
         'target public asset served from stable public root',
     );
-    await assertApplicationServes(browser, a, seeded.project_id, 'سئو سایت');
+    await assertApplicationServes(browser, a, workflow.project_id, 'سئو سایت');
+    log('update: restored project remains operational after successful update');
 
     // 2. Target that cannot boot: the launcher must restore the source release.
     log('update: target bootstrap failure');
-    const brokenFingerprint = sourceFingerprint; // unused by a target that never boots
+    const brokenFingerprint = sourceFingerprint;
     const t3broken = buildTarget(
         'alpha3-broken',
         '0.1.0-alpha.3',
@@ -594,7 +1042,7 @@ async function updateLifecycle(browser, a, seeded) {
         'bootstrap failure recovered to source',
         state,
     );
-    await assertApplicationServes(browser, a, seeded.project_id, 'سئو سایت');
+    await assertApplicationServes(browser, a, workflow.project_id, 'سئو سایت');
 
     // 3. Post-migration health failure: exact suffix reversed, source snapshot applied.
     log('update: post-migration health failure');
@@ -629,7 +1077,7 @@ async function updateLifecycle(browser, a, seeded) {
         '.env untouched by rollback',
         state,
     );
-    await assertApplicationServes(browser, a, seeded.project_id, 'سئو سایت');
+    await assertApplicationServes(browser, a, workflow.project_id, 'سئو سایت');
 
     // 4. Hard process interruption while the target migration is running.
     log('update: hard interruption during migration');
@@ -644,7 +1092,7 @@ async function updateLifecycle(browser, a, seeded) {
     await waitForStatus(browser, 'نسخه جدید راه‌اندازی شده');
     await browser.click('ادامه به‌روزرسانی');
     await sleep(4000);
-    await a.stop(); // the web server process dies mid-request
+    await a.stop();
     await a.start();
     await openUpdatePage(browser, a, OWNER);
     state = a.inspect();
@@ -653,7 +1101,6 @@ async function updateLifecycle(browser, a, seeded) {
     );
     await resolveAfterInterruption(browser, a);
     state = a.inspect();
-    // No DDL ran before the process died: exact rollback + snapshot restore is provable.
     assert(
         state.journal_phase === null &&
             state.installed.product_version === t2.version,
@@ -671,7 +1118,7 @@ async function updateLifecycle(browser, a, seeded) {
         'data intact after interrupted update',
         state.counts,
     );
-    await assertApplicationServes(browser, a, seeded.project_id, 'سئو سایت');
+    await assertApplicationServes(browser, a, workflow.project_id, 'سئو سایت');
 
     // 5. Pre-switch failure: active work blocks quiescence; the owner cancels and retries.
     log('update: pre-switch block, cancel and retry');
@@ -739,8 +1186,6 @@ async function updateLifecycle(browser, a, seeded) {
     return state;
 }
 
-// Drive "continue safe rollback" until the server reports a terminal state,
-// re-authenticating when the rolled-back source invalidates the session.
 async function finishRecovery(browser, instance) {
     for (let step = 0; step < 6; step++) {
         await sleep(1500);
@@ -789,20 +1234,19 @@ async function resolveAfterInterruption(browser, instance) {
 async function main() {
     const browser = await Browser.launch();
     try {
-        const a = await new Instance('instance-a', 'seo_e2e_a').create();
-        instances.push(a);
-        await installThroughBrowser(browser, a, OWNER);
-        const seeded = harness(
-            'seed',
-            a.root,
-            join(fixtures, 'keywords-fa.csv'),
+        const source = await new Instance('instance-a', 'seo_e2e_a').create();
+        instances.push(source);
+        await installThroughBrowser(browser, source, OWNER);
+        const projectId = await createProjectThroughBrowser(browser, source);
+        const workflow = await importKeywordsThroughBrowser(
+            browser,
+            source,
+            projectId,
         );
-        assert(
-            seeded.keywords >= 30,
-            'realistic keyword set committed',
-            seeded,
-        );
-        await updateLifecycle(browser, a, seeded);
+        await exerciseKeywordIntelligence(browser, source, projectId);
+        await downloadAndValidatePersianExport(browser, source, projectId);
+        const restored = await backupRestoreLifecycle(browser, source, workflow);
+        await updateLifecycle(browser, restored, workflow);
         if (browser.consoleErrors.length > 0)
             log(`browser exceptions: ${browser.consoleErrors.join(' | ')}`);
     } finally {
