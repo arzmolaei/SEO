@@ -7,6 +7,16 @@ use RuntimeException;
 
 final class LifecycleMutex
 {
+    /**
+     * Ordinary requests and queue reservations hold short shared leases. An
+     * exclusive operation waits this long for them to drain instead of
+     * failing on a momentary overlap; another exclusive owner is still
+     * refused immediately.
+     */
+    private const LEASE_DRAIN_MICROSECONDS = 2_000_000;
+
+    private const LEASE_DRAIN_STEP_MICROSECONDS = 20_000;
+
     public function __construct(
         private readonly ?string $lockPath = null,
         private readonly ?RuntimeReleaseAdmission $releaseAdmission = null,
@@ -22,7 +32,7 @@ final class LifecycleMutex
 
         $stream = $this->openStream();
 
-        if (! flock($stream, LOCK_EX | LOCK_NB)) {
+        if (! $this->lockExclusiveAfterLeasesDrain($stream)) {
             fclose($stream);
 
             throw new RuntimeException('Another lifecycle operation is already running.');
@@ -80,6 +90,30 @@ final class LifecycleMutex
         }
 
         return new LifecycleReadLease($stream);
+    }
+
+    /** @param resource $stream */
+    private function lockExclusiveAfterLeasesDrain(mixed $stream): bool
+    {
+        $deadline = hrtime(true) + self::LEASE_DRAIN_MICROSECONDS * 1000;
+
+        while (true) {
+            if (flock($stream, LOCK_EX | LOCK_NB)) {
+                return true;
+            }
+
+            // A shared lock is only grantable when no exclusive owner exists:
+            // then the holders are transient leases worth waiting for.
+            if (! flock($stream, LOCK_SH | LOCK_NB)) {
+                return false;
+            }
+            flock($stream, LOCK_UN);
+
+            if (hrtime(true) >= $deadline) {
+                return false;
+            }
+            usleep(self::LEASE_DRAIN_STEP_MICROSECONDS);
+        }
     }
 
     /** @return resource */
