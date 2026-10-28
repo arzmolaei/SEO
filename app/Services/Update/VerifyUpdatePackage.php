@@ -4,7 +4,9 @@ namespace App\Services\Update;
 
 use App\Services\Backup\ApplicationSchemaFingerprint;
 use App\Services\Backup\RestoreJournal;
+use App\Support\Lifecycle\LifecycleMutex;
 use App\Support\Lifecycle\ProductVersion;
+use App\Support\Update\ActiveReleasePointer;
 use App\Support\Update\UpdatePackageReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -18,11 +20,27 @@ final class VerifyUpdatePackage
         private readonly ApplicationSchemaFingerprint $schemaFingerprint,
         private readonly UpdateJournal $journal,
         private readonly RestoreJournal $restoreJournal,
+        private readonly ActiveReleasePointer $pointer,
+        private readonly LifecycleMutex $mutex,
     ) {}
 
     public function handle(UploadedFile $upload): UpdatePreview
     {
+        $ownership = $this->mutex->acquire('update-verify');
+        try {
+            return $this->verifyUnderLock($upload);
+        } finally {
+            $ownership->release();
+        }
+    }
+
+    private function verifyUnderLock(UploadedFile $upload): UpdatePreview
+    {
         $this->assertLifecycleAvailable();
+        $source = $this->pointer->current();
+        if ($source['kind'] === 'root') {
+            $this->pointer->activateRoot($source['product_version']);
+        }
 
         $uploadId = bin2hex(random_bytes(16));
         $path = $this->uploadPath($uploadId);

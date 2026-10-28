@@ -341,7 +341,7 @@ class RecoverInterruptedUpdateTest extends UpdateTargetTestCase
         File::put($slot.'/release.json', json_encode([
             'schema' => 'seo-release-slot/1', 'release_id' => 'source-probe',
             'product_version' => '0.1.0-alpha.1', 'package_digest_sha256' => str_repeat('e', 64),
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR));
         File::put($slot.'/public/build/manifest.json', File::get($this->stableRoot.'/public/build/manifest.json'));
         File::put($slot.'/public/build/assets/source-hash.js', 'source asset');

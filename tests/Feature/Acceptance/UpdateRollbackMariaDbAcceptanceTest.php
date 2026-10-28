@@ -155,7 +155,7 @@ class UpdateRollbackMariaDbAcceptanceTest extends TestCase
             'release_id' => 'target-probe',
             'product_version' => '0.1.0-alpha.2',
             'package_digest_sha256' => str_repeat('d', 64),
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR));
         $this->pointer->activateSlot('target-probe', '0.1.0-alpha.2', str_repeat('d', 64));
 

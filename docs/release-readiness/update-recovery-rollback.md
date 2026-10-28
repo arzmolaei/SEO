@@ -94,7 +94,7 @@ Defects this acceptance exposed and fixed (each with a RED regression test):
 
 ## Known gaps — NOT verified
 
-1. **Whole-branch security review** — see the review record below once completed.
+1. **Recorded Update/Rollback security review** — completed with two reproduced findings corrected below. Coverage limits remain explicit; this is not a claim of comprehensive security certification.
 2. **Package authenticity is not provided.** SHA-256 proves integrity only. The approved V1 scope is trusted-code manual installation (design §3/§29); release signing remains **required before public or commercial automatic distribution** and is not claimed.
 3. **Host upload limits.** Release packages (~38 MB today) exceed PHP's default `upload_max_filesize`/`post_max_size` (2M/8M). Operators must raise them (documented requirement; acceptance runs with 256M). Chunked upload is not implemented.
 4. **Framework strings are English** (validation, throttling, password-confirmation page) — no `lang/fa` yet.
@@ -121,3 +121,100 @@ php scripts/release/smoke-update-runtime.php /absolute/built-runtime-release
 ```
 
 The connected gate additionally needs MariaDB 10.11 and the `UPDATE_ROLLBACK_*` environment documented in `.github/workflows/update-rollback-mariadb.yml`.
+
+## Security/correctness review and corrections — 2026-10-28
+
+Reviewed branch: `feature/update-connected-acceptance`, original head
+`a037a946d496ee6d73632fe3a1ad502884f88d41`, baseline
+`43342c667859d68a2bfe62b1fb2258aafedb6a5c`. An independent reviewer inspected
+the full update service flow, including unchanged baseline code. The owner
+accepted both findings and authorized correction. The owner supplied original-head
+success evidence: CI `40642860517`, Update Rollback MariaDB `40642860526`,
+Lifecycle E2E `40642860511`. This session could fetch Git refs but could not
+independently query GitHub API results (proxy CONNECT 403); those run results are
+owner-supplied evidence, not new-head validation.
+
+### Findings and fixes
+
+1. **P1: missing active pointer silently selected old root code after an update.**
+   The launcher treated an absent active-release.json as root even when update
+   metadata/retained releases proved that root activation could not be inferred.
+   Runtime admission only compared paths against that same resolution.
+   A standalone exact-head reproduction demonstrated root 1.0.0 selected with
+   installation metadata at 1.1.0. New regression tests first observed unsafe
+   root boot through public/index.php, then enforce failure before root autoload
+   through both public/index.php and artisan and through ActiveReleasePointer::current().
+   Missing, corrupt and symlinked pointers are covered with journal, last-complete
+   and retained-slot evidence. Installed-version mismatch also blocks fallback when the
+   whole update directory is lost. Only absence without update evidence allows implicit
+   pristine root resolution. Legitimate root activation/rollback now atomically
+   writes an explicit version-checked root pointer, including dependency-free
+   bootstrap recovery. Upload verification persists that pointer before starting
+   the journal, under exclusive lifecycle ownership. The upload route delegates
+   admission to that exclusive operation; an HTTP RED/GREEN regression verifies
+   there is no shared-to-exclusive lease upgrade deadlock.
+
+2. **P2: retained-slot reuse accepted changed code under the original package digest.**
+   The stager previously trusted marker/VERSION/required-path presence. Cancel
+   preserves inactive slots, making retry reuse operationally reachable. A bounded
+   reproduction verified a real package, staged it, altered vendor/autoload.php,
+   and observed the unchanged package accepted with corrupt slot bytes retained.
+   Staging now always creates a fresh private slot with an unpredictable suffix,
+   streaming and verifying every entry through the package reader. Existing slots
+   are never reused or overwritten. This also handles legitimate generated
+   bootstrap caches retained after target boot/rollback without trusting their
+   executable bytes. Regression tests first reproduced changed-code reuse and
+   then the cache/retry failure; final tests verify original manifest hashes in
+   the new slot after changed, missing, symlinked, extra and generated-cache cases. No
+   dependency declaration, lockfile or existing safety assertion was weakened.
+
+### Verification and limits
+
+The full local backend run after correction: **625 tests, 609 passed, 16 skipped,
+4,629 assertions**. Focused update/launcher tests passed. PHPStan passed with zero
+errors. Pint, frontend formatting/lint, TypeScript and production asset build passed.
+A no-dev, classmap-authoritative distribution build passed the real
+root → fresh private slot → explicit root runtime smoke, including stable
+environment/storage and source/target asset verification. Connected Update Rollback MariaDB and fresh-runtime MariaDB tests were
+invoked but both skipped: no MariaDB server/client or connected credentials are
+available locally. These skips are not acceptance passes. Fresh exact-head CI,
+including the permanent connected and browser gates, remains mandatory before
+merge; post-merge main CI remains mandatory afterwards.
+
+The first full suite exposed an obsolete assertion that root activation deletes
+the pointer. It now asserts the explicit root schema/version/launcher fields,
+retaining the existing wrong-version rejection. Shared target/switch fixtures
+now explicitly activate root before seeding retained slots/journals, matching the
+new fail-closed contract.
+
+The review covered authorization, safe controller preview/error output, runtime
+secret digests, launcher/pointer resolution, maintenance admission/shared queue
+leases, migration receipts/exact suffixes, cancel, package verification/staging,
+switch, continuation, health and recovery services. No additional confirmed route
+authorization, secret-leakage or shared-lease regression was found in inspected
+paths. The failed-forward receipt schema/full-checkpoint asymmetry and artifact
+parent-symlink hardening were noted as investigation items, not reproduced
+privilege-escalation findings.
+
+This is a bounded review. The complete lower-level Backup/Restore codec and file
+restore kernel was not re-audited; frontend, deployment/web-server behavior, package
+signing and every existing test were not exhaustively inspected. The independent
+reproductions proved locator selection and stager reuse, not complete browser
+execution against a migrated MariaDB database. New process regressions prove
+entrypoint refusal before root autoload; connected/browser behavior still relies
+on the permanent gates. Filesystem corruption was the recovery/integrity threat
+model; neither finding claims unauthenticated remote code execution. Package
+SHA-256 integrity still does not establish publisher authenticity.
+
+### Launcher compatibility boundary
+
+Explicit root pointers change the stable launcher contract. The launcher and
+package manifest now require **seo-launcher/2**; fixtures, package tooling and
+runtime smoke use that same version. V1 and V2 packages are intentionally not
+interchangeable. Existing V1 stable launchers reject V2 package manifests before
+staging, and V2 rejects V1 packages. Do not install a V2 target behind an unchanged
+V1 stable launcher. Deploying this pre-release launcher correction to a V1 host
+requires an offline, trusted full-runtime/manual launcher upgrade; automatic
+in-place V1-to-V2 launcher migration is not implemented or claimed. V2 slot/root
+rollback remains covered by the runtime and recovery tests. A regression pins the
+V2 contract and rejects legacy V1 manifests.

@@ -66,9 +66,7 @@ final class UpdateReleaseStager
         $this->ensureDirectory($this->releaseRoot);
 
         if (file_exists($slot) || is_link($slot)) {
-            $this->assertExistingSlot($slot, $releaseId, $targetVersion, $packageDigest, $launcherSchema);
-
-            return ['release_id' => $releaseId, 'release_root' => $slot];
+            throw $this->releaseConflict();
         }
 
         $temporary = $this->releaseRoot.DIRECTORY_SEPARATOR.'.'.$releaseId.'.tmp-'.bin2hex(random_bytes(6));
@@ -140,12 +138,7 @@ final class UpdateReleaseStager
             $this->writeJsonFile($temporary.'/release.json', $marker);
 
             if (! @rename($temporary, $slot)) {
-                if (file_exists($slot)) {
-                    $this->assertExistingSlot($slot, $releaseId, $targetVersion, $packageDigest, $launcherSchema);
-                    $this->removeTree($temporary);
-                } else {
-                    throw $this->releaseConflict();
-                }
+                throw $this->releaseConflict();
             }
 
             $this->assertExistingSlot($slot, $releaseId, $targetVersion, $packageDigest, $launcherSchema);
@@ -246,9 +239,10 @@ final class UpdateReleaseStager
         if (! is_string($safeVersion) || $safeVersion === '') {
             throw $this->invalidPackage();
         }
-        $safeVersion = substr($safeVersion, 0, 111);
+        $safeVersion = substr($safeVersion, 0, 94);
 
-        return $safeVersion.'-'.substr($packageDigest, 0, 16);
+        // Never reuse retained executable bytes or caches, even for the same package.
+        return $safeVersion.'-'.substr($packageDigest, 0, 16).'-'.bin2hex(random_bytes(8));
     }
 
     private function assertExistingSlot(

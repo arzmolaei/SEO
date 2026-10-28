@@ -6,6 +6,20 @@ This file is the durable source of truth for continuing SEO OS across agent sess
 
 ## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
 
+Security review follow-up (2026-10-28): the bounded independent Update/Rollback
+review reproduced P1 missing-pointer root fallback and P2 retained-slot payload
+reuse. Corrections and RED/GREEN/process coverage are recorded in
+`docs/release-readiness/update-recovery-rollback.md`: explicit root pointers,
+fail-closed missing/corrupt/symlinked activation state, installed-version guard,
+fresh private slots on every stage attempt, and exclusive upload verification.
+Launcher contract is now `seo-launcher/2`; V1 hosts require a trusted manual
+launcher upgrade, not an automatic V1/V2 package transition. Local backend/PHP
+gates passed; connected MariaDB tests skipped locally. **New-head CI and merge
+remain unverified** because GitHub API access is denied. The owner will verify
+the pushed head and merge PR #21 with expected-head protection if all three
+workflows pass. Then verify main and continue the existing stacked import WIP;
+do not recreate its completed home/project work.
+
 Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
 
 **Branches (none merged to `main` yet; `main` is still `43342c6`):**
@@ -27,7 +41,7 @@ Session paused by the owner; work is pushed. Verify with Git/CI before trusting 
     - WIP (last commit `wip(imports)…`, intentionally RED): migration `2026_10_28_000000_*`, `config/keywords.php`, `StreamingCsvReader::headers()`, jobs `ProcessKeywordImportFile` / `CommitKeywordImport`, `KeywordImportFiles`, tests `tests/Feature/Keywords/KeywordImportFlowTest.php`.
     - NEXT: `KeywordImportController` (index/store[file|text]/mapping/commit/discard) + routes named `projects.keyword-imports.{index,store,mapping,commit,discard}` under `projects/{project}/imports` with scoped `{batch}` binding and `stageKeywordImports` policy; page `resources/js/pages/projects/imports.tsx` (Persian, server-truth status, no fake progress); add `imports_url` back to `HomeController`; overview/keywords CTA; then replace `harness.php seed` in the Lifecycle E2E with the real import UI and extend E2E to intelligence → Persian export → backup → restore (second instance) → update.
 
-**Open gaps:** whole-branch Update/Rollback security review (an attempt was interrupted — still open); release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
+**Open gaps:** new-head CI/merge for the recorded Update/Rollback review fixes; release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
 
 **Lessons for local verification:** `api.github.com` zipballs may be blocked — build a local dist cache via shallow `git fetch` + `git archive`; set `COMPOSER_ALLOW_SUPERUSER=1`; serve with `php -S … -t public` (no router script); package uploads need `upload_max_filesize`/`post_max_size` ≥ package size.
 

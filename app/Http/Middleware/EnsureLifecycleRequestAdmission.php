@@ -60,6 +60,7 @@ final class EnsureLifecycleRequestAdmission
             'POST /settings/backup/restore/verify',
             'POST /settings/backup/restore/confirm',
             'POST /settings/backup/restore/recover',
+            'POST /settings/update/verify',
             'POST /settings/update/confirm',
             'POST /settings/update/continue',
             'POST /settings/update/recover',

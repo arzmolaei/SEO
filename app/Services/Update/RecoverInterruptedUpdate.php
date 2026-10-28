@@ -221,7 +221,7 @@ final class RecoverInterruptedUpdate
         $this->assertSourceRuntime($slot);
         $digest = $this->required($state, 'source_package_digest_sha256');
         $marker = $this->readJson($slot.'/release.json');
-        if ($marker !== ['schema' => 'seo-release-slot/1', 'release_id' => $id, 'product_version' => $version, 'package_digest_sha256' => $digest, 'launcher_schema' => 'seo-launcher/1'] || (new ProductVersion($slot.'/VERSION'))->requireDistributable() !== $version) {
+        if ($marker !== ['schema' => 'seo-release-slot/1', 'release_id' => $id, 'product_version' => $version, 'package_digest_sha256' => $digest, 'launcher_schema' => 'seo-launcher/2'] || (new ProductVersion($slot.'/VERSION'))->requireDistributable() !== $version) {
             throw $this->recoveryRequired();
         }
 

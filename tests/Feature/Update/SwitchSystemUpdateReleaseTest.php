@@ -72,6 +72,7 @@ class SwitchSystemUpdateReleaseTest extends TestCase
 
         $this->journal = new UpdateJournal($this->journalPath);
         $this->pointer = new ActiveReleasePointer($this->installationRoot, null, $this->releaseRoot);
+        $this->pointer->activateRoot('0.1.0-alpha.1');
         $this->app->instance(UpdateJournal::class, $this->journal);
         $this->app->instance(ActiveReleasePointer::class, $this->pointer);
 
@@ -268,7 +269,7 @@ class SwitchSystemUpdateReleaseTest extends TestCase
             'release_id' => $releaseId,
             'product_version' => $version,
             'package_digest_sha256' => $digest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         @chmod($slot.'/release.json', 0600);
     }

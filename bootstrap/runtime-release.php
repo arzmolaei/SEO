@@ -100,7 +100,7 @@ final class SeoOsUpdateMaintenanceGate
 
 final class SeoOsRuntimeReleaseLocator
 {
-    public const LAUNCHER_SCHEMA = 'seo-launcher/1';
+    public const LAUNCHER_SCHEMA = 'seo-launcher/2';
 
     private const POINTER_SCHEMA = 'seo-release-pointer/1';
 
@@ -139,6 +139,21 @@ final class SeoOsRuntimeReleaseLocator
     {
         $pointerPath = $this->path(self::POINTER_RELATIVE_PATH);
         if (! file_exists($pointerPath) && ! is_link($pointerPath)) {
+            $installedPath = $this->path('storage/app/.installed');
+            if (file_exists($installedPath) || is_link($installedPath)) {
+                $this->assertCanonicalPrivateFile($installedPath);
+                $installed = $this->readMetadata($installedPath);
+                if (($installed['product_version'] ?? null) !== $this->readVersion($this->path('VERSION'))) {
+                    throw $this->invalidState();
+                }
+            }
+            foreach (['state.json', 'last-complete.json', 'releases'] as $evidence) {
+                $path = $this->path('storage/app/lifecycle/update/'.$evidence);
+                if (file_exists($path) || is_link($path)) {
+                    throw $this->invalidState();
+                }
+            }
+
             return [
                 'kind' => 'root',
                 'release_root' => $this->installationRoot,
@@ -150,6 +165,17 @@ final class SeoOsRuntimeReleaseLocator
 
         $this->assertCanonicalPrivateFile($pointerPath);
         $pointer = $this->readMetadata($pointerPath);
+        if (($pointer['schema'] ?? null) === 'seo-root-release-pointer/1') {
+            $this->assertExactKeys($pointer, ['schema', 'product_version', 'launcher_schema']);
+            $version = $this->validatedVersion($pointer['product_version'] ?? null);
+            if (($pointer['launcher_schema'] ?? null) !== self::LAUNCHER_SCHEMA
+                || $this->readVersion($this->path('VERSION')) !== $version) {
+                throw $this->invalidState();
+            }
+
+            return ['kind' => 'root', 'release_root' => $this->installationRoot,
+                'release_id' => null, 'product_version' => $version, 'package_digest_sha256' => null];
+        }
         $this->assertExactKeys($pointer, ['schema', 'release_id', 'product_version', 'package_digest_sha256', 'launcher_schema']);
         if (($pointer['schema'] ?? null) !== self::POINTER_SCHEMA) {
             throw $this->invalidState();
@@ -268,10 +294,15 @@ final class SeoOsRuntimeReleaseLocator
             if (
                 ($state['source_release_id'] ?? null) !== null
                 || $this->readVersion($this->path('VERSION')) !== $version
-                || ! @unlink($pointerPath)
             ) {
                 throw $this->invalidState();
             }
+
+            $this->writeRecoveryMetadata($pointerPath, [
+                'schema' => 'seo-root-release-pointer/1',
+                'product_version' => $version,
+                'launcher_schema' => self::LAUNCHER_SCHEMA,
+            ]);
 
             return;
         }
