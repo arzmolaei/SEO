@@ -11,6 +11,7 @@ return [
     'alpha_num' => ':attribute فقط می‌تواند شامل حروف و عدد باشد.',
     'any_of' => ':attribute معتبر نیست.',
     'array' => ':attribute باید یک آرایه باشد.',
+    'array_keys' => ':attribute باید آرایه‌ای با این کلیدها باشد: :values.',
     'ascii' => ':attribute فقط می‌تواند شامل نویسه‌های تک‌بایتی و نمادها باشد.',
     'before' => ':attribute باید تاریخی پیش از :date باشد.',
     'before_or_equal' => ':attribute باید تاریخی برابر یا پیش از :date باشد.',

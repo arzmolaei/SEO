@@ -43,6 +43,7 @@ class PersianFrameworkStringsTest extends TestCase
     public function test_every_framework_translation_key_has_a_persian_message(): void
     {
         $framework = base_path('vendor/laravel/framework/src/Illuminate/Translation/lang/en');
+        $missing = [];
 
         foreach (['auth', 'pagination', 'passwords', 'validation'] as $group) {
             $english = require $framework."/{$group}.php";
@@ -50,12 +51,13 @@ class PersianFrameworkStringsTest extends TestCase
             unset($english['custom'], $english['attributes']);
 
             foreach ($this->flattenKeys($english) as $key) {
-                $this->assertNotEmpty(
-                    data_get($persian, $key),
-                    "lang/fa/{$group}.php is missing '{$key}'.",
-                );
+                if (empty(data_get($persian, $key))) {
+                    $missing[] = "{$group}.{$key}";
+                }
             }
         }
+
+        $this->assertSame([], $missing, 'Persian framework translations are missing.');
     }
 
     /**
