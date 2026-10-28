@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Connection;
 use Illuminate\Queue\DatabaseQueue;
 use RuntimeException;
+use Throwable;
 
 final class LifecycleDatabaseQueue extends DatabaseQueue
 {
@@ -30,9 +31,13 @@ final class LifecycleDatabaseQueue extends DatabaseQueue
         if ($this->database->transactionLevel() !== 0) {
             throw new RuntimeException('Queue reservation requires an independent transaction.');
         }
+        // A shared lease, like ordinary request admission: lifecycle operations
+        // (exclusive) cannot start mid-reservation, but polling workers never
+        // turn concurrent user requests into maintenance responses. A worker
+        // booted from a release that is no longer active is refused here too.
         try {
-            $ownership = $this->mutex->acquire('queue-reserve');
-        } catch (RuntimeException) {
+            $ownership = $this->mutex->acquireReadLease();
+        } catch (Throwable) {
             return null;
         }
         try {
