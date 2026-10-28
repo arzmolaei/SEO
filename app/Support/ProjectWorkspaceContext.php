@@ -23,6 +23,7 @@ class ProjectWorkspaceContext
         'pages',
         'site-audit',
         'content',
+        'tasks',
     ];
 
     public const SECTIONS = [
@@ -65,6 +66,7 @@ class ProjectWorkspaceContext
                         'imports' => route('projects.keyword-imports.index', $project),
                         'pages' => route('projects.pages.index', $project),
                         'content' => route('projects.content.index', $project),
+                        'tasks' => route('projects.tasks.index', $project),
                         'site-audit' => route('projects.crawls.index', $project),
                         default => route('projects.section', ['project' => $project, 'section' => $section]),
                     },

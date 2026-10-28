@@ -33,6 +33,12 @@ class Project extends Model
         return $this->hasMany(ContentBrief::class);
     }
 
+    /** @return HasMany<ProjectTask, $this> */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(ProjectTask::class);
+    }
+
     /** @return HasMany<ImportBatch, $this> */
     public function batches(): HasMany
     {

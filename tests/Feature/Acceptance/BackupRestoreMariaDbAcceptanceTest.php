@@ -19,6 +19,7 @@ use App\Models\KeywordMetric;
 use App\Models\KeywordSource;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectTask;
 use App\Models\ReviewItem;
 use App\Models\SavedKeywordView;
 use App\Models\User;
@@ -40,6 +41,7 @@ use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\StageKeywordImport;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
+use App\Services\Tasks\ProjectTasks;
 use App\Services\Workspaces\CreateWorkspace;
 use App\Support\InstallationState;
 use App\Support\Installer\InstallerEnvironment;
@@ -320,6 +322,11 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'status' => 'review', 'due_on' => '2026-12-01', 'published_on' => null,
         ]);
         $briefSnapshot = $brief->fresh()?->getRawOriginal();
+        $task = app(ProjectTasks::class)->create($sourceProject, $sourceOwner, [
+            'title' => 'کار فارسی پایدار', 'notes' => 'یادداشت کار', 'status' => 'done', 'due_on' => '2026-11-15',
+            'page_id' => $page->id, 'keyword_cluster_id' => $cluster->id,
+        ]);
+        $taskSnapshot = $task->fresh()?->getRawOriginal();
         $crawlSnapshot = $crawl->fresh()->getRawOriginal();
         $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
 
@@ -405,6 +412,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertSame($crawlSnapshot, CrawlRun::query()->findOrFail($crawl->id)->getRawOriginal());
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
         $this->assertSame($briefSnapshot, ContentBrief::query()->findOrFail($brief->id)->getRawOriginal());
+        $this->assertSame($taskSnapshot, ProjectTask::query()->findOrFail($task->id)->getRawOriginal());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);

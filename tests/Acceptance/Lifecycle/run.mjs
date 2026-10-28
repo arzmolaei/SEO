@@ -689,6 +689,27 @@ async function exerciseContentBrief(browser, instance, projectId) {
     );
 }
 
+// A task linked to the planned page is added from the page's task list,
+// shows as overdue, and moves to done when ticked.
+async function exerciseTasks(browser, instance, projectId) {
+    log(`${instance.name}: single-user tasks through UI`);
+    await browser.goto(`${instance.base}/projects/${projectId}/pages`);
+    await browser.click(PLANNED_PAGE, { exact: true });
+    await browser.click('کارهای این صفحه', { exact: true });
+    await browser.waitForText('کارهای صفحه');
+    const title = 'نوشتن توضیحات متا';
+    const yesterday = new Date(Date.now() - 86400000)
+        .toISOString()
+        .slice(0, 10);
+    await browser.fill('form input[maxlength="255"]', title);
+    await browser.fill('form input[type="date"]', yesterday);
+    await browser.click('افزودن', { exact: true });
+    await browser.waitForText(title);
+    await browser.waitForText('عقب‌افتاده (۱)');
+    await browser.check('[data-task] input[type="checkbox"]');
+    await browser.waitForText('انجام‌شده (۱)');
+}
+
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
     log(
         `${instance.name}: download and validate Persian SEO CSV through UI link`,
@@ -1379,6 +1400,7 @@ async function main() {
         await exerciseKeywordIntelligence(browser, source, projectId);
         await exercisePagesWorkspace(browser, source, projectId);
         await exerciseContentBrief(browser, source, projectId);
+        await exerciseTasks(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
         const restored = await backupRestoreLifecycle(
             browser,
