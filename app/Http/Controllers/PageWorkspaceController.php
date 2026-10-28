@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityEvent;
 use App\Models\ChangeSet;
+use App\Models\CrawlRun;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Pages\PageChecklistFacts;
+use App\Services\Pages\PageLiveFacts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,7 @@ class PageWorkspaceController extends Controller
 
     private const EDITABLE = ['seo_title', 'meta_description', 'h1', 'on_page_status', 'on_page_notes'];
 
-    public function index(Request $request, Project $project, PageChecklistFacts $facts): Response
+    public function index(Request $request, Project $project, PageChecklistFacts $facts, PageLiveFacts $liveFacts): Response
     {
         Gate::authorize('view', $project);
         $filters = $request->validate([
@@ -40,6 +42,7 @@ class PageWorkspaceController extends Controller
             ->orderBy('id')
             ->paginate(20)->withQueryString();
         $pageFacts = $facts->for($project, $pages->getCollection());
+        $live = $liveFacts->for($project, $pages->getCollection());
 
         return Inertia::render('projects/pages', [
             'pages' => $pages->through(fn (Page $page): array => [
@@ -51,13 +54,18 @@ class PageWorkspaceController extends Controller
                 'on_page_status' => $page->on_page_status,
                 'score' => $pageFacts[$page->id]['score'],
                 'targets' => $pageFacts[$page->id]['targets'],
+                'live' => isset($live[$page->id]) ? [
+                    'checked_at' => $live[$page->id]['checked_at'],
+                    'problems' => count($live[$page->id]['problems']),
+                ] : null,
             ]),
             'filters' => $filters,
             'canEdit' => Gate::allows('update', $project),
+            'check' => fn (): array => $this->checkState($project),
         ]);
     }
 
-    public function show(Project $project, Page $page, PageChecklistFacts $facts): Response
+    public function show(Project $project, Page $page, PageChecklistFacts $facts, PageLiveFacts $liveFacts): Response
     {
         Gate::authorize('view', $project);
         $fact = $facts->for($project, collect([$page]))[$page->id];
@@ -82,8 +90,32 @@ class PageWorkspaceController extends Controller
             'secondaryKeywords' => $secondary,
             'checklist' => $fact['items'],
             'score' => $fact['score'],
+            'live' => $liveFacts->for($project, collect([$page]))[$page->id] ?? null,
             'canEdit' => Gate::allows('update', $project),
         ]);
+    }
+
+    /**
+     * The own-site check in progress (if any), so the list can follow it.
+     *
+     * @return array{active: array{id: int, status: string, discovered: int, fetched: int, failed: int}|null, checkable: int, canCheck: bool}
+     */
+    private function checkState(Project $project): array
+    {
+        $run = CrawlRun::query()->where('project_id', $project->id)
+            ->whereIn('status', CrawlRun::ACTIVE_STATUSES)->latest('id')->first();
+
+        return [
+            'active' => $run === null ? null : [
+                'id' => $run->id,
+                'status' => $run->status,
+                'discovered' => $run->discovered_count,
+                'fetched' => $run->fetched_count,
+                'failed' => $run->failed_count + $run->blocked_count,
+            ],
+            'checkable' => min(PageLiveCheckController::MAX_PAGES, Page::query()->where('project_id', $project->id)->whereNotNull('url')->count()),
+            'canCheck' => Gate::allows('crawl', $project),
+        ];
     }
 
     public function update(Request $request, Project $project, Page $page): RedirectResponse

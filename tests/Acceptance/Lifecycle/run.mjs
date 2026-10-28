@@ -627,6 +627,12 @@ async function exercisePagesWorkspace(browser, instance, projectId) {
     log(`${instance.name}: pages workspace and on-page checklist through UI`);
     await browser.goto(`${instance.base}/projects/${projectId}/pages`);
     await browser.waitForText(PLANNED_PAGE);
+    assert(
+        await browser.evaluate(
+            `document.querySelector('[data-site-check]')?.dataset.siteCheck === 'idle'`,
+        ),
+        'own-site page check panel is offered and idle',
+    );
     await browser.click(PLANNED_PAGE, { exact: true });
     await browser.waitForText('چک‌لیست سئوی صفحه');
     const checkStatus = (key) =>
@@ -640,6 +646,12 @@ async function exercisePagesWorkspace(browser, instance, projectId) {
     assert(
         (await checkStatus('url_present')) === 'na',
         'a planned page is not faulted for having no address',
+    );
+    assert(
+        await browser.evaluate(
+            `document.querySelector('[data-live]')?.dataset.live === 'unchecked'`,
+        ),
+        'a planned page has no live check yet',
     );
     await browser.fill('#h1', PLANNED_PAGE);
     await browser.click('ذخیره', { exact: true });

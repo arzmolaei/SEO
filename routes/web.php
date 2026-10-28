@@ -8,6 +8,7 @@ use App\Http\Controllers\KeywordChangeSetController;
 use App\Http\Controllers\KeywordGridController;
 use App\Http\Controllers\KeywordImportController;
 use App\Http\Controllers\KeywordIntelligenceController;
+use App\Http\Controllers\PageLiveCheckController;
 use App\Http\Controllers\PageWorkspaceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectSeoExportController;
@@ -59,9 +60,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereIn('action', ['pause', 'resume', 'cancel'])->scopeBindings()->name('projects.crawls.control');
 
     Route::get('projects/{project}/pages', [PageWorkspaceController::class, 'index'])->name('projects.pages.index');
+    Route::post('projects/{project}/pages/check', [PageLiveCheckController::class, 'check'])->name('projects.pages.check');
     Route::scopeBindings()->group(function (): void {
         Route::get('projects/{project}/pages/{page}', [PageWorkspaceController::class, 'show'])->name('projects.pages.show');
         Route::patch('projects/{project}/pages/{page}', [PageWorkspaceController::class, 'update'])->name('projects.pages.update');
+        Route::post('projects/{project}/pages/{page}/adopt-live', [PageLiveCheckController::class, 'adopt'])->name('projects.pages.adopt-live');
     });
 
     Route::get('projects/{project}/imports', [KeywordImportController::class, 'index'])->name('projects.keyword-imports.index');

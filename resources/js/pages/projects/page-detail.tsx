@@ -1,4 +1,4 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { CheckCircle2, CircleAlert, MinusCircle } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useLocale } from '@/hooks/use-locale';
 import type { ChecklistStatus } from '@/lib/on-page-checklist';
 import { checklistCopy, statusLabels } from '@/lib/on-page-checklist';
+import type { LiveProblem } from '@/lib/live-page-check';
+import { liveProblemCopy, liveProblemDetail } from '@/lib/live-page-check';
 
 type Status = 'todo' | 'in_progress' | 'done';
 type PageData = {
@@ -22,6 +24,24 @@ type PageData = {
     on_page_notes: string | null;
 };
 type Target = { cluster_id: number; cluster: string; primary_keyword: string };
+type Live = {
+    checked_at: string | null;
+    status_code: number | null;
+    final_url: string | null;
+    title: string | null;
+    meta_description: string | null;
+    h1: string[];
+    word_count: number | null;
+    problems: LiveProblem[];
+};
+
+const formValues = (page: PageData) => ({
+    seo_title: page.seo_title ?? '',
+    meta_description: page.meta_description ?? '',
+    h1: page.h1 ?? '',
+    on_page_status: page.on_page_status,
+    on_page_notes: page.on_page_notes ?? '',
+});
 
 export default function PageDetail({
     page,
@@ -29,6 +49,7 @@ export default function PageDetail({
     secondaryKeywords,
     checklist,
     score,
+    live,
     canEdit,
 }: {
     page: PageData;
@@ -36,20 +57,32 @@ export default function PageDetail({
     secondaryKeywords: string[];
     checklist: { key: string; status: ChecklistStatus }[];
     score: { passed: number; applicable: number };
+    live: Live | null;
     canEdit: boolean;
 }) {
-    const { projectContext } = usePage().props;
+    const { projectContext, errors } = usePage().props;
     const { t, locale } = useLocale();
     const base = `/projects/${projectContext?.project.id}/pages`;
     const num = (n: number) =>
         locale === 'fa' ? n.toLocaleString('fa-IR') : String(n);
-    const form = useForm({
-        seo_title: page.seo_title ?? '',
-        meta_description: page.meta_description ?? '',
-        h1: page.h1 ?? '',
-        on_page_status: page.on_page_status,
-        on_page_notes: page.on_page_notes ?? '',
-    });
+    const form = useForm(formValues(page));
+    const adopt = () =>
+        router.post(
+            `${base}/${page.id}/adopt-live`,
+            {},
+            {
+                preserveScroll: true,
+                // The server filled empty fields; show them in the form.
+                onSuccess: (visit) =>
+                    form.setData(formValues(visit.props.page as PageData)),
+            },
+        );
+    const liveRow = (label: string, value: string | null) => (
+        <div className="grid gap-1 sm:grid-cols-[10rem_1fr]">
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd>{value || '—'}</dd>
+        </div>
+    );
     const fieldClass =
         'w-full rounded border bg-background p-2 disabled:opacity-70';
     const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -327,6 +360,142 @@ export default function PageDetail({
                                         );
                                     })}
                                 </ul>
+                            </section>
+
+                            <section
+                                aria-labelledby="live-title"
+                                className="space-y-3 rounded-lg border p-4"
+                                data-live={live ? 'checked' : 'unchecked'}
+                            >
+                                <h2
+                                    id="live-title"
+                                    className="text-lg font-semibold"
+                                >
+                                    {t('pages.liveTitle')}
+                                </h2>
+                                {live === null ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        {page.kind === 'planned'
+                                            ? t('pages.livePlanned')
+                                            : t('pages.liveNotChecked')}
+                                    </p>
+                                ) : (
+                                    <>
+                                        <dl className="space-y-2 text-sm">
+                                            {liveRow(
+                                                t('pages.liveCheckedAt'),
+                                                live.checked_at
+                                                    ? new Date(
+                                                          live.checked_at,
+                                                      ).toLocaleString(
+                                                          locale === 'fa'
+                                                              ? 'fa-IR'
+                                                              : 'en',
+                                                      )
+                                                    : null,
+                                            )}
+                                            {liveRow(
+                                                t('pages.liveStatus'),
+                                                live.status_code === null
+                                                    ? null
+                                                    : num(live.status_code),
+                                            )}
+                                            {liveRow(
+                                                t('pages.seoTitle'),
+                                                live.title,
+                                            )}
+                                            {liveRow(
+                                                t('pages.metaDescription'),
+                                                live.meta_description,
+                                            )}
+                                            {liveRow(
+                                                t('pages.h1'),
+                                                live.h1.join(' / ') || null,
+                                            )}
+                                            {liveRow(
+                                                t('pages.liveWords'),
+                                                live.word_count === null
+                                                    ? null
+                                                    : num(live.word_count),
+                                            )}
+                                        </dl>
+                                        {live.problems.length === 0 ? (
+                                            <p className="text-sm text-primary">
+                                                {t('pages.liveNoProblems')}
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-3">
+                                                {live.problems.map(
+                                                    (problem) => {
+                                                        const text =
+                                                            liveProblemCopy(
+                                                                problem.key,
+                                                                locale,
+                                                            );
+                                                        const detail =
+                                                            liveProblemDetail(
+                                                                problem,
+                                                                locale,
+                                                            );
+
+                                                        return (
+                                                            <li
+                                                                key={
+                                                                    problem.key
+                                                                }
+                                                                data-live-problem={
+                                                                    problem.key
+                                                                }
+                                                                className="flex gap-3"
+                                                            >
+                                                                <CircleAlert className="size-5 shrink-0 text-destructive" />
+                                                                <div className="space-y-1">
+                                                                    <p className="text-sm font-medium">
+                                                                        {text?.label ??
+                                                                            problem.key}
+                                                                    </p>
+                                                                    {detail && (
+                                                                        <p
+                                                                            dir="auto"
+                                                                            className="text-sm break-all text-muted-foreground"
+                                                                        >
+                                                                            {
+                                                                                detail
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                    {text && (
+                                                                        <p className="text-sm leading-6 text-muted-foreground">
+                                                                            {
+                                                                                text.fix
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </li>
+                                                        );
+                                                    },
+                                                )}
+                                            </ul>
+                                        )}
+                                        {canEdit && (
+                                            <div className="space-y-1">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={adopt}
+                                                >
+                                                    {t('pages.adopt')}
+                                                </Button>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {t('pages.adoptHint')}
+                                                </p>
+                                                <InputError
+                                                    message={errors?.adopt}
+                                                />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </section>
 
                             {secondaryKeywords.length > 0 && (

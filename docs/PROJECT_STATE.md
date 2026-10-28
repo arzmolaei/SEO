@@ -10,15 +10,19 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   checks (16) green; post-merge main green: CI `40713029777`, Update Rollback MariaDB
   `40713031140`, Lifecycle E2E `40713029415`. Overview steps are derived from real data;
   SEO plan downloads are recorded as `export.seo_plan` activity.
-- **Slice 2 — pages workspace + on-page checklist: in review** on
-  `feature/pages-workspace`, PR #35. Design note
-  `docs/superpowers/specs/2026-10-28-pages-workspace-design.md`. Local evidence on
-  PHP 8.4.16 + MariaDB 10.11: full suite 760 passed / 19 gated skips; Pint, PHPStan,
-  npm check, tsc and vitest pass; every connected suite passes with `--fail-on-skipped`
-  (installer 1, export 2, backup/restore 1, update migrations 9, snapshot isolation 1,
-  crawl concurrency 3). Not done until exact-head CI on all three workflows is green,
-  merged and post-merge main is green.
-- Next after slice 2: slice 3 (own-site page check, reusing the crawler, bounded).
+- **Slice 2 — pages workspace + on-page checklist: done.** PR #35 merged with
+  expected head `4ef1cb8` as `214770c3a17817dd077f84a5ccc630ae65fde99d`. Exact-head PR
+  checks (16) green; post-merge main green: CI `40718135594`, Update Rollback MariaDB
+  `40718135399`, Lifecycle E2E `40718135224`. Design note
+  `docs/superpowers/specs/2026-10-28-pages-workspace-design.md`.
+- **Slice 3 — own-site page check: in review** on `feature/own-site-page-check`.
+  Design note `docs/superpowers/specs/2026-10-28-own-site-page-check-design.md`. Reuses
+  the crawler unchanged (list mode, depth 0, ≤ 500 own page addresses); results are
+  read from completed runs by URL hash. Local evidence on PHP 8.4.16: full suite
+  771 passed / 19 gated skips; Pint, PHPStan, npm check, tsc and vitest pass; new and
+  crawl-engine tests also pass on MariaDB 10.11. Not done until exact-head CI on all
+  three workflows is green, merged and post-merge main is green.
+- Next after slice 3: slice 4 (content briefs + calendar).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over
