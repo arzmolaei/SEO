@@ -2,6 +2,15 @@
 
 Checkpoint: 2026-10-28. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
 
+## PAUSE NOTE — 2026-10-28 (session 2), read before anything below
+
+Owner paused work. Verify everything against live Git/CI before continuing.
+
+- Merged and post-merge verified: PR #24 (main green again, `2227942`), #26 lifecycle mutex waits for transient leases (`773c2a9`), #25 automatic status polling (`a41a389`).
+- Open, not merged: #27 (Persian framework/auth strings, offline password policy, upload-limit preflight) and #29 (bilingual 503). Merge each only after all three workflows are green on its exact head.
+- Draft #28 `feature/site-crawler`: tasks 1–5 committed (target policy, safe fetcher, robots/sitemaps, extractor, schema). Task 6 (run engine) is committed as **WIP and unverified**: processor, job, controls and tests exist but CI has not validated them. Next: fix CI on the head, then task 7 (page linking) and task 8 (UI). Plan: `docs/superpowers/plans/2026-10-28-site-crawler.md`.
+- Local sandbox has no PHP 8.4/Composer; CI is the verification source.
+
 ## PAUSE NOTE — 2026-10-28 13:15 (+03:30), read before anything below
 
 - `main` = `810ec45` is **RED**: PR #23 was merged while its CI failed (unformatted `run.mjs`; Lifecycle E2E BOM assertion).
