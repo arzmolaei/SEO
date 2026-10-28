@@ -32,7 +32,12 @@ final class EnsureLifecycleRequestAdmission
             try {
                 $state = $this->journal->state();
                 if (UpdateJournal::isMaintenancePhase(is_string($state['phase'] ?? null) ? $state['phase'] : null)) {
-                    require_once base_path('bootstrap/runtime-release.php');
+                    // Entry points load the stable root launcher before booting a
+                    // release; a slot's own copy must never be loaded a second time.
+                    if (! class_exists(\SeoOsUpdateMaintenanceGate::class, false)) {
+                        $root = defined('SEO_OS_INSTALLATION_ROOT') ? (string) constant('SEO_OS_INSTALLATION_ROOT') : base_path();
+                        require_once $root.'/bootstrap/runtime-release.php';
+                    }
                     if (! \SeoOsUpdateMaintenanceGate::isRecoveryHttpPath($request->getPathInfo())) {
                         return $this->unavailable();
                     }
