@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLocale } from '@/hooks/use-locale';
 import { useServerPoll } from '@/hooks/use-server-poll';
+import { crawlErrorLabel } from '@/lib/crawl-errors';
 
 type Page<T> = {
     data: T[];
@@ -71,7 +72,7 @@ export default function Crawls({
     limits: { max_urls: number; max_depth: number };
 }) {
     const { projectContext, errors } = usePage().props;
-    const { t, direction } = useLocale();
+    const { t, direction, locale } = useLocale();
     const busy =
         activeRun?.status === 'queued' || activeRun?.status === 'running';
     const poll = useServerPoll(['activeRun', 'urls', 'runs'], busy);
@@ -585,9 +586,13 @@ export default function Crawls({
                                                             }
                                                             {row.error_code && (
                                                                 <p>
-                                                                    {t(
-                                                                        'crawl.fetchRefused',
-                                                                    )}{' '}
+                                                                    {crawlErrorLabel(
+                                                                        row.error_code,
+                                                                        locale,
+                                                                    ) ??
+                                                                        t(
+                                                                            'crawl.fetchRefused',
+                                                                        )}{' '}
                                                                     <code dir="ltr">
                                                                         {
                                                                             row.error_code
