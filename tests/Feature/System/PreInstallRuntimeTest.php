@@ -37,6 +37,14 @@ class PreInstallRuntimeTest extends TestCase
         $this->assertFileDoesNotExist($this->directory.'/missing.sqlite');
     }
 
+    public function test_fresh_runtime_without_environment_file_is_persian_and_rtl(): void
+    {
+        $result = $this->bootFreshProcess(installed: false);
+
+        $this->assertSame(0, $result['exit'], $result['output']);
+        $this->assertStringContainsString('locale=fa direction=rtl', $result['output']);
+    }
+
     public function test_installed_runtime_keeps_its_configured_cache_store(): void
     {
         File::put($this->directory.'/.installed', '{}');
@@ -56,11 +64,15 @@ class PreInstallRuntimeTest extends TestCase
 <?php
 require $argv[1].'/vendor/autoload.php';
 $app = require $argv[1].'/bootstrap/app.php';
+// Like a freshly unpacked runtime: no .env file exists yet.
+$app->useEnvironmentPath($argv[2]);
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 try {
     $key = 'pre-install-probe-'.bin2hex(random_bytes(8));
     Illuminate\Support\Facades\RateLimiter::hit($key);
     echo 'attempts='.Illuminate\Support\Facades\RateLimiter::attempts($key);
+    echo ' locale='.App\Support\LocaleContext::from(app()->getLocale())['locale'];
+    echo ' direction='.App\Support\LocaleContext::from(app()->getLocale())['direction'];
     Illuminate\Support\Facades\RateLimiter::clear($key);
 } catch (Throwable $exception) {
     fwrite(STDERR, $exception::class.': '.$exception->getMessage());
@@ -68,8 +80,11 @@ try {
 }
 PHP);
 
-        $process = new Process([PHP_BINARY, $script, base_path()], base_path(), [
+        $process = new Process([PHP_BINARY, $script, base_path(), $this->directory], base_path(), [
             'APP_ENV' => 'production',
+            // Nothing from this test runner's own .env may leak into the fresh runtime.
+            'APP_LOCALE' => false,
+            'APP_FALLBACK_LOCALE' => false,
             'APP_KEY' => 'base64:'.base64_encode(str_repeat('k', 32)),
             'CACHE_STORE' => 'database',
             'SESSION_DRIVER' => 'database',
