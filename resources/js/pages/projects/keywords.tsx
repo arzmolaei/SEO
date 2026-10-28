@@ -116,9 +116,18 @@ export default function Keywords({
     const path = page.url.split('?')[0];
     const exportError = page.props.flash.export_error ?? null;
     const projectId = intelligence.project_id;
+    // ?tab= lets the guided workflow open the exact workspace tab.
     const [workspaceTab, setWorkspaceTab] = useState<
         'grid' | 'intent' | 'clusters' | 'mapping'
-    >('grid');
+    >(() => {
+        const tab = new URLSearchParams(page.url.split('?')[1] ?? '').get(
+            'tab',
+        );
+
+        return tab === 'intent' || tab === 'clusters' || tab === 'mapping'
+            ? tab
+            : 'grid';
+    });
     const [search, setSearch] = useState(filters.q ?? '');
     const [source, setSource] = useState(filters.source ?? '');
     const [status, setStatus] = useState<KeywordStatus | ''>(

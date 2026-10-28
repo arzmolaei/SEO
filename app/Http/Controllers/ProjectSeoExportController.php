@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityEvent;
+use App\Models\ChangeSet;
 use App\Models\Project;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
 use App\Services\Exports\ExportProjectSeoPlan;
 use App\Services\Exports\ProjectSeoExportException;
+use App\Services\Projects\ProjectGuide;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +41,17 @@ class ProjectSeoExportController extends Controller
             return to_route('projects.keywords.index', $project)
                 ->with('export_error', $exception->userMessage());
         }
+
+        // Recorded so the guided workflow can tell the plan was exported.
+        $set = ChangeSet::query()->create([
+            'workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $user->id,
+            'action' => ProjectGuide::EXPORT_EVENT, 'changes' => [],
+        ]);
+        ActivityEvent::query()->create([
+            'workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $user->id,
+            'change_set_id' => $set->id, 'event' => ProjectGuide::EXPORT_EVENT,
+            'metadata' => ['rows' => $result->rowCount(), 'schema' => $result->schemaVersion()],
+        ]);
 
         return response()->streamDownload(
             function () use ($result): void {

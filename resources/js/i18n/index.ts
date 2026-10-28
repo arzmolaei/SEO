@@ -269,6 +269,13 @@ const messages = {
         'project.mode.expert': 'حرفه‌ای',
         'project.health.setup': 'در حال راه‌اندازی',
         'project.sync.none': 'هنوز همگام‌سازی نشده',
+        'guide.intro':
+            'این صفحه قدم‌های سئو را به ترتیب نشان می‌دهد و می‌گوید الان چه کاری مهم‌تر است. وضعیت هر مرحله از داده‌های واقعی پروژه محاسبه می‌شود.',
+        'guide.nextTitle': 'الان چه کار کنم؟',
+        'guide.allDone':
+            'همه مراحل این مسیر انجام شده است. کلمات تازه وارد کنید یا صفحه‌های سایت را دوباره بررسی کنید.',
+        'guide.pathTitle': 'مسیر سئوی این پروژه',
+        'guide.progress': 'پیشرفت',
         'project.overview.title': 'مرکز فرماندهی',
         'project.overview.description':
             'مهم‌ترین اقدام بعدی پروژه را از اینجا پیدا می‌کنید.',
@@ -591,6 +598,13 @@ const messages = {
         'project.mode.expert': 'Expert',
         'project.health.setup': 'Setting up',
         'project.sync.none': 'Not synced yet',
+        'guide.intro':
+            'This page shows the SEO steps in order and what matters most right now. Each step’s status is computed from the project’s real data.',
+        'guide.nextTitle': 'What should I do next?',
+        'guide.allDone':
+            'Every step of this path is done. Import new keywords or check your pages again.',
+        'guide.pathTitle': 'This project’s SEO path',
+        'guide.progress': 'Progress',
         'project.overview.title': 'Command Center',
         'project.overview.description':
             'Find the highest-priority next action for this project here.',
