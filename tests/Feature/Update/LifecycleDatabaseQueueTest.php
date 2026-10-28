@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Update;
 
+use App\Jobs\ProcessKeywordImportFile;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateQuiescence;
@@ -87,6 +88,16 @@ class LifecycleDatabaseQueueTest extends TestCase
         $this->assertTrue($observed['request'] ?? null, 'HTTP admission must coexist with a queue reservation.');
         // ...while a lifecycle operation still cannot start mid-reservation.
         $this->assertFalse($observed['lifecycle'] ?? null, 'Lifecycle ownership must wait for the reservation.');
+    }
+
+    public function test_database_reservation_does_not_expire_while_import_worker_may_still_be_running(): void
+    {
+        $queue = app('queue')->connection('database');
+        $queue->push(new ProcessKeywordImportFile(1));
+        $first = $queue->pop();
+        $this->assertNotNull($first);
+        DB::table('jobs')->update(['reserved_at' => now()->timestamp - 100]);
+        $this->assertTrue($queue->pop() === null, 'A second worker must not reserve a live 600-second import after only 100 seconds.');
     }
 
     public function test_idle_worker_cannot_reserve_during_persistent_maintenance_between_update_requests(): void

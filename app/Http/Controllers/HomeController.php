@@ -44,6 +44,7 @@ final class HomeController extends Controller
                 'workspace_name' => $project->workspace?->name,
                 'overview_url' => route('projects.overview', $project),
                 'keywords_url' => route('projects.keywords.index', $project),
+                'imports_url' => route('projects.keyword-imports.index', $project),
             ]);
 
         return Inertia::render('home', [

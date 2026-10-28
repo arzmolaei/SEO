@@ -53,3 +53,28 @@ Out of scope (recorded for later slices): XLSX and vendor presets (KWFinder/Ahre
 
 - Feature tests (SQLite): home lists only the user's workspaces/projects and creates projects with authorization; import upload/paste → mapping → queued job → staged → commit/discard; cross-project/tenant denial; bounds and validation; Persian error rendering without internal messages.
 - Lifecycle browser acceptance (MariaDB + packaged runtime) replaces the service-level seeding with the real UI flow, then continues to intelligence, export, backup/restore and update.
+
+
+## 6. Implementation checkpoint — 2026-10-28
+
+The planned controller/routes/page and navigation are implemented on the existing
+stacked branch. Original JSON row staging remains compatible. Exact CSV column
+identifiers and pasted source whitespace are preserved. Preview values are
+derived UTF-8-safe display strings, never replacements for original file bytes;
+invalid header encoding is rejected. Default database queue inserts are atomic
+with locked state/request markers, and its reservation interval is clamped to at
+least 660 seconds so the existing 600-second jobs cannot overlap through early
+re-reservation. Other queue backends remain optional and need equivalent timeout
+configuration before use.
+
+Discard refuses queued/actively processing work and pending commits to avoid
+deleting a file in use. Caught staging failures are terminal and offer
+discard/reupload; hard-killed workers can resume from processing checkpoints on
+retry. This is intentionally distinct from retrying arbitrary caught exceptions.
+
+Local full backend: 645 tests, 629 passed, 16 skipped, 4,822 assertions.
+Pint, PHPStan, frontend check, TypeScript and production build pass. Focused
+independent review found and corrected exact-header lookup, malformed preview
+encoding and missing discard error rendering. Connected MariaDB, full browser
+import/intelligence/export/backup/restore acceptance, exact-head CI and integration
+are pending. See current HANDOFF/PROJECT_STATE for the exact continuation boundary.

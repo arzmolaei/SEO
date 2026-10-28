@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Keywords;
 
+use App\Domain\Keywords\StreamingCsvReader;
 use App\Enums\WorkspaceRole;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Jobs\CommitKeywordImport;
 use App\Jobs\ProcessKeywordImportFile;
 use App\Models\ImportBatch;
@@ -11,10 +13,15 @@ use App\Models\Membership;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Keywords\ProcessKeywordCsvImport;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -80,7 +87,7 @@ class KeywordImportFlowTest extends TestCase
         $this->assertSame('committed', $batch->refresh()->status);
         $this->assertSame(2, Keyword::query()->where('project_id', $project->id)->count(), 'Yeh variants normalize to one keyword');
         // Original source text is preserved separately from the normalized keyword.
-        $this->assertTrue(\Illuminate\Support\Facades\DB::table('keyword_sources')->where('original_text', 'سئو سايت')->exists());
+        $this->assertTrue(DB::table('keyword_sources')->where('original_text', 'سئو سايت')->exists());
     }
 
     public function test_pasted_keywords_become_a_single_column_original_file(): void
@@ -112,7 +119,7 @@ class KeywordImportFlowTest extends TestCase
         $this->actingAs($owner)->get(route('projects.keyword-imports.index', ['project' => $project, 'batch' => $batch->id]))
             ->assertInertia(fn (Assert $page) => $page->where('activeBatch.status', 'queued')->where('activeBatch.processed_rows', 0));
 
-        (new ProcessKeywordImportFile($batch->id))->handle(app(\App\Services\Keywords\ProcessKeywordCsvImport::class));
+        (new ProcessKeywordImportFile($batch->id))->handle(app(ProcessKeywordCsvImport::class));
         $this->assertSame('staged', $batch->refresh()->status);
 
         $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/commit");
@@ -187,6 +194,113 @@ class KeywordImportFlowTest extends TestCase
         $this->actingAs($viewer)->get("/projects/{$project->id}/imports")->assertOk();
         $this->actingAs($viewer)->post("/projects/{$project->id}/imports/{$batch->id}/mapping", ['keyword' => 'Keyword'])->assertForbidden();
         $this->assertSame('awaiting_mapping', $batch->refresh()->status);
+    }
+
+    public function test_pending_commit_cannot_be_discarded_and_failures_never_expose_internal_text(): void
+    {
+        Queue::fake();
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", ['text' => 'یک']);
+        $batch = ImportBatch::query()->sole();
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/mapping", ['keyword' => 'Keyword']);
+        (new ProcessKeywordImportFile($batch->id))->handle(app(ProcessKeywordCsvImport::class));
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/commit");
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/discard")->assertStatus(409);
+        $this->assertFileExists($this->uploads.'/'.$batch->refresh()->source_path);
+        $batch->update(['status' => 'failed', 'failure_message' => '/private/secret/path: exception detail']);
+        $this->actingAs($owner)->get("/projects/{$project->id}/imports?batch={$batch->id}")
+            ->assertInertia(fn (Assert $page) => $page->missing('activeBatch.failure_message')->missing('activeBatch.source_path'));
+    }
+
+    public function test_batch_selection_cannot_cross_projects(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        [$stranger, $other] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", ['text' => 'یک']);
+        $batch = ImportBatch::query()->sole();
+        $this->actingAs($stranger)->get("/projects/{$other->id}/imports?batch={$batch->id}")->assertNotFound();
+    }
+
+    public function test_paste_original_preserves_significant_edge_whitespace(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", ['text' => '  سئو  '])->assertRedirect();
+        $batch = ImportBatch::query()->sole();
+        $row = app(StreamingCsvReader::class)->rows($this->uploads.'/'.$batch->source_path)->current();
+        $this->assertSame('  سئو  ', $row['Keyword']);
+    }
+
+    public function test_symlinked_project_upload_directory_is_rejected_without_external_writes(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $outside = $this->uploads.'-outside';
+        File::ensureDirectoryExists($outside);
+        File::ensureDirectoryExists($this->uploads);
+        symlink($outside, $this->uploads.'/'.$project->id);
+        try {
+            $this->actingAs($owner)->from('/x')->post("/projects/{$project->id}/imports", ['text' => 'یک'])
+                ->assertSessionHasErrors('text');
+            $this->assertSame([], File::files($outside));
+            $this->assertSame(0, ImportBatch::query()->count());
+        } finally {
+            unlink($this->uploads.'/'.$project->id);
+            File::deleteDirectory($outside);
+        }
+    }
+
+    public function test_mapping_preserves_exact_header_names_with_edge_whitespace(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", [
+            'file' => UploadedFile::fake()->createWithContent('headers.csv', " Keyword , Volume \nسئو,12\n"),
+        ])->assertRedirect();
+        $batch = ImportBatch::query()->sole();
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/mapping", [
+            'keyword' => ' Keyword ', 'volume' => ' Volume ',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('staged', $batch->refresh()->status);
+        $this->assertSame(' Keyword ', $batch->mapping['keyword']);
+        $this->assertSame(1, $batch->valid_rows);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/commit")->assertRedirect();
+        $this->assertSame('سئو', Keyword::query()->sole()->display_text);
+    }
+
+    public function test_failed_database_queue_insert_does_not_orphan_commit_request(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", ['text' => 'یک']);
+        $batch = ImportBatch::query()->sole();
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/mapping", ['keyword' => 'Keyword']);
+        config(['queue.default' => 'database']);
+        Schema::drop('jobs');
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($owner)->post("/projects/{$project->id}/imports/{$batch->id}/commit");
+            $this->fail('Queue insertion should fail.');
+        } catch (QueryException) {
+            $this->assertNull($batch->refresh()->commit_requested_at);
+            $this->assertNull($batch->commit_requested_by);
+        }
+    }
+
+    public function test_invalid_utf8_in_original_rows_does_not_break_the_import_page(): void
+    {
+        [$owner, $project] = $this->projectMember(WorkspaceRole::Owner);
+        $bytes = "Keyword\n\xff\n";
+        $this->actingAs($owner)->post("/projects/{$project->id}/imports", [
+            'file' => UploadedFile::fake()->createWithContent('invalid.csv', $bytes),
+        ])->assertRedirect();
+        $batch = ImportBatch::query()->sole();
+        $this->assertSame($bytes, File::get($this->uploads.'/'.$batch->source_path));
+        $this->actingAs($owner)->get("/projects/{$project->id}/imports", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)
+                ->version(Request::create('/')),
+        ])
+            ->assertOk()
+            ->assertHeader('X-Inertia', 'true')
+            ->assertJsonPath('component', 'projects/imports')
+            ->assertJsonCount(1, 'props.activeBatch.preview');
     }
 
     /** @return array{User, Project} */

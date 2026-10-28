@@ -10,7 +10,16 @@ final class KeywordImportFiles
 {
     public function root(): string
     {
-        return rtrim((string) config('keywords.import.storage_root'), DIRECTORY_SEPARATOR);
+        $root = rtrim((string) config('keywords.import.storage_root'), DIRECTORY_SEPARATOR);
+        $existing = $root;
+        while (! file_exists($existing) && ! is_link($existing) && dirname($existing) !== $existing) {
+            $existing = dirname($existing);
+        }
+        if ($root === '' || ! is_dir($existing) || is_link($existing) || realpath($existing) !== $existing) {
+            throw new RuntimeException('Import storage is not available.');
+        }
+
+        return $root;
     }
 
     public function relativePath(ImportBatch $batch): string
@@ -25,7 +34,7 @@ final class KeywordImportFiles
             throw new RuntimeException('Import original is not available.');
         }
         $path = $this->root().'/'.$relative;
-        if (is_link($path) || ! is_file($path)) {
+        if (is_link($path) || ! is_file($path) || realpath($path) !== $path) {
             throw new RuntimeException('Import original is not available.');
         }
 
@@ -34,10 +43,12 @@ final class KeywordImportFiles
 
     public function delete(ImportBatch $batch): void
     {
-        try {
-            @unlink($this->absolutePath($batch));
-        } catch (RuntimeException) {
-            // Already absent.
+        $path = $this->root().'/'.$this->relativePath($batch);
+        if (! file_exists($path) && ! is_link($path)) {
+            return;
+        }
+        if (! unlink($this->absolutePath($batch))) {
+            throw new RuntimeException('Import original could not be deleted.');
         }
     }
 }

@@ -1,6 +1,7 @@
 export type ProjectSectionKey =
     | 'overview'
     | 'keywords'
+    | 'imports'
     | 'reviews'
     | 'pages'
     | 'site-audit'

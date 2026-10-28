@@ -33,9 +33,7 @@ final class KeywordImportMapping
         $columns = [];
 
         foreach ($this->columns as $column) {
-            $column = trim($column);
-
-            if ($column !== '') {
+            if (trim($column) !== '') {
                 $columns[] = $column;
             }
         }
@@ -60,8 +58,8 @@ final class KeywordImportMapping
 
     private function column(string $field): ?string
     {
-        $column = trim($this->columns[$field] ?? '');
+        $column = $this->columns[$field] ?? '';
 
-        return $column === '' ? null : $column;
+        return trim($column) === '' ? null : $column;
     }
 }

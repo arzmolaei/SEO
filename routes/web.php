@@ -51,7 +51,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
     Route::get('projects/{project}/exports/seo-plan.csv', ProjectSeoExportController::class)->name('projects.exports.seo-plan');
 
-    Route::post('projects/{project}/keyword-imports/stage', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.stage');
+    Route::get('projects/{project}/imports', [KeywordImportController::class, 'index'])->name('projects.keyword-imports.index');
+    Route::post('projects/{project}/imports', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.store');
+    Route::scopeBindings()->group(function (): void {
+        Route::post('projects/{project}/imports/{batch}/mapping', [KeywordImportController::class, 'mapping'])->name('projects.keyword-imports.mapping');
+        Route::post('projects/{project}/imports/{batch}/commit', [KeywordImportController::class, 'commit'])->name('projects.keyword-imports.commit');
+        Route::post('projects/{project}/imports/{batch}/discard', [KeywordImportController::class, 'discard'])->name('projects.keyword-imports.discard');
+    });
+    Route::post('projects/{project}/keyword-imports/stage', [KeywordImportController::class, 'stage'])->name('projects.keyword-imports.stage');
     Route::post('projects/{project}/keyword-views', [SavedKeywordViewController::class, 'store'])->name('projects.keyword-views.store');
     Route::patch('projects/{project}/keyword-views/{savedKeywordView}', [SavedKeywordViewController::class, 'update'])->name('projects.keyword-views.update');
     Route::post('projects/{project}/keyword-views/{savedKeywordView}/default', [SavedKeywordViewController::class, 'setDefault'])->name('projects.keyword-views.default');

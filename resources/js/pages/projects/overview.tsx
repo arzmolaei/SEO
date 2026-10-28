@@ -1,10 +1,11 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ProjectStatePanel } from '@/components/project-state-panel';
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import { useLocale } from '@/hooks/use-locale';
 
 export default function ProjectOverview() {
     const { t } = useLocale();
+    const { projectContext } = usePage().props;
 
     return (
         <>
@@ -20,6 +21,13 @@ export default function ProjectOverview() {
                         </p>
                     </div>
 
+                    {projectContext && (
+                        <Link
+                            href={`/projects/${projectContext.project.id}/imports`}
+                        >
+                            {t('home.import')}
+                        </Link>
+                    )}
                     <ProjectStatePanel
                         state="empty"
                         title={t('project.overview.emptyTitle')}

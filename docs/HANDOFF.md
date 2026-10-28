@@ -4,6 +4,38 @@ Checkpoint: 2026-10-24. Repository evidence and current CI always override stale
 
 ## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
 
+Import UI follow-up (2026-10-28): the existing WIP scaffold is now connected to
+scoped/authorized CSV-or-paste upload, bounded preview, exact column mapping,
+database-queued staging and commit, paginated invalid rows, and attributable
+discard. Persian/English UI, home/overview/keyword CTAs and sidebar entry are
+implemented. The original JSON staging endpoint remains supported. Source bytes
+stay private and unchanged; derived previews tolerate malformed row encoding,
+filesystem ancestors must be canonical, and internal exception/path text is not
+sent in props. Database queue insertion and request markers share one transaction;
+the reservation interval is at least 660 seconds for 600-second import jobs.
+Caught staging errors are terminal and recover by discard/reupload; killed-worker
+retries resume checkpoints.
+
+The existing seven flow tests are unchanged in intent and GREEN, with additional
+tenant/provenance/queue-failure/encoding/reservation regressions. Independent
+focused review findings (exact-header trimming, invalid-byte JSON rendering and
+discard error display) were corrected. Local full suite: 645 tests, 629 passed,
+16 skipped, 4,822 assertions; Pint/PHPStan/frontend check/TypeScript/build pass.
+No MariaDB/browser acceptance pass is claimed locally. The original CI
+40643318600 failure cause could not be independently inspected because API
+access remains denied; the owner-supplied expected RED description is recorded
+as such, not confirmed from logs.
+
+First unverified boundary: exact-head CI for PR #21 security head
+`085442a5f863581de671d52640b4ae2a86130521` and the new stacked import head.
+Merge #21 only with exact-head protection after all three workflows pass, then
+verify main. Validate the import head before integration; preserve its existing
+branch history (no force-push). Next implementation slice is browser lifecycle
+acceptance: replace service-level seed with the real import UI, then extend
+intelligence → Persian export download validation → backup → second-instance
+restore → update → operational health. That browser slice is not implemented
+by this checkpoint. No crawler work should begin yet.
+
 Security review follow-up (2026-10-28): the bounded independent Update/Rollback
 review reproduced P1 missing-pointer root fallback and P2 retained-slot payload
 reuse. Corrections and RED/GREEN/process coverage are recorded in
@@ -15,7 +47,7 @@ launcher upgrade, not an automatic V1/V2 package transition. Local backend/PHP
 gates passed; connected MariaDB tests skipped locally. **New-head CI and merge
 remain unverified** because GitHub API access is denied. The owner will verify
 the pushed head and merge PR #21 with expected-head protection if all three
-workflows pass. Then verify main and continue the existing stacked import WIP;
+workflows pass. Then verify main and validate the stacked import implementation;
 do not recreate its completed home/project work.
 
 Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
@@ -36,8 +68,8 @@ Session paused by the owner; work is pushed. Verify with Git/CI before trusting 
     - PR #18 checkpoint commits cherry-picked; PR #18 is superseded by this branch.
 2. `feature/workspace-entry-keyword-import` — stacked on branch 1. Design: `docs/superpowers/specs/2026-10-28-workspace-entry-keyword-import-design.md`.
     - DONE + tested: Persian workspace home at `/dashboard` (`HomeController`, `resources/js/pages/home.tsx`), form-based project creation.
-    - WIP (last commit `wip(imports)…`, intentionally RED): migration `2026_10_28_000000_*`, `config/keywords.php`, `StreamingCsvReader::headers()`, jobs `ProcessKeywordImportFile` / `CommitKeywordImport`, `KeywordImportFiles`, tests `tests/Feature/Keywords/KeywordImportFlowTest.php`.
-    - NEXT: `KeywordImportController` (index/store[file|text]/mapping/commit/discard) + routes named `projects.keyword-imports.{index,store,mapping,commit,discard}` under `projects/{project}/imports` with scoped `{batch}` binding and `stageKeywordImports` policy; page `resources/js/pages/projects/imports.tsx` (Persian, server-truth status, no fake progress); add `imports_url` back to `HomeController`; overview/keywords CTA; then replace `harness.php seed` in the Lifecycle E2E with the real import UI and extend E2E to intelligence → Persian export → backup → restore (second instance) → update.
+    - Implemented follow-up: upload/mapping/queued processing/commit/discard controller and routes, Persian/English import page, project navigation/CTAs, privacy/isolation/failure checks. Local gates GREEN; exact-head CI and browser import acceptance remain unverified (see current follow-up above).
+    - NEXT: verify both new heads and main integration, then replace lifecycle service seeding with the real import UI and extend browser acceptance through intelligence/export/backup/restore/update/health.
 
 **Open gaps:** new-head CI/merge for the recorded Update/Rollback review fixes; release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
 

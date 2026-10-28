@@ -8,6 +8,7 @@ import type { ProjectSectionKey } from '@/types';
 const sectionLabels: Record<ProjectSectionKey, TranslationKey> = {
     overview: 'project.nav.overview',
     keywords: 'project.nav.keywords',
+    imports: 'project.nav.imports',
     reviews: 'project.nav.reviews',
     pages: 'project.nav.pages',
     'site-audit': 'project.nav.siteAudit',
