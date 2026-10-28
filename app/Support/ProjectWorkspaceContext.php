@@ -9,6 +9,20 @@ class ProjectWorkspaceContext
     /**
      * @var list<string>
      */
+    /**
+     * Sections shown in the project navigation: only built, in-scope work
+     * (docs/OWNER_INTENT.md). Planned slices are added here as they ship.
+     *
+     * @var list<string>
+     */
+    public const NAVIGATION = [
+        'overview',
+        'keywords',
+        'imports',
+        'reviews',
+        'site-audit',
+    ];
+
     public const SECTIONS = [
         'overview',
         'keywords',
@@ -55,7 +69,7 @@ class ProjectWorkspaceContext
                             'section' => $section,
                         ]))),
                 ],
-                self::SECTIONS,
+                self::NAVIGATION,
             ),
         ];
     }

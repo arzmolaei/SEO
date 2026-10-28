@@ -1,5 +1,8 @@
 # SEO OS — Product & Architecture Design
 
+> **ARCHIVED — historical context only, not a roadmap.** This design described a commercial multi-client/team SEO platform. The product is now a personal, single-owner SEO workspace; scope is defined solely by `docs/OWNER_INTENT.md` and `docs/DELIVERY_PLAN.md`. Do not build anything from this document that those files do not list.
+
+
 Date: 2026-10-22
 Status: Approved-by-delegation (user delegated product/technical decisions to agent)
 

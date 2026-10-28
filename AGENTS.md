@@ -9,7 +9,7 @@ Before changing product behavior, read in this order:
 1. `docs/OWNER_INTENT.md` — authoritative product direction, V1 north star, frozen scope, and owner priorities.
 2. `docs/PROJECT_STATE.md` — durable cross-session checkpoint and current implementation boundary.
 3. `docs/release-readiness/foundation-keyword-core.md` — verified baseline already completed; do not reimplement it.
-4. `docs/superpowers/specs/2026-10-22-seo-os-design.md` — historical/full-product design context; do **not** treat later roadmap phases as active scope when they conflict with `docs/OWNER_INTENT.md`.
+4. `docs/superpowers/specs/2026-10-22-seo-os-design.md` — ARCHIVED historical context of an abandoned commercial/team design; never a source of scope.
 5. The active implementation plan in `docs/superpowers/plans/`, but only if that plan is inside the currently allowed owner scope.
 
 Then fetch the current `main` head, open PRs and CI status before choosing a working branch. Git + CI evidence outrank chat/session memory for implementation status.
@@ -43,8 +43,8 @@ Then fetch the current `main` head, open PRs and CI status before choosing a wor
 - Project/workspace boundaries are authorization boundaries.
 - Large datasets require server-side filtering/sorting/pagination; do not render entire collections in the browser.
 - Bulk/destructive changes must be attributable and reversible where technically safe.
-- Keyword Intelligence + the reliable self-host lifecycle are the current V1 center of gravity.
-- Existing crawler code may remain and must not be broken, but crawler/history/issues/architecture/performance expansion is frozen unless the owner explicitly reopens it.
+- The product is a personal SEO workspace for one owner (not team, agency or commercial). Build only the ordered slices in `docs/DELIVERY_PLAN.md`.
+- Existing crawler and workspace/role code may remain and must not be broken, but must not be extended; everything listed as out of scope in `docs/OWNER_INTENT.md` must not be built.
 
 ## Required Verification
 
@@ -90,9 +90,9 @@ For the current product direction, a feature is not "done" merely because it exp
 - Continue an active task autonomously only while it remains inside `docs/OWNER_INTENT.md`.
 - Complete one bounded task to verified completion, commit/push it, wait for final-head CI, then continue to the next **approved V1 task** without routine confirmation.
 - The user delegates routine product/technical decisions inside that boundary; record material choices in the active spec/progress file. Keep each task separate and preserve all existing security/quality gates.
-- Do not automatically continue from crawler to crawl history/diff, technical issues, architecture, performance, external AI/SERP, CMS, SaaS or other frozen roadmap phases. Those require explicit owner direction.
+- Never build out-of-scope items from `docs/OWNER_INTENT.md` (crawler expansion, architecture views, backlinks, SERP/AI providers, Google APIs, CMS, team/agency, SaaS).
 - Keep `docs/PROJECT_STATE.md` and the active progress document current at verified boundaries, including exact task, commit, CI evidence, incomplete scope and next action.
 - On interruption, the next agent reads Git and these documents and resumes the first unverified **allowed** task. Never redo completed tasks or call an incomplete subsystem a finished product.
 - Focus tests on user behavior, authorization, data integrity, concurrency and real acceptance risks. Do not add implementation-mirroring tests or repeat broad gates unless changes/failures justify it.
 - A usable self-host release additionally needs verified installation, normal keyword use, export, backup/restore and update/recovery flows. Foundation or Keyword Intelligence completion does not satisfy those release requirements by itself.
-- Once the V1 north-star flow is green, prefer realistic keyword-workflow validation and fixing observed usability/intelligence weaknesses over adding new subsystems.
+- Work through the ordered slices in `docs/DELIVERY_PLAN.md`; after the last slice, fix only problems found in real use.
