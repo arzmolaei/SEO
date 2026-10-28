@@ -21,6 +21,12 @@ class Project extends Model
         return $this->hasMany(CrawlRun::class);
     }
 
+    /** @return HasMany<Page, $this> */
+    public function pages(): HasMany
+    {
+        return $this->hasMany(Page::class);
+    }
+
     /** @return HasMany<ImportBatch, $this> */
     public function batches(): HasMany
     {

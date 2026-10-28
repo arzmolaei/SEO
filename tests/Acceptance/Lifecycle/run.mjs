@@ -621,6 +621,34 @@ async function exerciseKeywordIntelligence(browser, instance, projectId) {
     );
 }
 
+// The mapped planned page appears in the pages workspace; writing its H1
+// through the form is saved and turns the matching checklist item green.
+async function exercisePagesWorkspace(browser, instance, projectId) {
+    log(`${instance.name}: pages workspace and on-page checklist through UI`);
+    await browser.goto(`${instance.base}/projects/${projectId}/pages`);
+    await browser.waitForText(PLANNED_PAGE);
+    await browser.click(PLANNED_PAGE, { exact: true });
+    await browser.waitForText('چک‌لیست سئوی صفحه');
+    const checkStatus = (key) =>
+        browser.evaluate(
+            `document.querySelector('[data-check=${JSON.stringify(key)}]')?.dataset.status ?? null`,
+        );
+    assert(
+        (await checkStatus('h1_present')) === 'fix',
+        'a new page asks for its main heading',
+    );
+    assert(
+        (await checkStatus('url_present')) === 'na',
+        'a planned page is not faulted for having no address',
+    );
+    await browser.fill('#h1', PLANNED_PAGE);
+    await browser.click('ذخیره', { exact: true });
+    await browser.waitFor(
+        async () => (await checkStatus('h1_present')) === 'pass',
+        'saved heading passes the checklist',
+    );
+}
+
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
     log(
         `${instance.name}: download and validate Persian SEO CSV through UI link`,
@@ -1309,6 +1337,7 @@ async function main() {
             projectId,
         );
         await exerciseKeywordIntelligence(browser, source, projectId);
+        await exercisePagesWorkspace(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
         const restored = await backupRestoreLifecycle(
             browser,

@@ -20,6 +20,7 @@ class ProjectWorkspaceContext
         'keywords',
         'imports',
         'reviews',
+        'pages',
         'site-audit',
     ];
 
@@ -58,7 +59,9 @@ class ProjectWorkspaceContext
             'navigation' => array_map(
                 fn (string $section): array => [
                     'key' => $section,
-                    'href' => $section === 'site-audit'
+                    'href' => $section === 'pages'
+                        ? route('projects.pages.index', $project)
+                        : ($section === 'site-audit'
                         ? route('projects.crawls.index', $project)
                         : ($section === 'imports'
                         ? route('projects.keyword-imports.index', $project)
@@ -67,7 +70,7 @@ class ProjectWorkspaceContext
                         : route('projects.section', [
                             'project' => $project,
                             'section' => $section,
-                        ]))),
+                        ])))),
                 ],
                 self::NAVIGATION,
             ),
