@@ -31,6 +31,11 @@ class ProjectPolicy
         return $this->canManageProject($user, $project);
     }
 
+    public function crawl(User $user, Project $project): bool
+    {
+        return $this->canManageProject($user, $project);
+    }
+
     public function export(User $user, Project $project): bool
     {
         return $this->canManageProject($user, $project);
