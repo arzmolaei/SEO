@@ -36,6 +36,7 @@ const sectionMeta: Record<
     { label: TranslationKey; icon: LucideIcon }
 > = {
     overview: { label: 'project.nav.overview', icon: LayoutDashboard },
+    imports: { label: 'project.nav.imports', icon: Files },
     keywords: { label: 'project.nav.keywords', icon: Tags },
     reviews: { label: 'project.nav.reviews', icon: ListTodo },
     pages: { label: 'project.nav.pages', icon: Files },
@@ -61,7 +62,7 @@ export function AppSidebar() {
           }))
         : [
               {
-                  title: 'Dashboard',
+                  title: t('home.nav'),
                   href: dashboard(),
                   icon: LayoutGrid,
               },

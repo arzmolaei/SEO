@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -14,6 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['workspace_id', 'name'])]
 class Project extends Model
 {
+    /** @return HasMany<ImportBatch, $this> */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ImportBatch::class);
+    }
+
     /** @return BelongsTo<Workspace, $this> */
     public function workspace(): BelongsTo
     {

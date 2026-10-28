@@ -34,11 +34,13 @@ class ProjectShellTest extends TestCase
             ->where('projectContext.project.name', 'Example.com')
             ->where('projectContext.project.workspace_id', $workspace->id)
             ->where('projectContext.mode', 'guided')
-            ->has('projectContext.navigation', 12)
+            ->has('projectContext.navigation', 13)
             ->where('projectContext.navigation.0.key', 'overview')
             ->where('projectContext.navigation.1.key', 'keywords')
-            ->where('projectContext.navigation.2.key', 'reviews')
-            ->where('projectContext.navigation.11.key', 'settings')
+            ->where('projectContext.navigation.2.key', 'imports')
+            ->where('projectContext.navigation.2.href', route('projects.keyword-imports.index', $project))
+            ->where('projectContext.navigation.3.key', 'reviews')
+            ->where('projectContext.navigation.12.key', 'settings')
         );
     }
 

@@ -11,7 +11,9 @@ use App\Services\Projects\CreateProject;
 use App\Services\Projects\UpdateProject;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -38,17 +40,24 @@ class ProjectController extends Controller
     }
 
     /** @throws AuthorizationException */
-    public function store(Request $request, Workspace $workspace, CreateProject $createProject): JsonResponse
+    public function store(Request $request, Workspace $workspace, CreateProject $createProject): JsonResponse|RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
         ]);
+        if ($request->string('name')->trim()->isEmpty()) {
+            throw ValidationException::withMessages(['name' => 'نام پروژه را وارد کنید.']);
+        }
 
         $project = $createProject->handle(
             actor: $this->user($request),
             workspace: $workspace,
             name: $request->string('name')->trim()->toString(),
         );
+
+        if (! $request->expectsJson()) {
+            return redirect()->route('projects.overview', $project);
+        }
 
         return response()->json(['data' => $this->projectData($project)], 201);
     }

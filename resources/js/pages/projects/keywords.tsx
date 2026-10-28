@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Columns3, Download, LoaderCircle } from 'lucide-react';
 import {
     type FormEvent,
@@ -372,6 +372,12 @@ export default function Keywords({
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
+                                <Link
+                                    href={`/projects/${projectId}/imports`}
+                                    className="rounded-md border px-3 py-2 text-sm"
+                                >
+                                    {t('home.import')}
+                                </Link>
                                 {canExport ? (
                                     <a
                                         href={`/projects/${projectId}/exports/seo-plan.csv`}

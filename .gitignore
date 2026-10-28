@@ -44,3 +44,5 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
+# Fetched at build time by scripts/fonts/fetch-vazirmatn.sh
+/public/fonts/open/

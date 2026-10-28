@@ -18,6 +18,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        // Import originals preserve source whitespace before deriving normalized values.
+        $middleware->trimStrings(except: [
+            fn (Request $request): bool => $request->is('projects/*/imports*'),
+        ]);
 
         $middleware->web(
             prepend: [

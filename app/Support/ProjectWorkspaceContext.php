@@ -12,6 +12,7 @@ class ProjectWorkspaceContext
     public const SECTIONS = [
         'overview',
         'keywords',
+        'imports',
         'reviews',
         'pages',
         'site-audit',
@@ -43,12 +44,14 @@ class ProjectWorkspaceContext
             'navigation' => array_map(
                 fn (string $section): array => [
                     'key' => $section,
-                    'href' => $section === 'overview'
+                    'href' => $section === 'imports'
+                        ? route('projects.keyword-imports.index', $project)
+                        : ($section === 'overview'
                         ? route('projects.overview', $project)
                         : route('projects.section', [
                             'project' => $project,
                             'section' => $section,
-                        ]),
+                        ])),
                 ],
                 self::SECTIONS,
             ),
