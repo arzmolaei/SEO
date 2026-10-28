@@ -6,14 +6,15 @@ This repository is the source of truth for SEO OS.
 
 Before changing product behavior, read in this order:
 
-1. `docs/PROJECT_STATE.md` — durable cross-session checkpoint and current subsystem boundary.
-2. `docs/release-readiness/foundation-keyword-core.md` — verified baseline already completed; do not reimplement it.
-3. `docs/superpowers/specs/2026-10-22-seo-os-design.md`
-4. The active implementation plan in `docs/superpowers/plans/`
+1. `docs/OWNER_INTENT.md` — authoritative product direction, V1 north star, frozen scope, and owner priorities.
+2. `docs/PROJECT_STATE.md` — durable cross-session checkpoint and current implementation boundary.
+3. `docs/release-readiness/foundation-keyword-core.md` — verified baseline already completed; do not reimplement it.
+4. `docs/superpowers/specs/2026-10-22-seo-os-design.md` — historical/full-product design context; do **not** treat later roadmap phases as active scope when they conflict with `docs/OWNER_INTENT.md`.
+5. The active implementation plan in `docs/superpowers/plans/`, but only if that plan is inside the currently allowed owner scope.
 
-Then fetch the current `main` head and CI status before choosing a working branch. Git + CI evidence outrank chat/session memory.
+Then fetch the current `main` head, open PRs and CI status before choosing a working branch. Git + CI evidence outrank chat/session memory for implementation status.
 
-The product spec is authoritative when implementation details conflict. `docs/PROJECT_STATE.md` is authoritative for what has already been completed and where the next session should resume.
+`docs/OWNER_INTENT.md` is authoritative for **what the product should optimize for next**. `docs/PROJECT_STATE.md` is authoritative for what has actually been completed and where implementation evidence stopped. Older handoff notes, master-spec phases and delivery history are not standing permission to expand scope.
 
 ## Working Method
 
@@ -27,6 +28,7 @@ The product spec is authoritative when implementation details conflict. `docs/PR
 - Never commit secrets, `.env`, production credentials, generated private data, or customer data.
 - If a chat/model/tool session ends, stop at the last verified commit. The next session must resume from repository evidence, not reconstructed chain-of-thought or guesses.
 - Update `docs/PROJECT_STATE.md` when a substantial subsystem reaches a reviewed, fully green boundary.
+- Do not start a new product subsystem merely because it appears next in an older roadmap. First confirm it is allowed by `docs/OWNER_INTENT.md`.
 
 ## Product Constraints
 
@@ -41,6 +43,8 @@ The product spec is authoritative when implementation details conflict. `docs/PR
 - Project/workspace boundaries are authorization boundaries.
 - Large datasets require server-side filtering/sorting/pagination; do not render entire collections in the browser.
 - Bulk/destructive changes must be attributable and reversible where technically safe.
+- Keyword Intelligence + the reliable self-host lifecycle are the current V1 center of gravity.
+- Existing crawler code may remain and must not be broken, but crawler/history/issues/architecture/performance expansion is frozen unless the owner explicitly reopens it.
 
 ## Required Verification
 
@@ -79,11 +83,16 @@ php artisan wayfinder:generate --with-form
 
 Where applicable, a feature includes behavior, validation, loading/empty/error states, authorization, tests, RTL/LTR correctness, accessibility basics, performance considerations, safe migrations, logs/observability, and documentation.
 
+For the current product direction, a feature is not "done" merely because it expands the old master spec. It must either improve the keyword-led SEO workflow, protect the data/lifecycle needed to run that workflow, or fix a demonstrated defect within the allowed V1 boundary.
+
 ## Autonomous continuation contract
 
-- Continue the active task to verified completion, commit/push it, wait for final-head CI, then proceed to the next planned task without asking whether to continue.
-- The user delegates routine product/technical decisions; record material choices in the active spec/progress file. Keep each task separate and preserve all existing security/quality gates.
+- Continue an active task autonomously only while it remains inside `docs/OWNER_INTENT.md`.
+- Complete one bounded task to verified completion, commit/push it, wait for final-head CI, then continue to the next **approved V1 task** without routine confirmation.
+- The user delegates routine product/technical decisions inside that boundary; record material choices in the active spec/progress file. Keep each task separate and preserve all existing security/quality gates.
+- Do not automatically continue from crawler to crawl history/diff, technical issues, architecture, performance, external AI/SERP, CMS, SaaS or other frozen roadmap phases. Those require explicit owner direction.
 - Keep `docs/PROJECT_STATE.md` and the active progress document current at verified boundaries, including exact task, commit, CI evidence, incomplete scope and next action.
-- On interruption, the next agent reads Git and these documents and resumes the first unverified task. Never redo completed tasks or call an incomplete subsystem a finished product.
+- On interruption, the next agent reads Git and these documents and resumes the first unverified **allowed** task. Never redo completed tasks or call an incomplete subsystem a finished product.
 - Focus tests on user behavior, authorization, data integrity, concurrency and real acceptance risks. Do not add implementation-mirroring tests or repeat broad gates unless changes/failures justify it.
-- A usable self-host release additionally needs verified installation, normal use, export, backup/restore and update/recovery flows. Foundation or Keyword Intelligence completion does not satisfy those release requirements by itself.
+- A usable self-host release additionally needs verified installation, normal keyword use, export, backup/restore and update/recovery flows. Foundation or Keyword Intelligence completion does not satisfy those release requirements by itself.
+- Once the V1 north-star flow is green, prefer realistic keyword-workflow validation and fixing observed usability/intelligence weaknesses over adding new subsystems.
