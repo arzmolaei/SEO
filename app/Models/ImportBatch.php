@@ -29,11 +29,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $committed_at
  * @property CarbonImmutable|null $failed_at
+ * @property string|null $source_path
+ * @property int|null $source_bytes
+ * @property CarbonImmutable|null $commit_requested_at
+ * @property int|null $commit_requested_by
+ * @property CarbonImmutable|null $discarded_at
+ * @property int|null $discarded_by
  */
 #[Fillable([
     'project_id',
     'source',
     'original_filename',
+    'source_path',
+    'source_bytes',
     'mapping',
     'status',
     'total_rows',
@@ -50,6 +58,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'committed_at',
     'failed_at',
     'failure_message',
+    'commit_requested_at',
+    'commit_requested_by',
+    'discarded_at',
+    'discarded_by',
 ])]
 class ImportBatch extends Model
 {
@@ -75,6 +87,11 @@ class ImportBatch extends Model
             'completed_at' => 'immutable_datetime',
             'committed_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
+            'commit_requested_at' => 'immutable_datetime',
+            'discarded_at' => 'immutable_datetime',
+            'source_bytes' => 'integer',
+            'commit_requested_by' => 'integer',
+            'discarded_by' => 'integer',
         ];
     }
 }

@@ -47,6 +47,27 @@ final class StreamingCsvReader implements KeywordRowReader
         }
     }
 
+    /**
+     * Header names exactly as the file declares them (BOM/encoding handled).
+     *
+     * @return list<string>
+     */
+    public function headers(string $path): array
+    {
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            throw new RuntimeException('Unable to open CSV file.');
+        }
+        try {
+            $this->prepareEncoding($handle);
+            $header = fgetcsv($handle, null, ',', '"', '');
+
+            return $header === false ? [] : $this->normalizeHeaders($header);
+        } finally {
+            fclose($handle);
+        }
+    }
+
     /** @param resource $handle */
     private function prepareEncoding($handle): void
     {
