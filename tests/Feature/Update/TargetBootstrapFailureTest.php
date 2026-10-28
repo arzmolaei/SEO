@@ -156,6 +156,28 @@ class TargetBootstrapFailureTest extends TestCase
         $this->assertStringNotContainsString($this->directory, $output);
     }
 
+    public function test_browsers_get_a_bilingual_persian_first_recovery_page_without_internal_details(): void
+    {
+        $this->seedJournal('root', null, '0.1.0-alpha.1');
+        $this->pointer->activateSlot($this->targetReleaseId, '0.1.0-alpha.2', $this->targetDigest);
+
+        [$exitCode, $output] = $this->runPublicLauncher('text/html,application/xhtml+xml');
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('<html lang="fa" dir="rtl">', $output);
+        $this->assertStringContainsString('بازیابی به‌روزرسانی لازم است', $output);
+        $this->assertStringContainsString('<section lang="en" dir="ltr"><h1>Application update recovery is required.</h1>', $output);
+        $this->assertStringContainsString('href="/settings/update"', $output);
+        $this->assertLessThan(
+            strpos($output, 'Application update recovery is required.</h1>'),
+            strpos($output, 'بازیابی به‌روزرسانی لازم است</h1>'),
+            'Persian comes first.',
+        );
+        $this->assertStringNotContainsString('BOOTSTRAP_SECRET', $output);
+        $this->assertStringNotContainsString($this->directory, $output);
+        $this->assertSame('root', $this->pointer->current()['kind']);
+    }
+
     public function test_target_journal_mismatch_never_reverts_an_unproven_release(): void
     {
         $this->seedJournal('root', null, '0.1.0-alpha.1');
@@ -263,12 +285,14 @@ class TargetBootstrapFailureTest extends TestCase
     }
 
     /** @return array{0: ?int, 1: string} */
-    private function runPublicLauncher(): array
+    private function runPublicLauncher(?string $accept = null): array
     {
         $wrapper = $this->directory.'/run-public.php';
         File::put(
             $wrapper,
-            "<?php\n\$_SERVER['REQUEST_URI'] = '/settings/update/continue';\nrequire ".var_export($this->installationRoot.'/public/index.php', true).";\n",
+            "<?php\n\$_SERVER['REQUEST_URI'] = '/settings/update/continue';\n"
+                .($accept === null ? '' : "\$_SERVER['HTTP_ACCEPT'] = ".var_export($accept, true).";\n")
+                .'require '.var_export($this->installationRoot.'/public/index.php', true).";\n",
         );
 
         $process = new Process([PHP_BINARY, $wrapper], $this->installationRoot, timeout: 10);
