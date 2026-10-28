@@ -4,6 +4,33 @@ Last checkpoint: 2026-10-24
 
 This file is the durable source of truth for continuing SEO OS across agent sessions. **Current Git heads + exact-head CI override stale chat, stale hashes and stale prose.** Never force-push over unexpected movement and never recreate a subsystem that is already verified.
 
+## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
+
+Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
+
+**Branches (none merged to `main` yet; `main` is still `43342c6`):**
+
+1. `feature/update-connected-acceptance` — ready for review/PR into `main`. Head CI: `CI` + `Update Rollback MariaDB` green; new permanent `Lifecycle E2E` workflow green at `042d5b3` (run 40641665038) and running on the latest head. Contains (each with RED regression test):
+    - browser install HTTP 500 before DB exists (rate limiter bound to DB cache) — fixed;
+    - fresh runtime defaulted to en/LTR — default locale `fa`;
+    - installer step 6 refresh of cron/worker evidence;
+    - `mariadb` driver unsupported by update fingerprint + export/backup REPEATABLE READ — fixed;
+    - slot launcher redeclare fatal after release switch — fixed;
+    - pre-switch failure left permanent maintenance — owner cancel (`CancelPendingUpdate`, `POST /settings/update/cancel`);
+    - target migration failure/interruption with no DDL/history residue now rolls back (design §28); residue still `recovery_required`;
+    - queue polling took the exclusive lifecycle lock (random 503s) — shared lease;
+    - Persian host-upload-limit message on the update page;
+    - `tests/Acceptance/Lifecycle/` dependency-free Chrome driver + `.github/workflows/lifecycle-e2e.yml`;
+    - PR #18 checkpoint commits cherry-picked; PR #18 is superseded by this branch.
+2. `feature/workspace-entry-keyword-import` — stacked on branch 1. Design: `docs/superpowers/specs/2026-10-28-workspace-entry-keyword-import-design.md`.
+    - DONE + tested: Persian workspace home at `/dashboard` (`HomeController`, `resources/js/pages/home.tsx`), form-based project creation.
+    - WIP (last commit `wip(imports)…`, intentionally RED): migration `2026_10_28_000000_*`, `config/keywords.php`, `StreamingCsvReader::headers()`, jobs `ProcessKeywordImportFile` / `CommitKeywordImport`, `KeywordImportFiles`, tests `tests/Feature/Keywords/KeywordImportFlowTest.php`.
+    - NEXT: `KeywordImportController` (index/store[file|text]/mapping/commit/discard) + routes named `projects.keyword-imports.{index,store,mapping,commit,discard}` under `projects/{project}/imports` with scoped `{batch}` binding and `stageKeywordImports` policy; page `resources/js/pages/projects/imports.tsx` (Persian, server-truth status, no fake progress); add `imports_url` back to `HomeController`; overview/keywords CTA; then replace `harness.php seed` in the Lifecycle E2E with the real import UI and extend E2E to intelligence → Persian export → backup → restore (second instance) → update.
+
+**Open gaps:** whole-branch Update/Rollback security review (an attempt was interrupted — still open); release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
+
+**Lessons for local verification:** `api.github.com` zipballs may be blocked — build a local dist cache via shallow `git fetch` + `git archive`; set `COMPOSER_ALLOW_SUPERUSER=1`; serve with `php -S … -t public` (no router script); package uploads need `upload_max_filesize`/`post_max_size` ≥ package size.
+
 ## Stable integrated baseline
 
 - Repository: `arzmolaei/SEO`.
