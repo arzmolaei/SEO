@@ -1,81 +1,131 @@
 # SEO OS — Durable Project State & Handoff
 
-Last checkpoint: 2026-10-24
+Last checkpoint: 2026-10-28
 
 This file is the durable source of truth for continuing SEO OS across agent sessions. **Current Git heads + exact-head CI override stale chat, stale hashes and stale prose.** Never force-push over unexpected movement and never recreate a subsystem that is already verified.
 
 ## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
 
-Import UI follow-up (2026-10-28): the existing WIP scaffold is now connected to
-scoped/authorized CSV-or-paste upload, bounded preview, exact column mapping,
-database-queued staging and commit, paginated invalid rows, and attributable
-discard. Persian/English UI, home/overview/keyword CTAs and sidebar entry are
-implemented. The original JSON staging endpoint remains supported. Source bytes
-stay private and unchanged; derived previews tolerate malformed row encoding,
-filesystem ancestors must be canonical, and internal exception/path text is not
-sent in props. Database queue insertion and request markers share one transaction;
-the reservation interval is at least 660 seconds for 600-second import jobs.
-Caught staging errors are terminal and recover by discard/reupload; killed-worker
-retries resume checkpoints.
+**Owner requested a clean pause and handoff. All implementation is committed and
+pushed. Do not restart or re-audit completed slices. Fetch actual Git/CI first.**
 
-The existing seven flow tests are unchanged in intent and GREEN, with additional
-tenant/provenance/queue-failure/encoding/reservation regressions. Independent
-focused review findings (exact-header trimming, invalid-byte JSON rendering and
-discard error display) were corrected. Local full suite: 645 tests, 629 passed,
-16 skipped, 4,822 assertions; Pint/PHPStan/frontend check/TypeScript/build pass.
-No MariaDB/browser acceptance pass is claimed locally. The original CI
-40643318600 failure cause could not be independently inspected because API
-access remains denied; the owner-supplied expected RED description is recorded
-as such, not confirmed from logs.
+### Integrated main: PR #21 is merged and verified
 
-First unverified boundary: exact-head CI for PR #21 security head
-`085442a5f863581de671d52640b4ae2a86130521` and the new stacked import head.
-Merge #21 only with exact-head protection after all three workflows pass, then
-verify main. Validate the import head before integration; preserve its existing
-branch history (no force-push). Next implementation slice is browser lifecycle
-acceptance: replace service-level seed with the real import UI, then extend
-intelligence → Persian export download validation → backup → second-instance
-restore → update → operational health. That browser slice is not implemented
-by this checkpoint. No crawler work should begin yet.
+- Main merge commit: `f11f3bcb742d2a8cf105e75837aca08c55a006d7`.
+- PR #21 final feature head: `9b60cf1bce86a36b21cbece0e97dd9cf51b23045`.
+- Exact-head PR runs succeeded: CI `40653417461`, Update Rollback MariaDB
+  `40653417463`, Lifecycle E2E `40653417465` (push runs also green).
+- Merged through the GitHub API with the exact expected-head SHA parameter.
+- Independent post-merge main runs all succeeded: CI `40654060956`,
+  Update Rollback MariaDB `40654060905`, Lifecycle E2E `40654060872`.
+- GitHub API access now works; the old 403 blocker is resolved.
 
-Security review follow-up (2026-10-28): the bounded independent Update/Rollback
-review reproduced P1 missing-pointer root fallback and P2 retained-slot payload
-reuse. Corrections and RED/GREEN/process coverage are recorded in
-`docs/release-readiness/update-recovery-rollback.md`: explicit root pointers,
-fail-closed missing/corrupt/symlinked activation state, installed-version guard,
-fresh private slots on every stage attempt, and exclusive upload verification.
-Launcher contract is now `seo-launcher/2`; V1 hosts require a trusted manual
-launcher upgrade, not an automatic V1/V2 package transition. Local backend/PHP
-gates passed; connected MariaDB tests skipped locally. **New-head CI and merge
-remain unverified** because GitHub API access is denied. The owner will verify
-the pushed head and merge PR #21 with expected-head protection if all three
-workflows pass. Then verify main and validate the stacked import implementation;
-do not recreate its completed home/project work.
+Security work is integrated: missing/corrupt/symlinked activation state fails
+closed, legitimate root activation/rollback writes an explicit pointer, and every
+staging attempt extracts verified bytes into a fresh private slot. Launcher ABI is
+`seo-launcher/2`; V1 installations require a trusted manual launcher upgrade.
+Do not weaken the P1 guarantee or silently mix V1/V2 packages.
 
-Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
+The connected failure at the older `085442a5` was reproduced on real MariaDB
+10.11: the fixture created a retained target before source snapshot capture but
+never activated root. Product activation was already correct. Commit `9b60cf1`
+corrects that invalid fixture ordering and proves pointer existence/identity plus
+fail-closed deletion after completed and rolled-back updates. All existing data,
+schema, environment, identity and queue assertions remain.
 
-**Branches (none merged to `main` yet; `main` is still `43342c6`):**
+### PR #22: import slice implemented; deliberately UNMERGED
 
-1. `feature/update-connected-acceptance` — ready for review/PR into `main`. Head CI: `CI` + `Update Rollback MariaDB` green; new permanent `Lifecycle E2E` workflow green at `042d5b3` (run 40641665038) and running on the latest head. Contains (each with RED regression test):
-    - browser install HTTP 500 before DB exists (rate limiter bound to DB cache) — fixed;
-    - fresh runtime defaulted to en/LTR — default locale `fa`;
-    - installer step 6 refresh of cron/worker evidence;
-    - `mariadb` driver unsupported by update fingerprint + export/backup REPEATABLE READ — fixed;
-    - slot launcher redeclare fatal after release switch — fixed;
-    - pre-switch failure left permanent maintenance — owner cancel (`CancelPendingUpdate`, `POST /settings/update/cancel`);
-    - target migration failure/interruption with no DDL/history residue now rolls back (design §28); residue still `recovery_required`;
-    - queue polling took the exclusive lifecycle lock (random 503s) — shared lease;
-    - Persian host-upload-limit message on the update page;
-    - `tests/Acceptance/Lifecycle/` dependency-free Chrome driver + `.github/workflows/lifecycle-e2e.yml`;
-    - PR #18 checkpoint commits cherry-picked; PR #18 is superseded by this branch.
-2. `feature/workspace-entry-keyword-import` — stacked on branch 1. Design: `docs/superpowers/specs/2026-10-28-workspace-entry-keyword-import-design.md`.
-    - DONE + tested: Persian workspace home at `/dashboard` (`HomeController`, `resources/js/pages/home.tsx`), form-based project creation.
-    - Implemented follow-up: upload/mapping/queued processing/commit/discard controller and routes, Persian/English import page, project navigation/CTAs, privacy/isolation/failure checks. Local gates GREEN; exact-head CI and browser import acceptance remain unverified (see current follow-up above).
-    - NEXT: verify both new heads and main integration, then replace lifecycle service seeding with the real import UI and extend browser acceptance through intelligence/export/backup/restore/update/health.
+- PR: https://github.com/arzmolaei/SEO/pull/22
+- Branch: `feature/workspace-entry-keyword-import`, based on current main.
+- Rebased implementation head: `988f5136b7a85086470c9aee63205922e2be7f6e`.
+  Rebase push used an exact lease against `4a003de4d37e26595d6b868a0272899571d53244`.
+  The rebased file tree was identical to the tested pre-rebase tree.
+- Only four import/home commits remain above main; security/update commits are
+  no longer duplicated in the PR diff.
+- At the last API check on `988f513`: CI `40654733362` and rollback
+  `40654733348` succeeded; Lifecycle E2E `40654733476` was still running.
+- A documentation-only pause checkpoint is being added after that implementation
+  head. **Verify CI on the actual final branch HEAD; do not substitute these
+  older run results. Keep PR #22 unmerged unless the owner authorizes merging.**
 
-**Open gaps:** new-head CI/merge for the recorded Update/Rollback review fixes; release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
+Implemented and locally verified: Persian workspace home/project creation;
+private CSV or pasted originals; bounded preview; exact-column mapping; queued
+staging and commit; server-truth status; paginated invalid rows; attributable
+discard; project-scoped binding/policies; Persian/English import page; home,
+overview, keyword-page and sidebar entry points. Legacy JSON staging remains
+compatible. Original bytes/whitespace remain separate from derived values;
+preview rendering tolerates malformed row bytes; storage ancestors must be
+canonical; raw paths/exception messages never enter page props.
 
-**Lessons for local verification:** `api.github.com` zipballs may be blocked — build a local dist cache via shallow `git fetch` + `git archive`; set `COMPOSER_ALLOW_SUPERUSER=1`; serve with `php -S … -t public` (no router script); package uploads need `upload_max_filesize`/`post_max_size` ≥ package size.
+Commit markers and the default database queue insert share a transaction.
+Database reservations are at least 660 seconds for the existing 600-second jobs.
+Caught staging errors are terminal with discard/reupload recovery; hard-killed
+workers resume checkpoints. Focused review findings about header trimming,
+malformed UTF-8 JSON and discard error rendering were corrected.
+
+### Fresh local validation, including real connected tests
+
+All requested connected suites ran against **real MariaDB 10.11** with
+`--fail-on-skipped`, on both the update and import branches, with no skips:
+
+- Rollback + fresh-runtime process recovery: 2 passed, 62 assertions.
+- Backup/restore + update migrations + MariaDB-driver snapshot isolation:
+  11 passed, 198 assertions.
+- Self-host Installer: 1 passed, 125 assertions.
+- Persian Export + large export: 2 passed, 110 assertions.
+
+Normal update suite: 625 tests, 609 passed, 16 environment-gated skips,
+4,633 assertions. Normal import suite: 645 tests, 629 passed, 16 gated skips,
+4,826 assertions. Those ordinary-run skips are distinct from the connected
+runs above; never present skipped connected tests as passed. Pint, PHPStan,
+frontend check, TypeScript and production build passed on both branches.
+
+The existing browser lifecycle driver also passed locally with Chrome + MariaDB
+against a no-dev/classmap-authoritative packaged import runtime. **It still used
+the old service seed; real-import UI end-to-end coverage is NOT implemented.**
+
+### Exact first unfinished task: browser user-workflow acceptance
+
+Continue from the import branch after checking its final exact-head CI. Keep #22
+import-only/unmerged. Use a separate stacked feature branch for acceptance work.
+A local `feature/lifecycle-user-workflow` name was briefly created at `988f513`,
+but no browser code, design, or plan changes were written or pushed there.
+
+Extend `tests/Acceptance/Lifecycle/run.mjs` and its existing driver/helpers:
+
+1. Replace `harness.php seed` with browser project creation, CSV upload,
+   mapping, real database-worker processing and commit.
+2. Exercise intelligence through the UI (review/cluster/page mapping).
+3. Download the real Persian CSV from the UI link and validate its content.
+4. Download a sensitive backup, install a second clean instance through the
+   browser, restore there, and verify data, source APP_KEY usability and retained
+   destination database/installation identity.
+5. Run the existing update/recovery scenarios on the restored instance and
+   prove operational health after successful update, while retaining deliberate
+   drift/fail-closed failure scenarios.
+6. Review, run the real packaged Chrome/MariaDB acceptance, normal gates and
+   exact-head CI; update these existing checkpoint files at the verified boundary.
+
+Do not invent passing browser coverage, weaken assertions, merge temporary
+branches, start crawler work, publish the environment, or redo integrated work.
+Remaining broader release decisions (framework Persian strings, bilingual 503,
+host upload limits/chunking, offline password checking and integrity vs signing)
+remain as previously recorded; this session did not implement them.
+
+### Runtime notes for a continuing agent
+
+Use the existing isolated checkout, not a new worktree unless requested.
+This cloud snapshot uses `export PATH=/workspace/.php-runtime/bin:$PATH`.
+Real MariaDB containers were `seo-connected-source` (localhost:3306) and
+`seo-connected-destination` (localhost:3307), image `mariadb:10.11`.
+Users/databases and disposable credentials came from the workflow env blocks,
+not production. Recreate them if processes/containers did not survive.
+Local helper `/workspace/run-connected.py` runs groups rollback/backup/installer/
+export and setup from the workflow values; it is outside Git and may not exist
+in another task. The authoritative commands and env names are in `ci.yml` and
+`update-rollback-mariadb.yml`. Never dump environment or credential values.
+Local packaged tree `/workspace/lifecycle-runtime` and
+`/workspace/lifecycle-baseline.log` are generated evidence, not Git sources.
 
 ## Stable integrated baseline
 
