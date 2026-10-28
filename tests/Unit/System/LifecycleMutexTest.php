@@ -4,6 +4,7 @@ namespace Tests\Unit\System;
 
 use App\Support\Lifecycle\LifecycleMutex;
 use RuntimeException;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class LifecycleMutexTest extends TestCase
@@ -141,5 +142,50 @@ class LifecycleMutexTest extends TestCase
         }
         $ownership = $mutex->acquire('update');
         $ownership->release();
+    }
+
+    public function test_exclusive_owner_waits_for_a_transient_lease_from_another_process_to_drain(): void
+    {
+        mkdir($this->directory, 0700, true);
+        $ready = $this->directory.'/ready';
+        // A request or worker reservation in another process: a short shared lease.
+        $process = new Process([PHP_BINARY, '-r', sprintf(
+            '$f = fopen(%s, "c+"); flock($f, LOCK_SH); file_put_contents(%s, "1"); usleep(300000); flock($f, LOCK_UN);',
+            var_export($this->path, true),
+            var_export($ready, true),
+        )]);
+        $process->start();
+
+        try {
+            $deadline = microtime(true) + 10;
+            while (! is_file($ready) && $process->isRunning() && microtime(true) < $deadline) {
+                usleep(5000);
+            }
+            $this->assertFileExists($ready, $process->getErrorOutput());
+
+            $handle = (new LifecycleMutex($this->path))->acquire('restore');
+            $this->assertTrue($handle->isActive());
+            $this->assertSame('restore', $handle->operation());
+            $handle->release();
+        } finally {
+            $process->stop(1);
+        }
+    }
+
+    public function test_an_exclusive_owner_is_still_refused_immediately_while_leases_wait(): void
+    {
+        $mutex = new LifecycleMutex($this->path);
+        $handle = $mutex->acquire('update');
+        $started = hrtime(true);
+
+        try {
+            $mutex->acquireReadLease();
+            $this->fail('A request lease must not enter during an exclusive operation.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Another lifecycle operation is already running.', $exception->getMessage());
+            $this->assertLessThan(500_000_000, hrtime(true) - $started);
+        } finally {
+            $handle->release();
+        }
     }
 }
