@@ -11,6 +11,7 @@ use App\Services\Update\SwitchSystemUpdateRelease;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\VerifyUpdatePackage;
+use App\Support\HostUploadLimit;
 use App\Support\Lifecycle\ProductVersion;
 use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,7 @@ final class SystemUpdateController extends Controller
             && ($state['migration_started'] ?? null) === false;
         $data = [
             'current_product_version' => $productVersion->requireDistributable(),
+            'max_upload_bytes' => HostUploadLimit::current(),
             'status' => $status,
             'preview' => $this->safePreview($state['preview'] ?? null),
             'canContinue' => in_array($status, ['target_active', 'migrating', 'validating', 'complete'], true),

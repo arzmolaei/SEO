@@ -19,6 +19,7 @@ type Preview = {
 };
 type UpdateState = {
     current_product_version: string;
+    max_upload_bytes: number | null;
     status: string;
     preview: Preview | null;
     canContinue: boolean;
@@ -101,6 +102,8 @@ const copy = {
         error: 'عملیات کامل نشد؛ وضعیت سرور را دوباره بررسی کنید.',
         mismatch: 'SHA-256 واردشده با بسته بررسی‌شده برابر نیست.',
         choose: 'ابتدا فایل بسته را انتخاب کنید.',
+        tooLarge: (size: string, limit: string) =>
+            `حجم بسته (${size}) از سقف آپلود این هاست (${limit}) بیشتر است. در تنظیمات PHP هاست، upload_max_filesize و post_max_size را دست‌کم به اندازه بسته افزایش دهید.`,
         completed: 'نسخه جدید ثبت شد و بررسی سلامت را گذراند.',
         back: 'بازگشت به برنامه',
     },
@@ -134,11 +137,17 @@ const copy = {
         error: 'The operation did not finish. Refresh the server state.',
         mismatch: 'The digest does not match the verified package.',
         choose: 'Choose a release package first.',
+        tooLarge: (size: string, limit: string) =>
+            `The package (${size}) exceeds this host's upload limit (${limit}). Raise PHP upload_max_filesize and post_max_size to at least the package size.`,
         completed:
             'The new version passed health validation and was finalized.',
         back: 'Return to application',
     },
 };
+
+function formatBytes(bytes: number): string {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function UpdateRecovery({ update }: { update: UpdateState }) {
     const { locale } = usePage<{ locale: 'fa' | 'en' }>().props;
@@ -163,6 +172,18 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
             const file = input.current?.files?.[0];
             if (!file) {
                 setError(t.choose);
+                return;
+            }
+            if (
+                update.max_upload_bytes !== null &&
+                file.size > update.max_upload_bytes
+            ) {
+                setError(
+                    t.tooLarge(
+                        formatBytes(file.size),
+                        formatBytes(update.max_upload_bytes),
+                    ),
+                );
                 return;
             }
             body.append('update', file);

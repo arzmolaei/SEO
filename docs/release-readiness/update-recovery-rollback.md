@@ -66,16 +66,38 @@ Connected MariaDB 10.11 (permanent `Update Rollback MariaDB` workflow):
 
 Runtime release tree (`verify` job): package build and root -> private slot -> root smoke with stable environment/storage and source/target asset checks, no Composer/Node on the simulated production tree.
 
+## Connected browser lifecycle acceptance (2026-10-28)
+
+Branch `feature/update-connected-acceptance`, permanent workflow `Lifecycle E2E` (`.github/workflows/lifecycle-e2e.yml`, driver `tests/Acceptance/Lifecycle/`). A real Chrome drives a runtime-only release tree served by separate PHP processes against MariaDB 10.11, with the installer-prescribed cron/worker commands running:
+
+browser install -> realistic Persian keyword data -> Persian update UI:
+
+1. successful update (version, active slot, schema, data, `.env`, installation identity, journal closed, target asset served, grid served);
+2. target bootstrap failure -> launcher reverts to source -> recovery;
+3. post-migration health failure -> exact suffix reversed -> source snapshot -> re-login;
+4. web-server process killed during a target migration -> exact rollback to source schema/data;
+5. pre-switch block (reserved queue work) -> owner cancels -> retry succeeds;
+6. migration-history drift after switch -> `recovery_required`, no automatic recovery offered, artifacts retained, traffic fail-closed.
+
+First green exact-head run: `Lifecycle E2E` 40641665038 (with `CI` 40641664954 and `Update Rollback MariaDB` 40641664934) at `042d5b3`.
+
+Defects this acceptance exposed and fixed (each with a RED regression test):
+
+- browser install HTTP 500 before any database (rate limiter bound to the database cache) — `fd6c8d7`;
+- fresh runtime rendered English/LTR — `922f94b`;
+- installer step 6 could not re-read cron/worker evidence;
+- update impossible on installations using the `mariadb` driver the installer writes (fingerprint branch only accepted `mysql`); export/backup snapshot isolation skipped on that driver — `ecb40bd`;
+- every request after the release switch fatally redeclared the launcher classes — slot launcher copy loaded during maintenance admission;
+- pre-switch failures left a permanent maintenance gate with no exit — owner cancel (design §22.1);
+- any target migration exception/interruption was terminal; now rolled back when no DDL/history residue exists (design §28), residue still fails closed — `95d1ba3`;
+- queue polling took the exclusive lifecycle lock and turned concurrent user requests into 503s.
+
 ## Known gaps — NOT verified
 
-Do not describe Update/Rollback as fully release-ready until these are closed or explicitly accepted.
-
-1. **No connected-MariaDB successful-update acceptance.** Plan Task 13 asks for a full success path on real MariaDB: verify -> maintenance -> drain -> safety snapshot -> private slot -> assets -> pointer switch -> fresh target boot -> migrations -> health -> `.installed.product_version`. The success path is proven only at SQLite feature level and by the release-slot smoke, not as one connected MariaDB run.
-2. **No connected-MariaDB acceptance for bootstrap failure and post-migration health failure.** These are proven at SQLite level only.
-3. **No connected-MariaDB acceptance for hard interruption between target migration and rollback, nor an unexpected-drift -> `recovery_required` case at the whole-update level.** Drift and interruption are covered at runner/coordinator level (including MariaDB for DDL/data-only interruption), not as a full-lifecycle connected run.
-4. **Whole-branch review (plan Task 13 Step 5) has no recorded artifact in the repository.** Only the written design review and per-PR reviews exist. Treat the final launcher-fail-open / secret-leakage / migration-guess / maintenance-bypass / stale-snapshot review as open.
-5. **Package authenticity is not provided.** SHA-256 proves integrity only. V1 is trusted-code manual installation. Release signing remains **NEEDS VERIFICATION before public or commercial automatic distribution**.
-6. **No browser-driven acceptance of the Persian update page against a real packaged runtime.** That belongs to Final end-to-end lifecycle acceptance and has not been done.
+1. **Whole-branch security review** — see the review record below once completed.
+2. **Package authenticity is not provided.** SHA-256 proves integrity only. The approved V1 scope is trusted-code manual installation (design §3/§29); release signing remains **required before public or commercial automatic distribution** and is not claimed.
+3. **Host upload limits.** Release packages (~38 MB today) exceed PHP's default `upload_max_filesize`/`post_max_size` (2M/8M). Operators must raise them (documented requirement; acceptance runs with 256M). Chunked upload is not implemented.
+4. **Framework strings are English** (validation, throttling, password-confirmation page) — no `lang/fa` yet.
 
 ## Rollback semantics (operator-relevant)
 
