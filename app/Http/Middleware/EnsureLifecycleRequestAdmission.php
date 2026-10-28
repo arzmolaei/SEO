@@ -70,7 +70,7 @@ final class EnsureLifecycleRequestAdmission
 
     private function unavailable(): Response
     {
-        return response('عملیات نگهداری در حال اجرا است؛ صفحه را دوباره بارگذاری کنید.', 503, [
+        return response("عملیات نگهداری در حال اجرا است؛ صفحه را دوباره بارگذاری کنید.\nMaintenance is in progress; reload the page shortly.", 503, [
             'Cache-Control' => 'private, no-store',
             'Retry-After' => '5',
         ]);

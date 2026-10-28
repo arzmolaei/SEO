@@ -294,20 +294,16 @@ async function installThroughBrowser(browser, instance, owner) {
     await browser.waitForText('مرحله ۶');
     instance.startOperations();
     await browser.click('ارسال Queue Probe');
-    let polls = 0;
+    // No manual refresh exists: the page must re-read server truth itself.
     await browser.waitFor(
         async () => {
             const text = await browser.text();
-            if (
+            return (
                 !text.includes('در انتظار مشاهده') &&
                 !text.includes('هنوز probe تکمیل')
-            )
-                return true;
-            if (++polls % 15 === 0)
-                await browser.click('بررسی دوباره وضعیت اجرا');
-            return false;
+            );
         },
-        'scheduler heartbeat and queue probe observed',
+        'scheduler heartbeat and queue probe observed by automatic polling',
         120000,
     );
     await browser.click('ادامه به نهایی‌سازی');
@@ -416,7 +412,7 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
     await browser.fill('#volume-column', 'Search Volume');
     await submitClosestForm(browser, '#keyword-column');
 
-    let refreshPolls = 0;
+    // Staging and commit progress arrive through automatic polling only.
     await browser.waitFor(
         async () => {
             if (
@@ -425,12 +421,6 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
                 )
             )
                 return true;
-            if (++refreshPolls % 8 === 0) {
-                await browser.evaluate(`(() => {
-                    const button = [...document.querySelectorAll('button')].find((node) => (node.innerText || '').includes('دریافت وضعیت تازه') && !node.disabled);
-                    button?.click();
-                })()`);
-            }
             return false;
         },
         'staged import from real queue worker',
@@ -452,17 +442,10 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
         'staged import commit form is submitted through UI',
     );
 
-    refreshPolls = 0;
     await browser.waitFor(
         async () => {
             const text = await browser.text();
             if (text.includes('ثبت نهایی شد')) return true;
-            if (++refreshPolls % 8 === 0) {
-                await browser.evaluate(`(() => {
-                    const button = [...document.querySelectorAll('button')].find((node) => (node.innerText || '').includes('دریافت وضعیت تازه') && !node.disabled);
-                    button?.click();
-                })()`);
-            }
             return false;
         },
         'committed import from real queue worker',
@@ -953,16 +936,22 @@ async function waitForStatus(browser, fragment, timeoutMs = 120000) {
         async () => {
             const text = await browser.text();
             if (text.includes(fragment)) return true;
-            if (++polls % 20 === 0) {
-                if (text.startsWith('Application update'))
-                    await browser.goto(
-                        (await browser.url()).replace(
-                            /\/settings\/update.*$/,
-                            '/settings/update',
-                        ),
-                    );
-                else await browser.click('بررسی دوباره وضعیت').catch(() => {});
-            }
+            // Operator-decision phases are deliberately not polled, and a
+            // maintenance 503 page is not an Inertia page; reload like an
+            // operator would, but never while this tab's request is running.
+            if (
+                ++polls % 20 === 0 &&
+                (text.includes('Application update') ||
+                    !(await browser.evaluate(
+                        '!!document.querySelector(\'[aria-busy="true"]\')',
+                    )))
+            )
+                await browser.goto(
+                    (await browser.url()).replace(
+                        /\/settings\/update.*$/,
+                        '/settings/update',
+                    ),
+                );
             return false;
         },
         `update status "${fragment}"`,

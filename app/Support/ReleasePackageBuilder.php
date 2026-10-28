@@ -25,6 +25,7 @@ final class ReleasePackageBuilder
         'bootstrap',
         'config',
         'database/migrations',
+        'lang',
         'resources/views',
         'routes',
         'vendor',

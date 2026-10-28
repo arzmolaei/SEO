@@ -19,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useServerPoll } from '@/hooks/use-server-poll';
+import { operationsNeedPolling } from '@/lib/status-polling';
 
 type HealthStatus = 'pass' | 'warning' | 'fail';
 type InstallerPhase =
@@ -84,6 +86,7 @@ const labels: Record<string, string> = {
     app_key: 'کلید امن برنامه',
     assets: 'فایل‌های رابط کاربری',
     runtime_files: 'فایل‌های اصلی برنامه',
+    upload_limit: 'سقف بارگذاری فایل PHP',
 };
 
 const phases: Array<{ key: InstallerPhase; label: string }> = [
@@ -716,23 +719,10 @@ function OperationsCard({
 }) {
     const [acknowledged, setAcknowledged] = useState(false);
     const [copied, setCopied] = useState<'scheduler' | 'worker' | null>(null);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    // Scheduler/worker evidence arrives from separate host processes; let the
-    // operator re-read server truth without resubmitting the probe.
-    const refreshOperations = () => {
-        if (isRefreshing) {
-            return;
-        }
-
-        router.reload({
-            only: ['installer', 'operations'],
-            onStart: () => setIsRefreshing(true),
-            onFinish: () => setIsRefreshing(false),
-        });
-    };
-    const hasWarnings =
-        operations.scheduler.state === 'warning' ||
-        operations.queue.state === 'warning';
+    // Scheduler/worker evidence arrives from separate host processes; re-read
+    // server truth automatically until both are observed (or fail).
+    const hasWarnings = operationsNeedPolling(operations);
+    const poll = useServerPoll(['installer', 'operations'], hasWarnings);
 
     const statusFor = (state: OperationalState): HealthStatus =>
         state === 'verified' ? 'pass' : state;
@@ -774,6 +764,8 @@ function OperationsCard({
                     </div>
                 </div>
                 <span
+                    role="status"
+                    aria-live="polite"
                     className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                         operations.blocking
                             ? 'border-destructive/30 bg-destructive/10 text-destructive'
@@ -788,21 +780,22 @@ function OperationsCard({
                           ? 'نیازمند تأیید اپراتور'
                           : 'عملیات تأیید شد'}
                 </span>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isRefreshing}
-                    onClick={refreshOperations}
-                >
-                    {isRefreshing ? (
-                        <Spinner />
-                    ) : (
-                        <RefreshCw className="size-4" />
-                    )}
-                    بررسی دوباره وضعیت اجرا
-                </Button>
             </div>
+            {hasWarnings && (
+                <p
+                    className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"
+                    data-test="operations-auto-refresh"
+                >
+                    <Spinner aria-hidden="true" />
+                    شواهد اجرا هر چند ثانیه به‌طور خودکار از سرور خوانده می‌شود.
+                </p>
+            )}
+            {hasWarnings && poll.failed && (
+                <p role="alert" className="mt-2 text-xs text-destructive">
+                    دریافت وضعیت از سرور ناموفق بود؛ به‌طور خودکار دوباره تلاش
+                    می‌شود.
+                </p>
+            )}
 
             <div className="mt-6 grid gap-3 md:grid-cols-2">
                 <article className="flex gap-3 rounded-xl border bg-background p-4">

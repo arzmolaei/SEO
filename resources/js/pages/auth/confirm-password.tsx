@@ -10,31 +10,36 @@ import {
     store as confirmStore,
 } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyConfirmationController';
 import PasskeyVerify from '@/components/passkey-verify';
+import { useLocale } from '@/hooks/use-locale';
 
 export default function ConfirmPassword() {
+    const { t } = useLocale();
+
     return (
         <>
-            <Head title="Confirm password" />
+            <Head title={t('auth.confirmTitle')} />
 
             <PasskeyVerify
                 routes={{
                     options: confirmOptions(),
                     submit: confirmStore(),
                 }}
-                label="Confirm with passkey"
-                loadingLabel="Confirming..."
-                separator="Or confirm with password"
+                label={t('auth.confirmPasskey')}
+                loadingLabel={t('auth.confirming')}
+                separator={t('auth.confirmWithPassword')}
             />
 
             <Form {...store.form()} resetOnSuccess={['password']}>
                 {({ processing, errors }) => (
                     <div className="space-y-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">
+                                {t('auth.password')}
+                            </Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
-                                placeholder="Password"
+                                placeholder={t('auth.password')}
                                 autoComplete="current-password"
                                 autoFocus
                             />
@@ -49,7 +54,7 @@ export default function ConfirmPassword() {
                                 data-test="confirm-password-button"
                             >
                                 {processing && <Spinner />}
-                                Confirm password
+                                {t('auth.confirmButton')}
                             </Button>
                         </div>
                     </div>
@@ -59,8 +64,4 @@ export default function ConfirmPassword() {
     );
 }
 
-ConfirmPassword.layout = {
-    title: 'Confirm password',
-    description:
-        'This is a secure area of the application. Please confirm your password before continuing.',
-};
+ConfirmPassword.layout = {};

@@ -8,6 +8,7 @@
         "dev": "vp dev",
         "check": "vp check",
         "check:fix": "vp check --fix",
+        "test": "vp test run --config vitest.config.ts",
         "types:check": "tsc --noEmit",
         "typecheck": "tsc --noEmit"
     },

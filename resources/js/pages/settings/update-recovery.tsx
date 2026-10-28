@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { RefreshCw, ShieldAlert, Upload } from 'lucide-react';
+import { ShieldAlert, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useServerPoll } from '@/hooks/use-server-poll';
+import { updateNeedsPolling } from '@/lib/status-polling';
 
 type Preview = {
     package_digest_sha256: string;
@@ -96,10 +98,12 @@ const copy = {
         cancel: 'لغو به‌روزرسانی',
         cancelHint:
             'نسخه فعال هنوز تغییر نکرده است. با لغو، حالت نگهداری برداشته می‌شود و می‌توانید بعداً دوباره تلاش کنید.',
-        refresh: 'بررسی دوباره وضعیت',
+        autoRefresh: 'وضعیت هر چند ثانیه به‌طور خودکار از سرور خوانده می‌شود.',
+        pollFailed:
+            'دریافت وضعیت از سرور ناموفق بود؛ به‌طور خودکار دوباره تلاش می‌شود.',
         manual: 'ادامه خودکار مسدود است. فایل‌های ایمنی را حفظ کنید و با مدیر فنی برای بررسی بسته و شواهد بازیابی هماهنگ کنید.',
         busy: 'در حال انجام عملیات…',
-        error: 'عملیات کامل نشد؛ وضعیت سرور را دوباره بررسی کنید.',
+        error: 'عملیات کامل نشد؛ وضعیت فعلی سرور در همین صفحه نمایش داده می‌شود.',
         mismatch: 'SHA-256 واردشده با بسته بررسی‌شده برابر نیست.',
         choose: 'ابتدا فایل بسته را انتخاب کنید.',
         tooLarge: (size: string, limit: string) =>
@@ -131,10 +135,13 @@ const copy = {
         cancel: 'Cancel update',
         cancelHint:
             'The active release has not changed. Cancelling lifts maintenance so you can retry later.',
-        refresh: 'Refresh status',
+        autoRefresh:
+            'Status is re-read from the server automatically every few seconds.',
+        pollFailed:
+            'Could not read status from the server; retrying automatically.',
         manual: 'Automatic continuation is blocked. Retain the safety artifacts and ask your system operator to inspect the recovery evidence.',
         busy: 'Working…',
-        error: 'The operation did not finish. Refresh the server state.',
+        error: 'The operation did not finish. The current server state is shown on this page.',
         mismatch: 'The digest does not match the verified package.',
         choose: 'Choose a release package first.',
         tooLarge: (size: string, limit: string) =>
@@ -162,6 +169,11 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
     const label =
         phaseLabels[update.status]?.[locale === 'fa' ? 0 : 1] ?? update.status;
     const canUpload = update.status === 'ready';
+    // Re-read server truth while a phase can advance on its own. The release
+    // switch itself still ends in a full page load (requires_reload, or the
+    // Inertia asset-version change), so the new release's code boots.
+    const polling = updateNeedsPolling(update.status, busy);
+    const poll = useServerPoll(['update'], polling);
 
     async function run(
         action: 'verify' | 'confirm' | 'continue' | 'recover' | 'cancel',
@@ -281,14 +293,17 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
                             {t.status}: {label}
                         </p>
                         {busy && <p role="status">{t.busy}</p>}
-                        <Button
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => router.reload({ only: ['update'] })}
-                        >
-                            <RefreshCw aria-hidden="true" />
-                            {t.refresh}
-                        </Button>
+                        {polling && (
+                            <p
+                                className="text-sm text-muted-foreground"
+                                data-test="update-auto-refresh"
+                            >
+                                {t.autoRefresh}
+                            </p>
+                        )}
+                        {polling && poll.failed && (
+                            <p role="alert">{t.pollFailed}</p>
+                        )}
                         {update.canContinue && (
                             <Button
                                 disabled={busy}

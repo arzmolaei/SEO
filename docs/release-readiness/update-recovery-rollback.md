@@ -96,8 +96,10 @@ Defects this acceptance exposed and fixed (each with a RED regression test):
 
 1. **Recorded Update/Rollback security review** — completed with two reproduced findings corrected below. Coverage limits remain explicit; this is not a claim of comprehensive security certification.
 2. **Package authenticity is not provided.** SHA-256 proves integrity only. The approved V1 scope is trusted-code manual installation (design §3/§29); release signing remains **required before public or commercial automatic distribution** and is not claimed.
-3. **Host upload limits.** Release packages (~38 MB today) exceed PHP's default `upload_max_filesize`/`post_max_size` (2M/8M). Operators must raise them (documented requirement; acceptance runs with 256M). Chunked upload is not implemented.
-4. **Framework strings are English** (validation, throttling, password-confirmation page) — no `lang/fa` yet.
+3. **Host upload limits — decided: no chunked upload in V1.** Release packages (~38 MB today) exceed PHP's default `upload_max_filesize`/`post_max_size` (2M/8M). Operators must raise both to at least 256M (acceptance runs with 256M). The installer preflight now shows a non-blocking `upload_limit` warning, and the update page refuses an oversized file before sending it, naming both settings. Chunked/resumable upload is deliberately not implemented: verification must run over the complete byte stream anyway, and chunk reassembly would add resumable state, quota handling and attack surface to an owner-only lifecycle endpoint. Revisit only if a supported host cannot raise the limits.
+4. **Framework strings — closed.** `lang/fa` (auth, pagination, passwords, validation, `fa.json`) ships in the release tree and update packages; the auth pages are Persian-first. A test keeps every framework key translated. Installer preflight check messages are still English beneath Persian labels.
+5. **Breached-password lookup — decided: opt-in only.** `Password::uncompromised()` calls `api.pwnedpasswords.com`, which conflicts with the offline-capable core. Production password rules stay local (min 12, mixed case, letters, numbers, symbols); operators may opt in with `AUTH_PASSWORD_BREACH_CHECK=true`.
+6. **Integrity, not authenticity (unchanged).** Package SHA-256 digests prove integrity only; no UI, document or release note may describe a package as signed or authenticated.
 
 ## Rollback semantics (operator-relevant)
 

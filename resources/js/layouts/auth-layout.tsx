@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useLocale } from '@/hooks/use-locale';
+import type { TranslationKey } from '@/i18n';
 import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
 
 export default function AuthLayout({
@@ -14,18 +15,27 @@ export default function AuthLayout({
     const { component } = usePage();
     const { t } = useLocale();
 
-    const localizedCopy =
-        component === 'auth/login'
-            ? {
-                  title: t('auth.loginTitle'),
-                  description: t('auth.loginDescription'),
-              }
-            : component === 'auth/register'
-              ? {
-                    title: t('auth.registerTitle'),
-                    description: t('auth.registerDescription'),
-                }
-              : { title, description };
+    // Static page copy is localized here; pages that switch copy at runtime
+    // (two-factor challenge) pass already-translated layout props.
+    const copyKeys: Partial<Record<string, [TranslationKey, TranslationKey]>> =
+        {
+            'auth/login': ['auth.loginTitle', 'auth.loginDescription'],
+            'auth/register': ['auth.registerTitle', 'auth.registerDescription'],
+            'auth/confirm-password': [
+                'auth.confirmTitle',
+                'auth.confirmDescription',
+            ],
+            'auth/forgot-password': [
+                'auth.forgotTitle',
+                'auth.forgotDescription',
+            ],
+            'auth/reset-password': ['auth.resetTitle', 'auth.resetDescription'],
+            'auth/verify-email': ['auth.verifyTitle', 'auth.verifyDescription'],
+        };
+    const keys = copyKeys[component];
+    const localizedCopy = keys
+        ? { title: t(keys[0]), description: t(keys[1]) }
+        : { title, description };
 
     return (
         <AuthLayoutTemplate
