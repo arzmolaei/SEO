@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BulkKeywordStatusController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InstallerController;
 use App\Http\Controllers\KeywordChangeSetController;
 use App\Http\Controllers\KeywordGridController;
@@ -43,7 +44,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', HomeController::class)->name('dashboard');
     Route::get('workspaces/{workspace}/projects', [ProjectController::class, 'index'])->name('workspaces.projects.index');
     Route::post('workspaces/{workspace}/projects', [ProjectController::class, 'store'])->name('workspaces.projects.store');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');

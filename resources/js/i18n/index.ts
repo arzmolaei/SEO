@@ -3,6 +3,24 @@ export type Direction = 'rtl' | 'ltr';
 
 const messages = {
     fa: {
+        'home.title': 'پروژه‌ها',
+        'home.nav': 'پروژه‌ها',
+        'home.description':
+            'پروژه‌های فضاهای کاری خود را باز کنید یا پروژه تازه‌ای بسازید.',
+        'home.create': 'ساخت پروژه',
+        'home.projectName': 'نام پروژه',
+        'home.workspace': 'فضای کاری',
+        'home.empty': 'هنوز پروژه‌ای ندارید',
+        'home.emptyDescription':
+            'اولین پروژه را بسازید تا کلمات کلیدی را وارد و تحلیل کنید.',
+        'home.noPermission':
+            'نقش شما در این فضای کاری اجازه ساخت پروژه را نمی‌دهد.',
+        'home.open': 'باز کردن',
+        'home.keywords': 'کلمات کلیدی',
+        'home.import': 'ورود کلمات',
+        'home.previous': 'قبلی',
+        'home.next': 'بعدی',
+        'home.total': 'تعداد پروژه‌ها',
         'review.cluster': 'پیشنهاد خوشه',
         'review.mappingConflict': 'تعارض نگاشت',
         'project.nav.reviews': 'صف بررسی',
@@ -137,6 +155,24 @@ const messages = {
             'عملیات نمای ذخیره‌شده انجام نشد. دوباره تلاش کنید.',
     },
     en: {
+        'home.title': 'Projects',
+        'home.nav': 'Projects',
+        'home.description':
+            'Open a project in your workspaces or create a new one.',
+        'home.create': 'Create project',
+        'home.projectName': 'Project name',
+        'home.workspace': 'Workspace',
+        'home.empty': 'No projects yet',
+        'home.emptyDescription':
+            'Create your first project to import and analyze keywords.',
+        'home.noPermission':
+            'Your role in this workspace cannot create projects.',
+        'home.open': 'Open',
+        'home.keywords': 'Keywords',
+        'home.import': 'Import keywords',
+        'home.previous': 'Previous',
+        'home.next': 'Next',
+        'home.total': 'Projects',
         'review.cluster': 'Cluster suggestion',
         'review.mappingConflict': 'Mapping conflict',
         'project.nav.reviews': 'Review Queue',

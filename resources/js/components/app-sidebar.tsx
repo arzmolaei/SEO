@@ -61,7 +61,7 @@ export function AppSidebar() {
           }))
         : [
               {
-                  title: 'Dashboard',
+                  title: t('home.nav'),
                   href: dashboard(),
                   icon: LayoutGrid,
               },
