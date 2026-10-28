@@ -84,6 +84,7 @@ const labels: Record<string, string> = {
     app_key: 'کلید امن برنامه',
     assets: 'فایل‌های رابط کاربری',
     runtime_files: 'فایل‌های اصلی برنامه',
+    upload_limit: 'سقف بارگذاری فایل PHP',
 };
 
 const phases: Array<{ key: InstallerPhase; label: string }> = [

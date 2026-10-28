@@ -3,12 +3,17 @@
 namespace App\Support\Installer;
 
 use App\Contracts\SystemProbe;
+use App\Support\HostUploadLimit;
+use Closure;
 
 class InstallerPreflight
 {
     private const MINIMUM_PHP_VERSION = '8.4.1';
 
     private const MINIMUM_FREE_DISK_BYTES = 134217728;
+
+    /** Update packages (~40 MB) and restore bundles are uploaded through PHP. */
+    private const RECOMMENDED_UPLOAD_BYTES = 268435456;
 
     /** @var list<string> */
     private const REQUIRED_EXTENSIONS = [
@@ -25,7 +30,11 @@ class InstallerPreflight
         'xml',
     ];
 
-    public function __construct(private readonly SystemProbe $probe) {}
+    /** @param  (Closure(): ?int)|null  $uploadLimit  bytes, or null when the host sets no limit */
+    public function __construct(
+        private readonly SystemProbe $probe,
+        private readonly ?Closure $uploadLimit = null,
+    ) {}
 
     /**
      * @return array{
@@ -43,6 +52,7 @@ class InstallerPreflight
             'app_key' => $this->appKeyCheck(),
             'assets' => $this->assetsCheck(),
             'runtime_files' => $this->runtimeFilesCheck(),
+            'upload_limit' => $this->uploadLimitCheck(),
         ];
 
         foreach ($checks as $check) {
@@ -160,6 +170,27 @@ class InstallerPreflight
             true,
             $present,
             $present ? 'Required application files are present.' : 'One or more required application files are missing.',
+        );
+    }
+
+    /**
+     * Never blocks installation: it only matters for later update/restore
+     * uploads, and the operator may raise the PHP limits at any time.
+     *
+     * @return array{status: 'pass'|'warning'|'fail', required: bool, value: mixed, message: string}
+     */
+    private function uploadLimitCheck(): array
+    {
+        $limit = ($this->uploadLimit ?? HostUploadLimit::current(...))();
+        $sufficient = $limit === null || $limit >= self::RECOMMENDED_UPLOAD_BYTES;
+
+        return $this->result(
+            $sufficient ? 'pass' : 'warning',
+            false,
+            $limit,
+            $sufficient
+                ? 'PHP upload limits allow update packages and backups.'
+                : 'Raise PHP upload_max_filesize and post_max_size to at least 256M before uploading update packages or backups.',
         );
     }
 
