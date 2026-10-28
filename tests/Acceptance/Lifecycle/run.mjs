@@ -11,6 +11,7 @@ import {
     mkdirSync,
     mkdtempSync,
     openSync,
+    readFileSync,
     rmSync,
     writeFileSync,
 } from 'node:fs';
@@ -1267,6 +1268,21 @@ async function resolveAfterInterruption(browser, instance) {
     log(`update: interruption left page state: ${text.slice(0, 400)}`);
 }
 
+// Disposable instances only: surfaces server-side causes that the UI
+// deliberately hides, so a failed run is diagnosable from the CI log.
+function printInstanceLogs(instance) {
+    const files = [
+        join(instance.root, 'storage', 'logs', 'laravel.log'),
+        instance.serverLog,
+    ];
+    for (const file of files) {
+        if (!file || !existsSync(file)) continue;
+        const lines = readFileSync(file, 'utf8').split('\n');
+        console.error(`--- ${instance.name}: ${file} (last 80 lines) ---`);
+        console.error(lines.slice(-80).join('\n'));
+    }
+}
+
 async function main() {
     const browser = await Browser.launch();
     try {
@@ -1300,6 +1316,7 @@ try {
 } catch (error) {
     console.error(error.stack ?? error);
     process.exitCode = 1;
+    for (const instance of instances) printInstanceLogs(instance);
 } finally {
     await Promise.all(
         instances.map((instance) => instance.stopOperations().catch(() => {})),

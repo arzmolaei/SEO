@@ -22,7 +22,9 @@ use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\File;
+use RuntimeException;
 use Tests\TestCase;
 
 class RestoreSystemBackupTest extends TestCase
@@ -325,6 +327,121 @@ class RestoreSystemBackupTest extends TestCase
             ->postJson('/settings/backup/restore/recover')
             ->assertStatus(422)
             ->assertJsonPath('code', 'restore_recovery_invalid_state');
+    }
+
+    public function test_unexpected_restore_failure_is_reported_server_side_and_keeps_the_verified_state(): void
+    {
+        [$destinationOwner, $digest] = $this->verifiedDestinationRestore();
+        Exceptions::fake();
+
+        $holder = (new LifecycleMutex)->acquire('backup');
+        try {
+            $this->actingAs($destinationOwner)
+                ->withSession(['auth.password_confirmed_at' => time()])
+                ->postJson('/settings/backup/restore/confirm', [
+                    'content_digest_sha256' => $digest,
+                ])
+                ->assertStatus(422)
+                ->assertJsonPath('code', 'restore_failed')
+                ->assertJsonMissingPath('exception');
+        } finally {
+            $holder->release();
+        }
+
+        Exceptions::assertReported(
+            fn (BackupException $exception): bool => $exception->codeName() === 'restore_failed'
+                && $exception->getPrevious() instanceof RuntimeException,
+        );
+        $this->assertSame('verified', json_decode(File::get($this->journalPath), true)['phase'] ?? null);
+        $this->assertDatabaseHas('users', ['email' => 'destination-owner@example.test']);
+    }
+
+    public function test_expected_restore_refusals_are_not_reported_as_errors(): void
+    {
+        [$destinationOwner] = $this->verifiedDestinationRestore();
+        Exceptions::fake();
+
+        $this->actingAs($destinationOwner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/backup/restore/confirm', [
+                'content_digest_sha256' => str_repeat('f', 64),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'restore_digest_mismatch');
+
+        Exceptions::assertNothingReported();
+    }
+
+    /** @return array{0: User, 1: string} */
+    private function verifiedDestinationRestore(): array
+    {
+        $sourceOwner = User::factory()->create([
+            'email' => 'source-owner@example.test',
+            'email_verified_at' => now(),
+            'onboarded_at' => now(),
+        ]);
+        $sourceWorkspace = Workspace::query()->create(['name' => 'فضای منبع']);
+        Membership::query()->create([
+            'workspace_id' => $sourceWorkspace->id,
+            'user_id' => $sourceOwner->id,
+            'role' => WorkspaceRole::Owner,
+        ]);
+        Project::query()->create([
+            'workspace_id' => $sourceWorkspace->id,
+            'name' => 'پروژه بازیابی',
+        ]);
+        (new InstallationState)->markInstalled([
+            'installer_schema_version' => 2,
+            'product_version' => (new ProductVersion)->requireDistributable(),
+            'installation_id' => str_repeat('a', 32),
+            'database_fingerprint' => str_repeat('s', 64),
+            'owner_user_id' => $sourceOwner->id,
+        ]);
+
+        $handle = (new LifecycleMutex)->acquire('backup');
+        try {
+            $captured = $this->app->make(CaptureSystemState::class)->handle($handle);
+        } finally {
+            $handle->release();
+        }
+
+        $bundlePath = $this->directory.'/source.seobak';
+        try {
+            $captured->rewind();
+            $bytes = stream_get_contents($captured->stream());
+            $this->assertIsString($bytes);
+            File::put($bundlePath, $bytes);
+        } finally {
+            $captured->close();
+        }
+
+        $this->clearDurableDatabase();
+        File::delete($this->installationLockPath);
+
+        $destinationOwner = User::factory()->create([
+            'email' => 'destination-owner@example.test',
+            'email_verified_at' => now(),
+            'onboarded_at' => now(),
+        ]);
+        $destinationWorkspace = Workspace::query()->create(['name' => 'Destination bootstrap']);
+        Membership::query()->create([
+            'workspace_id' => $destinationWorkspace->id,
+            'user_id' => $destinationOwner->id,
+            'role' => WorkspaceRole::Owner,
+        ]);
+        (new InstallationState)->markInstalled([
+            'installer_schema_version' => 2,
+            'product_version' => (new ProductVersion)->requireDistributable(),
+            'installation_id' => str_repeat('b', 32),
+            'database_fingerprint' => str_repeat('d', 64),
+            'owner_user_id' => $destinationOwner->id,
+        ]);
+
+        $preview = $this->app->make(VerifyRestoreBundle::class)->handle(
+            new UploadedFile($bundlePath, 'source.seobak', 'application/octet-stream', null, true),
+        );
+
+        return [$destinationOwner, $preview->digest()];
     }
 
     private function clearDurableDatabase(): void
