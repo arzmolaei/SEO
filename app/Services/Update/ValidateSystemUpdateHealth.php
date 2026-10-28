@@ -80,7 +80,7 @@ final class ValidateSystemUpdateHealth
             if (! $this->storageReady() || ! $this->assetsReady(requireCleanRelease: false)) {
                 $failures[] = 'source_runtime';
             }
-            if ($this->restoreJournal->state() !== null || ($this->journal->state()['phase'] ?? null) !== 'snapshot_restore_required') {
+            if ($this->restoreJournal->hasActiveOperation() || ($this->journal->state()['phase'] ?? null) !== 'snapshot_restore_required') {
                 $failures[] = 'lifecycle';
             }
         } catch (Throwable) {
@@ -295,7 +295,7 @@ final class ValidateSystemUpdateHealth
     /** @param array<string, mixed> $expected */
     private function lifecycleMatches(array $expected): bool
     {
-        if ($this->restoreJournal->state() !== null) {
+        if ($this->restoreJournal->hasActiveOperation()) {
             return false;
         }
         $state = $this->journal->state();

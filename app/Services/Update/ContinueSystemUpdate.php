@@ -40,7 +40,7 @@ final class ContinueSystemUpdate
                 throw $this->invalidState();
             }
             $this->assertTarget($state);
-            if ($this->restoreJournal->state() !== null) {
+            if ($this->restoreJournal->hasActiveOperation()) {
                 throw new UpdateException('update_lifecycle_conflict', 'یک عملیات بازیابی دیگر باید ابتدا تعیین تکلیف شود.');
             }
             if ($state['phase'] === 'complete') {

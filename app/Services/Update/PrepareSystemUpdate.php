@@ -57,7 +57,7 @@ final class PrepareSystemUpdate
         if ($this->requiredUploadId($state) !== $uploadId) {
             throw $this->invalidState();
         }
-        if ($this->restoreJournal->state() !== null) {
+        if ($this->restoreJournal->hasActiveOperation()) {
             throw $this->lifecycleConflict();
         }
 

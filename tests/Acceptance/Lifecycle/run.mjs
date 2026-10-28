@@ -11,6 +11,7 @@ import {
     mkdirSync,
     mkdtempSync,
     openSync,
+    readFileSync,
     rmSync,
     writeFileSync,
 } from 'node:fs';
@@ -446,7 +447,10 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
         form.requestSubmit();
         return true;
     })()`);
-    assert(commitSubmitted, 'staged import commit form is submitted through UI');
+    assert(
+        commitSubmitted,
+        'staged import commit form is submitted through UI',
+    );
 
     refreshPolls = 0;
     await browser.waitFor(
@@ -466,7 +470,11 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
     );
 
     const state = instance.inspect();
-    assert(state.counts.keywords >= 30, 'realistic keyword set committed', state);
+    assert(
+        state.counts.keywords >= 30,
+        'realistic keyword set committed',
+        state,
+    );
     await assertApplicationServes(browser, instance, projectId, 'سئو سایت');
     return { project_id: projectId, keywords: state.counts.keywords };
 }
@@ -485,7 +493,9 @@ async function exerciseKeywordIntelligence(browser, instance, projectId) {
     let reloadPolls = 0;
     await browser.waitFor(
         async () => {
-            const clusterReview = await browser.evaluate(`(() => [...document.querySelectorAll('article')].some((article) => (article.innerText || '').includes('پیشنهاد خوشه')))()`);
+            const clusterReview = await browser.evaluate(
+                `(() => [...document.querySelectorAll('article')].some((article) => (article.innerText || '').includes('پیشنهاد خوشه')))()`,
+            );
             if (clusterReview) return true;
             if (++reloadPolls % 8 === 0) {
                 await browser.evaluate(`(() => {
@@ -507,7 +517,10 @@ async function exerciseKeywordIntelligence(browser, instance, projectId) {
         button.click();
         return article.dataset.lifecycleReviewKey;
     })()`);
-    assert(reviewKey, 'cluster suggestion can be accepted through Review Queue');
+    assert(
+        reviewKey,
+        'cluster suggestion can be accepted through Review Queue',
+    );
     await browser.waitFor(
         () =>
             browser.evaluate(
@@ -602,7 +615,9 @@ async function exerciseKeywordIntelligence(browser, instance, projectId) {
 }
 
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
-    log(`${instance.name}: download and validate Persian SEO CSV through UI link`);
+    log(
+        `${instance.name}: download and validate Persian SEO CSV through UI link`,
+    );
     const path = `/projects/${projectId}/exports/seo-plan.csv`;
     await browser.goto(`${instance.base}/projects/${projectId}/keywords`);
     const linkExists = await browser.evaluate(
@@ -621,8 +636,18 @@ async function downloadAndValidatePersianExport(browser, instance, projectId) {
         'Persian export is an attachment',
         csv,
     );
-    assert(csv.body.startsWith('\uFEFF'), 'Persian export starts with UTF-8 BOM');
-    const header = csv.body.slice(1).split(/\r?\n/, 1)[0].split(',');
+    // response.text() decodes UTF-8 and silently drops a leading BOM, so the
+    // byte-level contract is checked on the raw download.
+    const raw = Buffer.from((await browser.fetchBase64(path)).body, 'base64');
+    assert(
+        raw.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
+        'Persian export starts with UTF-8 BOM bytes',
+        { prefix: raw.subarray(0, 3).toString('hex') },
+    );
+    const header = csv.body
+        .replace(/^\uFEFF/, '')
+        .split(/\r?\n/, 1)[0]
+        .split(',');
     assert(
         header.length === 74 &&
             header[0] === 'schema_version' &&
@@ -633,9 +658,15 @@ async function downloadAndValidatePersianExport(browser, instance, projectId) {
         header,
     );
     assert(csv.body.includes('seo-plan/1'), 'export rows identify seo-plan/1');
-    assert(csv.body.includes('سئو سایت'), 'export contains Persian keyword text');
+    assert(
+        csv.body.includes('سئو سایت'),
+        'export contains Persian keyword text',
+    );
     assert(csv.body.includes('\u200c'), 'export preserves a real Persian ZWNJ');
-    assert(csv.body.includes(PLANNED_PAGE), 'export includes mapped planned page');
+    assert(
+        csv.body.includes(PLANNED_PAGE),
+        'export includes mapped planned page',
+    );
 }
 
 async function ensureRecentPassword(browser, instance, owner) {
@@ -706,7 +737,11 @@ async function restoreBackupThroughBrowser(
 
 async function backupRestoreLifecycle(browser, source, workflow) {
     const sourceState = source.inspect();
-    const backupPath = await downloadBackupThroughBrowser(browser, source, OWNER);
+    const backupPath = await downloadBackupThroughBrowser(
+        browser,
+        source,
+        OWNER,
+    );
 
     const destination = await new Instance('instance-b', 'seo_e2e_b').create();
     instances.push(destination);
@@ -777,7 +812,9 @@ async function backupRestoreLifecycle(browser, source, workflow) {
         workflow.project_id,
         'سئو سایت',
     );
-    log(`${destination.name}: restored source owner and project are operational`);
+    log(
+        `${destination.name}: restored source owner and project are operational`,
+    );
     return destination;
 }
 
@@ -1231,6 +1268,21 @@ async function resolveAfterInterruption(browser, instance) {
     log(`update: interruption left page state: ${text.slice(0, 400)}`);
 }
 
+// Disposable instances only: surfaces server-side causes that the UI
+// deliberately hides, so a failed run is diagnosable from the CI log.
+function printInstanceLogs(instance) {
+    const files = [
+        join(instance.root, 'storage', 'logs', 'laravel.log'),
+        instance.serverLog,
+    ];
+    for (const file of files) {
+        if (!file || !existsSync(file)) continue;
+        const lines = readFileSync(file, 'utf8').split('\n');
+        console.error(`--- ${instance.name}: ${file} (last 80 lines) ---`);
+        console.error(lines.slice(-80).join('\n'));
+    }
+}
+
 async function main() {
     const browser = await Browser.launch();
     try {
@@ -1245,7 +1297,11 @@ async function main() {
         );
         await exerciseKeywordIntelligence(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
-        const restored = await backupRestoreLifecycle(browser, source, workflow);
+        const restored = await backupRestoreLifecycle(
+            browser,
+            source,
+            workflow,
+        );
         await updateLifecycle(browser, restored, workflow);
         if (browser.consoleErrors.length > 0)
             log(`browser exceptions: ${browser.consoleErrors.join(' | ')}`);
@@ -1260,6 +1316,7 @@ try {
 } catch (error) {
     console.error(error.stack ?? error);
     process.exitCode = 1;
+    for (const instance of instances) printInstanceLogs(instance);
 } finally {
     await Promise.all(
         instances.map((instance) => instance.stopOperations().catch(() => {})),

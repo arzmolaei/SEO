@@ -84,6 +84,12 @@ final class SystemRestoreController extends Controller
 
     private function failure(BackupException $exception): JsonResponse
     {
+        // Expected refusals carry no cause; an underlying failure is logged
+        // server-side so operators can diagnose it. Never exposed to the client.
+        if ($exception->getPrevious() !== null) {
+            report($exception);
+        }
+
         return response()->json([
             'code' => $exception->codeName(),
             'message' => $exception->userMessage(),

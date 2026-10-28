@@ -239,6 +239,24 @@ class VerifyUpdatePackageTest extends TestCase
         $this->assertSame([], File::files($this->uploadDirectory));
     }
 
+    public function test_a_completed_restore_does_not_block_later_updates(): void
+    {
+        // A finished restore keeps its terminal journal (it refuses a second
+        // restore into a non-clean target); it is not an active operation.
+        File::ensureDirectoryExists(dirname($this->restoreJournalPath));
+        File::put($this->restoreJournalPath, json_encode([
+            'phase' => 'complete',
+            'upload_id' => str_repeat('a', 32),
+            'restored_at' => '2026-10-28T00:00:00Z',
+        ], JSON_THROW_ON_ERROR));
+        @chmod($this->restoreJournalPath, 0600);
+
+        $this->verifyPath($this->makePackage(), 'after-restore.seoupdate');
+
+        $this->assertSame('verified', $this->updateJournal->state()['phase'] ?? null);
+        $this->assertSame('complete', $this->restoreJournal->state()['phase'] ?? null);
+    }
+
     /** @param array<string, mixed> $overrides */
     private function makePackage(array $overrides = []): string
     {
