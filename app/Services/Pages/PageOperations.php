@@ -34,10 +34,10 @@ class PageOperations
     }
 
     /** @param array<string,mixed>|null $before */
-    public function record(User $actor, Project $project, Page $page, ?array $before, string $event): void
+    public function record(User $actor, Project $project, Page $page, ?array $before, string $event, string $source = 'user'): void
     {
         $set = ChangeSet::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'action' => $event,
             'changes' => [['page_id' => $page->id, 'before' => json_encode($before, JSON_THROW_ON_ERROR), 'after' => json_encode($page->getAttributes(), JSON_THROW_ON_ERROR)]]]);
-        ActivityEvent::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'change_set_id' => $set->id, 'event' => $event, 'metadata' => ['page_id' => $page->id, 'source' => 'user']]);
+        ActivityEvent::query()->create(['workspace_id' => $project->workspace_id, 'project_id' => $project->id, 'actor_id' => $actor->id, 'change_set_id' => $set->id, 'event' => $event, 'metadata' => ['page_id' => $page->id, 'source' => $source]]);
     }
 }

@@ -40,3 +40,11 @@ Local verification after merging current main: crawler 89 passed; ordinary suite
 735 passed / 16 connected-only skips (5,111 assertions); PHPStan/Pint/frontend
 check passed. Page linking, HTTP/UI and connected worker-concurrency acceptance
 are still unimplemented; this is not a completed crawler claim.
+
+Task 7 implemented: successful fetched HTML URLs link to project-scoped existing
+pages using the existing page service, preserve human titles, retain snapshot
+titles separately, and attribute new-page activity to `crawler`. Linking yields
+after 100 records so completion remains resumable. RED observed missing page_id;
+GREEN focused engine/page tests 19 passed; ordinary backend 736 passed / 16
+connected-only skips (5,120 assertions), PHPStan and Pint passed. Exact-head CI
+still required. HTTP/UI and connected worker concurrency remain next.

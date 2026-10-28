@@ -140,7 +140,9 @@ class CrawlRunProcessor
 
         $pending = CrawlUrl::query()->where('crawl_run_id', $run->id)->where('state', 'pending');
         if (! (clone $pending)->exists()) {
-            $this->linker->link($run);
+            if (! $this->linker->link($run)) {
+                return 'more';
+            }
             $run->forceFill(['status' => 'completed', 'finished_at' => now()])->save();
 
             return 'done';

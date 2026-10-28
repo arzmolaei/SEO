@@ -4,9 +4,11 @@ namespace Tests\Feature\Crawl;
 
 use App\Enums\WorkspaceRole;
 use App\Jobs\ProcessCrawlRun;
+use App\Models\ActivityEvent;
 use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
 use App\Models\Membership;
+use App\Models\Page;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
@@ -15,6 +17,7 @@ use App\Services\Crawl\CrawlRunControls;
 use App\Services\Crawl\CrawlRunException;
 use App\Services\Crawl\CrawlRunProcessor;
 use App\Services\Crawl\StartCrawlRun;
+use App\Services\Pages\RegisterExistingPage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\FakeCrawlTransport;
@@ -220,6 +223,28 @@ class CrawlRunEngineTest extends TestCase
         $this->assertSame('done', $this->drain($run));
         $this->assertSame('fetched', $this->url($run, '/found')->state);
         $this->assertCount(1, array_filter($transport->requests, fn (string $url): bool => $url === self::SITE.'/sitemap.xml'));
+    }
+
+    public function test_completed_crawls_link_project_pages_without_overwriting_human_titles(): void
+    {
+        $existing = app(RegisterExistingPage::class)->handle($this->owner, $this->project, self::SITE.'/', 'عنوان انسانی');
+        $transport = $this->site([
+            self::SITE.'/' => FakeCrawlTransport::html('<title>عنوان سایت</title><a href="/new">new</a>'),
+            self::SITE.'/new' => FakeCrawlTransport::html('<title>صفحه جدید</title>'),
+        ]);
+        $run = $this->start();
+        $this->assertSame('done', $this->drain($run));
+
+        $this->assertSame($existing->id, $this->url($run, '/')->page_id);
+        $this->assertSame('عنوان انسانی', $existing->refresh()->title);
+        $this->assertSame('عنوان سایت', $this->url($run, '/')->title, 'Crawled titles remain separate evidence.');
+        $newPage = Page::query()->where('project_id', $this->project->id)->where('normalized_url', self::SITE.'/new')->sole();
+        $this->assertSame('صفحه جدید', $newPage->title);
+        $this->assertSame($newPage->id, $this->url($run, '/new')->page_id);
+        $this->assertDatabaseHas('activity_events', ['project_id' => $this->project->id, 'actor_id' => $this->owner->id, 'event' => 'pages.created']);
+        $event = ActivityEvent::query()->where('event', 'pages.created')->latest('id')->firstOrFail();
+        $this->assertSame('crawler', $event->metadata['source']);
+        $this->assertCount(1, array_filter($transport->requests, fn (string $url): bool => $url === self::SITE.'/new'));
     }
 
     public function test_max_urls_caps_discovery(): void
