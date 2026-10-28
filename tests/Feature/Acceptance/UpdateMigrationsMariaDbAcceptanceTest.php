@@ -30,7 +30,7 @@ class UpdateMigrationsMariaDbAcceptanceTest extends TestCase
             $this->markTestSkipped('Migration DDL acceptance runs in the connected MariaDB gate.');
         }
         config(['database.connections.update_migrations' => [
-            'driver' => 'mysql',
+            'driver' => 'mariadb', // what the installer writes for MariaDB hosts
             'host' => getenv('BACKUP_SOURCE_DB_HOST'),
             'port' => getenv('BACKUP_SOURCE_DB_PORT'),
             'database' => getenv('BACKUP_SOURCE_DB_DATABASE'),

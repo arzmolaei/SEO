@@ -348,7 +348,7 @@ final class CaptureSystemState
 
     private function beginConsistentTransaction(Connection $connection): void
     {
-        if ($connection->getDriverName() === 'mysql') {
+        if (in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
             $connection->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         }
 

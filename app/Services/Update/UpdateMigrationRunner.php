@@ -263,7 +263,7 @@ final class UpdateMigrationRunner
         if ($connection->getDriverName() === 'sqlite') {
             $definitions = $connection->select("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE substr(name, 1, 7) <> 'sqlite_' ORDER BY type, name");
             $objects = array_map(static fn (object $row): array => (array) $row, $definitions);
-        } elseif ($connection->getDriverName() === 'mysql') {
+        } elseif (in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
             // V1 proves table/view/trigger DDL. Unsupported executable schema
             // objects cannot silently fall outside a recovery checkpoint.
             $unsupported = $connection->select('SELECT ROUTINE_NAME AS name FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() UNION ALL SELECT EVENT_NAME AS name FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE NOT IN (\'BASE TABLE\', \'VIEW\')');
