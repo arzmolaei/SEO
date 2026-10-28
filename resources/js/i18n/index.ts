@@ -22,7 +22,7 @@ const messages = {
         'imports.waitingCommit':
             'درخواست ثبت نهایی در انتظار کارگر پس\u200cزمینه است.',
         'imports.waitingWorker':
-            'کار هنوز شروع نشده و منتظر کارگر پس\u200cزمینه است. وضعیت را دوباره دریافت کنید.',
+            'کار هنوز شروع نشده و منتظر کارگر پس\u200cزمینه است.',
         'imports.processingHint':
             'تعداد ردیف\u200cها از آخرین وضعیت ثبت\u200cشده در سرور دریافت می\u200cشود.',
         'imports.processed': 'پردازش\u200cشده',
@@ -30,9 +30,10 @@ const messages = {
         'imports.invalid': 'نامعتبر',
         'imports.failureMessage':
             'پردازش یا خواندن فایل ممکن نشد. ورودی را بررسی کنید یا آن را کنار بگذارید و دوباره وارد کنید.',
-        'imports.refresh': 'دریافت وضعیت تازه',
-        'imports.loading': 'در حال دریافت…',
-        'imports.refreshError': 'دریافت وضعیت ناموفق بود؛ دوباره تلاش کنید.',
+        'imports.autoRefresh':
+            'وضعیت هر چند ثانیه به\u200cطور خودکار از سرور خوانده می\u200cشود.',
+        'imports.refreshError':
+            'دریافت وضعیت از سرور ناموفق بود؛ به\u200cطور خودکار دوباره تلاش می\u200cشود.',
         'imports.preview': 'پیش\u200cنمایش محدود فایل اصلی',
         'imports.keywordColumn': 'ستون کلمه کلیدی',
         'imports.volumeColumn': 'ستون حجم جستجو (اختیاری)',
@@ -220,7 +221,7 @@ const messages = {
         'imports.waitingCommit':
             'Commit requested; waiting for the background worker.',
         'imports.waitingWorker':
-            'Work has not started; it is waiting for the background worker. Refresh to check status.',
+            'Work has not started; it is waiting for the background worker.',
         'imports.processingHint':
             'Row counts reflect the latest saved server checkpoint.',
         'imports.processed': 'Processed',
@@ -228,9 +229,10 @@ const messages = {
         'imports.invalid': 'Invalid',
         'imports.failureMessage':
             'The import could not be processed or read. Check the input, or discard it and upload again.',
-        'imports.refresh': 'Refresh status',
-        'imports.loading': 'Loading…',
-        'imports.refreshError': 'Could not refresh status. Try again.',
+        'imports.autoRefresh':
+            'Status is re-read from the server automatically every few seconds.',
+        'imports.refreshError':
+            'Could not read status from the server; retrying automatically.',
         'imports.preview': 'Bounded preview of the original file',
         'imports.keywordColumn': 'Keyword column',
         'imports.volumeColumn': 'Search volume column (optional)',

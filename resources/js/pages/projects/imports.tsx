@@ -1,11 +1,12 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLocale } from '@/hooks/use-locale';
+import { useServerPoll } from '@/hooks/use-server-poll';
+import { importBatchNeedsPolling } from '@/lib/status-polling';
 
 type Page<T> = {
     data: T[];
@@ -46,8 +47,8 @@ export default function Imports({
 }) {
     const { projectContext } = usePage().props;
     const { t, direction } = useLocale();
-    const [refreshing, setRefreshing] = useState(false);
-    const [refreshError, setRefreshError] = useState(false);
+    const polling = importBatchNeedsPolling(activeBatch);
+    const poll = useServerPoll(['activeBatch', 'batches'], polling);
     if (!projectContext) return null;
     const base = `/projects/${projectContext.project.id}/imports`;
     const statusLabels: Record<string, string> = {
@@ -62,16 +63,6 @@ export default function Imports({
     const pendingCommit =
         activeBatch?.status === 'staged' &&
         activeBatch.commit_requested_at !== null;
-    const refresh = () =>
-        router.reload({
-            only: ['activeBatch', 'batches'],
-            onStart: () => {
-                setRefreshing(true);
-                setRefreshError(false);
-            },
-            onError: () => setRefreshError(true),
-            onFinish: () => setRefreshing(false),
-        });
     const pages = (page: Page<unknown>) => (
         <nav className="flex gap-4" aria-label={t('imports.pagination')}>
             {page.prev_page_url && (
@@ -189,17 +180,15 @@ export default function Imports({
                                     {t('imports.failureMessage')}
                                 </p>
                             )}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={refresh}
-                                disabled={refreshing}
-                            >
-                                {refreshing
-                                    ? t('imports.loading')
-                                    : t('imports.refresh')}
-                            </Button>
-                            {refreshError && (
+                            {polling && (
+                                <p
+                                    className="text-sm text-muted-foreground"
+                                    data-test="import-auto-refresh"
+                                >
+                                    {t('imports.autoRefresh')}
+                                </p>
+                            )}
+                            {polling && poll.failed && (
                                 <p role="alert">{t('imports.refreshError')}</p>
                             )}
                             {activeBatch.preview.length > 0 && (
