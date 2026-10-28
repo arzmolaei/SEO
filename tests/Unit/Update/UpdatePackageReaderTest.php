@@ -174,7 +174,7 @@ class UpdatePackageReaderTest extends TestCase
             'target_product_version' => '0.1.0-alpha.2',
             'allowed_source_product_versions' => ['0.1.0-alpha.1'],
             'channel' => 'development',
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
             'minimum_php_version' => '8.4.1',
             'required_php_extensions' => ['ctype', 'json', 'pdo'],
             'source_schema_fingerprint' => str_repeat('1', 64),

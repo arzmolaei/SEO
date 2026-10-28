@@ -716,6 +716,20 @@ function OperationsCard({
 }) {
     const [acknowledged, setAcknowledged] = useState(false);
     const [copied, setCopied] = useState<'scheduler' | 'worker' | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    // Scheduler/worker evidence arrives from separate host processes; let the
+    // operator re-read server truth without resubmitting the probe.
+    const refreshOperations = () => {
+        if (isRefreshing) {
+            return;
+        }
+
+        router.reload({
+            only: ['installer', 'operations'],
+            onStart: () => setIsRefreshing(true),
+            onFinish: () => setIsRefreshing(false),
+        });
+    };
     const hasWarnings =
         operations.scheduler.state === 'warning' ||
         operations.queue.state === 'warning';
@@ -774,6 +788,20 @@ function OperationsCard({
                           ? 'نیازمند تأیید اپراتور'
                           : 'عملیات تأیید شد'}
                 </span>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isRefreshing}
+                    onClick={refreshOperations}
+                >
+                    {isRefreshing ? (
+                        <Spinner />
+                    ) : (
+                        <RefreshCw className="size-4" />
+                    )}
+                    بررسی دوباره وضعیت اجرا
+                </Button>
             </div>
 
             <div className="mt-6 grid gap-3 md:grid-cols-2">

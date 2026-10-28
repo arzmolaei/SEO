@@ -98,7 +98,7 @@ final class ExportProjectSeoPlan
 
     private function beginSnapshot(Connection $connection, int $initialTransactionLevel): void
     {
-        if ($initialTransactionLevel === 0 && $connection->getDriverName() === 'mysql') {
+        if ($initialTransactionLevel === 0 && in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
             $connection->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         }
 

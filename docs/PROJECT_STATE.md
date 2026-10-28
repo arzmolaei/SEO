@@ -1,8 +1,49 @@
 # SEO OS — Durable Project State & Handoff
 
-Last checkpoint: 2026-10-23
+Last checkpoint: 2026-10-24
 
 This file is the durable source of truth for continuing SEO OS across agent sessions. **Current Git heads + exact-head CI override stale chat, stale hashes and stale prose.** Never force-push over unexpected movement and never recreate a subsystem that is already verified.
+
+## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
+
+Security review follow-up (2026-10-28): the bounded independent Update/Rollback
+review reproduced P1 missing-pointer root fallback and P2 retained-slot payload
+reuse. Corrections and RED/GREEN/process coverage are recorded in
+`docs/release-readiness/update-recovery-rollback.md`: explicit root pointers,
+fail-closed missing/corrupt/symlinked activation state, installed-version guard,
+fresh private slots on every stage attempt, and exclusive upload verification.
+Launcher contract is now `seo-launcher/2`; V1 hosts require a trusted manual
+launcher upgrade, not an automatic V1/V2 package transition. Local backend/PHP
+gates passed; connected MariaDB tests skipped locally. **New-head CI and merge
+remain unverified** because GitHub API access is denied. The owner will verify
+the pushed head and merge PR #21 with expected-head protection if all three
+workflows pass. Then verify main and continue the existing stacked import WIP;
+do not recreate its completed home/project work.
+
+Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
+
+**Branches (none merged to `main` yet; `main` is still `43342c6`):**
+
+1. `feature/update-connected-acceptance` — ready for review/PR into `main`. Head CI: `CI` + `Update Rollback MariaDB` green; new permanent `Lifecycle E2E` workflow green at `042d5b3` (run 40641665038) and running on the latest head. Contains (each with RED regression test):
+    - browser install HTTP 500 before DB exists (rate limiter bound to DB cache) — fixed;
+    - fresh runtime defaulted to en/LTR — default locale `fa`;
+    - installer step 6 refresh of cron/worker evidence;
+    - `mariadb` driver unsupported by update fingerprint + export/backup REPEATABLE READ — fixed;
+    - slot launcher redeclare fatal after release switch — fixed;
+    - pre-switch failure left permanent maintenance — owner cancel (`CancelPendingUpdate`, `POST /settings/update/cancel`);
+    - target migration failure/interruption with no DDL/history residue now rolls back (design §28); residue still `recovery_required`;
+    - queue polling took the exclusive lifecycle lock (random 503s) — shared lease;
+    - Persian host-upload-limit message on the update page;
+    - `tests/Acceptance/Lifecycle/` dependency-free Chrome driver + `.github/workflows/lifecycle-e2e.yml`;
+    - PR #18 checkpoint commits cherry-picked; PR #18 is superseded by this branch.
+2. `feature/workspace-entry-keyword-import` — stacked on branch 1. Design: `docs/superpowers/specs/2026-10-28-workspace-entry-keyword-import-design.md`.
+    - DONE + tested: Persian workspace home at `/dashboard` (`HomeController`, `resources/js/pages/home.tsx`), form-based project creation.
+    - WIP (last commit `wip(imports)…`, intentionally RED): migration `2026_10_28_000000_*`, `config/keywords.php`, `StreamingCsvReader::headers()`, jobs `ProcessKeywordImportFile` / `CommitKeywordImport`, `KeywordImportFiles`, tests `tests/Feature/Keywords/KeywordImportFlowTest.php`.
+    - NEXT: `KeywordImportController` (index/store[file|text]/mapping/commit/discard) + routes named `projects.keyword-imports.{index,store,mapping,commit,discard}` under `projects/{project}/imports` with scoped `{batch}` binding and `stageKeywordImports` policy; page `resources/js/pages/projects/imports.tsx` (Persian, server-truth status, no fake progress); add `imports_url` back to `HomeController`; overview/keywords CTA; then replace `harness.php seed` in the Lifecycle E2E with the real import UI and extend E2E to intelligence → Persian export → backup → restore (second instance) → update.
+
+**Open gaps:** new-head CI/merge for the recorded Update/Rollback review fixes; release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
+
+**Lessons for local verification:** `api.github.com` zipballs may be blocked — build a local dist cache via shallow `git fetch` + `git archive`; set `COMPOSER_ALLOW_SUPERUSER=1`; serve with `php -S … -t public` (no router script); package uploads need `upload_max_filesize`/`post_max_size` ≥ package size.
 
 ## Stable integrated baseline
 
@@ -14,6 +55,8 @@ This file is the durable source of truth for continuing SEO OS across agent sess
 - Persian Export: integrated through PR #5; merge commit `a6924d77b3a9b7f74b484f7e303c8168905c520c`.
 - Backup + Restore: integrated through PR #7; merge commit `761aede4927dd21ba6384b4d714cc80f2292019e`.
 - Independent post-merge `main` CI for Backup + Restore: run `39978951778`, success across all six permanent jobs.
+- Update + Interrupted Recovery/Rollback: integrated through PR #8; merge commit `43342c667859d68a2bfe62b1fb2258aafedb6a5c` (merged 2026-10-24T07:29:14Z; final feature head `dd69e765ef4d5dddb977d3595423cded6fe8f592`).
+- Independent post-merge `main` CI for Update/Rollback: `CI` run `40074320817` success across all six `ci.yml` jobs, plus the separate permanent workflow `Update Rollback MariaDB` run `40074320854` success.
 - Runtime floor: PHP `>= 8.4.1`; permanent compatibility gates remain PHP 8.4 and 8.5.
 
 Always fetch actual `main`, any active feature branch/PR and current CI before changing code. Recorded hashes are evidence, not permission to assume Git has not moved.
@@ -78,45 +121,38 @@ Verification evidence:
 
 **Do not restart or recreate Backup/Restore Tasks 1–10.** Any future work must reuse these lifecycle primitives.
 
-## Active lifecycle slice — Update + Interrupted Recovery/Rollback
+## Update + Interrupted Recovery/Rollback
 
-This is the active subsystem; it is **not integrated on main**. Implementation is in PR #8 on `feature/update-recovery-rollback`; the older main checkpoint must not be interpreted as permission to recreate it.
+Integrated through PR #8 (merge commit above). All thirteen plan tasks have code on `main`, and exact-head PR CI plus independent post-merge `main` CI are green (see baseline above).
 
-The active branch already contains the approved Update/Rollback design, written review and 13-task plan. Tasks 1–6 exist, including the shared recovery kernel, package framing/verification, journal/maintenance, immutable staging and quiesced pre-update snapshot. Task 7 was completed through PR #11 with dependency-free bootstrap recovery and owner confirmation, merged into the active feature branch at `f699d8363de91a419bb6d5de7e508fc8c6f8bec1`. Final reviewed head `a90e1c08214fa1fcd2def6cd26513d91b6f6433c` passed all six permanent jobs in CI `40022118065`, including 479 backend tests on both PHP versions and the real recovery-auth routes.
+Design: `docs/superpowers/specs/2026-10-23-update-recovery-rollback-design.md`  
+Written-spec review: `docs/superpowers/specs/2026-10-23-update-recovery-rollback-review.md`  
+Plan: `docs/superpowers/plans/2026-10-23-update-recovery-rollback.md`  
+Release evidence and **known gaps**: `docs/release-readiness/update-recovery-rollback.md`  
+Operator notes: `docs/update-recovery-operations.md`  
+Package tooling: `docs/update-package-build.md`
 
-Task 12 package tooling was integrated through PR #10 at `eea234dcbed29cf263ac794aab061f487a8ae5a6`. Combined Task 7 + package tooling head `a9237ea77c4674549ac77907b89de4a8771821db` passed all six gates in CI `40022550285` (486 backend tests, 3710 assertions), including actual no-dev source -> private slot -> source runtime acceptance. The builder streams file inputs and rejects build-host config/route/event caches.
+Verified boundary: stable dependency-free launcher and atomic active-release pointer; `seo-update/1` package contract; durable journal and persistent maintenance; shared recovery kernel reused from Backup/Restore; owner-only verify/preview/confirm/continue/recover routes; quiescence and queue drain before the safety snapshot; immutable private release slots with additive public assets; exact-history migration runner with verified reverse suffix; target health validation and finalization (only `product_version` changes); interrupted-update rollback and source-snapshot recovery; Persian-first owner-only UI; package build tooling and runtime release-slot smoke; connected MariaDB exact-suffix rollback and separate-process recovery acceptance.
 
-Task 8 exact-history migration runner is reviewed in PR #12. Code head `0729ad4fd5898cf53a1e5e8ac13c0be84905b388` passed all six permanent jobs in CI `40026369422`, including actual MariaDB DDL and separate-process data-only interruption acceptance. It stores strict source/checkpoint DTOs, proves exact reverse prefixes, fingerprints table/view/trigger definitions and retains durable in-progress/completed evidence. Ambiguous unlogged data or DDL is never retried or guessed through. Final documentation head `dfda6800a37168aa14152b00eb91aafdec612c3b` passed all six gates in CI `40026705128`; PR #12 merged into the active branch as `56045cfcb81ec0e7d63f2a3a8a18817c83c7944a`.
+**Do not recreate Update/Rollback Tasks 1–13 or the verified recovery services.** Reuse the lifecycle primitives.
 
-The confirmed queue-retention correction was independently reviewed in PR #13; `17662123b31a5f74b35b77bd51b175c99218d448` passed all six jobs in CI `40026436495`. Its explicit `preserveQueuedWork: true` snapshot policy retains pending jobs/batches/failure evidence; existing ordinary Restore defaults remain unchanged. Future Update recovery MUST opt in after proving source schema and quiescence. Combined migration + retention head `b3db55c6708bca7128597ccb2b740b4d664812cb` passed all six jobs in CI `40027046367`; PR #13 merged at `b9999976f5273342ecf233318a966635bd70eb6e`.
+Progress documents (intermediate hashes; current Git/CI outrank them): `docs/superpowers/progress/2026-10-23-update-bootstrap-recovery.md`, `2026-10-24-update-package-builder.md`, `2026-10-23-update-migration-runner.md`, `2026-10-23-update-queue-retention.md`, `2026-10-23-update-admission-drain.md`, `2026-10-24-update-target-finalization.md`, `2026-10-24-update-recovery-coordinator.md`, `2026-10-24-update-rollback-history-proof.md`.
 
-The admission/drain correction was reviewed in PR #14. Head `3b2864baa93ec0df1af89e1b9d1369839361ca2a` passed all six permanent jobs in CI `40057637639`, including real paused HTTP/worker interleavings, stale-source rejection after a completed pointer switch, and eight connected MariaDB DDL/data-interruption/reservation cases. Shared request leases and committed queue reservations use the existing LifecycleMutex; both ownership modes revalidate the booted release and queue reservations reject ambient transactions. Default pointers now bind to the stable installation root when running in a slot. Final docs head `cfc61c0015a0e412bfeb0343f79a249dc65189c2` passed all six gates in CI `40057827460`; PR #14 merged as `1a016f93b6cb275cd3e95692f6d2a510ec7cdb52`.
+### Open items on the Update/Rollback boundary (not yet verified)
 
-Task 9 target health/finalization is independently reviewed in PR #15. Code head `efbd766c70a86ba285a755c86d5acfbc5de5c90e` passed all six gates in CI `40060127622`: 546 backend tests (4070 assertions), eight connected MariaDB lifecycle cases and real no-dev release-slot runtime smoke. Source runtime/crypto/legacy-key/installation identity and exact safety-bundle bytes are pinned before migration. Target continuation requires exact booted release and original lock ownership, publishes restartable migration checkpoints, validates local health, atomically updates only product_version and preserves retryable finalization on publication failures. Active/source releases, source assets and immediate safety evidence remain retained. Final documentation-head CI/integration remain required.
+These are recorded in `docs/release-readiness/update-recovery-rollback.md`; do not mark Update/Rollback "fully release-ready" until they are closed or explicitly accepted:
 
-**Current continuation in PR #17:** recovery coordinator service code `36cde2b55f84d69b595a488d92aafbd329b31e48` passed all six permanent CI jobs in run `40062215857`, including 563 backend tests on PHP8.4/8.5. It includes the independently reviewed PR16 history-proof correction. Source/target recovery requests are separated, exact migration suffixes/checkpoints and source snapshot identity are enforced, environment bytes/legacy keys/pending queue work are preserved, and recoverable publication/staging failures retain resumable phases. Fresh review findings were reproduced before correction. The service is not yet integrated into the parent feature branch.
+1. No connected-MariaDB acceptance of the full **successful** update path (success is proven at SQLite feature level and by the release-slot smoke).
+2. No connected-MariaDB acceptance for bootstrap failure and post-migration health failure; no whole-update connected case for hard interruption between target migration and rollback or for drift -> `recovery_required`.
+3. No recorded whole-branch review artifact for the final launcher/secret/migration-guess/maintenance-bypass/stale-snapshot review.
+4. No publisher signing: SHA-256 proves integrity only (**NEEDS VERIFICATION before public/commercial automatic distribution**).
+5. The Update Rollback MariaDB gate is a separate workflow (`update-rollback-mariadb.yml`), not a job in `ci.yml`; require it explicitly in any branch protection.
 
-**Exact resume order:** finish **Task11 — Persian UI and owner-only continuation/recovery HTTP routes** in PR17, then **Task13 — full connected Update/Rollback gate**, with real separately booted runtime requests. Update/Rollback remains unintegrated on main. Do not recreate Tasks1–9, package tooling, or the now-verified recovery services. Main still points to the older integrated Backup/Restore checkpoint; active PR/Git evidence is authoritative.
-Progress: `docs/superpowers/progress/2026-10-23-update-bootstrap-recovery.md`, `docs/superpowers/progress/2026-10-24-update-package-builder.md`, `docs/superpowers/progress/2026-10-23-update-migration-runner.md` and `docs/superpowers/progress/2026-10-23-update-queue-retention.md` and `docs/superpowers/progress/2026-10-23-update-admission-drain.md` and `docs/superpowers/progress/2026-10-24-update-target-finalization.md`. Current Git/CI outrank these intermediate hashes.
+Housekeeping: PR #3 (`feature/foundation-keyword-core` -> `main`) is still open although Foundation + Keyword Core was integrated through PR #1; the owner should decide whether to close it.
 
-Required architecture direction:
+## Next: Final end-to-end lifecycle acceptance
 
-- reuse `ProductVersion` for release compatibility and installed-version identity;
-- reuse `LifecycleMutex` for Backup/Restore/Update serialization;
-- require a successful pre-update backup/safety snapshot before destructive update work;
-- define explicit durable update journal phases and fail-closed interruption semantics;
-- preserve destination/local installation identity and environment secrets;
-- perform version/schema compatibility checks before mutation;
-- perform code/release switch, migrations and health validation as explicit phases;
-- rollback to the pre-update release/data state when health validation or an interrupted destructive phase cannot safely complete;
-- prove success and recovery on real MariaDB fixtures and runtime-only release trees;
-- remain browser-driven/offline-capable on ordinary self-host/shared-host environments without requiring Composer, Node/npm, SSH or shell access at runtime.
-
-Because Update/Rollback is a new subsystem, follow the mandatory sequence before product code: existing-lifecycle audit -> brainstorming/architecture -> approved design -> written-spec review -> implementation-plan review -> RED/GREEN task execution.
-
-## After Update/Rollback
-
-Complete **Final end-to-end lifecycle acceptance**:
+This is the next slice. Close the open Update/Rollback items above where they overlap, then complete **Final end-to-end lifecycle acceptance**:
 
 clean runtime package -> browser install -> real project/import/intelligence workflow -> Persian Export -> Backup/Restore -> Update/Recovery/Rollback -> operational health.
 
@@ -148,5 +184,3 @@ Only after that first usable self-host lifecycle gate is trustworthy should the 
 ## Definition of trustworthy progress
 
 Code existence is not completion. Applicable frontend check/TypeScript/build, Pint, PHPStan/Larastan, backend tests, runtime dependency audits, project isolation, connected MariaDB acceptance and release/runtime smoke must be green on the current head. Subsystem integration additionally requires its merge commit on `main` to receive independent permanent CI success.
-
-Task10 progress: `docs/superpowers/progress/2026-10-24-update-recovery-coordinator.md`.

@@ -177,8 +177,8 @@ class VerifyUpdatePackageTest extends TestCase
             },
             'launcher' => function (string $path): void {
                 $bytes = (string) file_get_contents($path);
-                $this->assertStringContainsString('seo-launcher/1', $bytes);
-                file_put_contents($path, str_replace('seo-launcher/1', 'seo-launcher/9', $bytes));
+                $this->assertStringContainsString('seo-launcher/2', $bytes);
+                file_put_contents($path, str_replace('seo-launcher/2', 'seo-launcher/9', $bytes));
             },
             'trailing' => fn (string $path) => file_put_contents($path, 'x', FILE_APPEND),
             'checksum' => function (string $path): void {
@@ -258,7 +258,7 @@ class VerifyUpdatePackageTest extends TestCase
                 'target_product_version' => $overrides['target_product_version'] ?? '0.1.0-alpha.2',
                 'allowed_source_product_versions' => $overrides['allowed_source_product_versions'] ?? [$sourceVersion],
                 'channel' => $overrides['channel'] ?? 'development',
-                'launcher_schema' => $overrides['launcher_schema'] ?? 'seo-launcher/1',
+                'launcher_schema' => $overrides['launcher_schema'] ?? 'seo-launcher/2',
                 'minimum_php_version' => $overrides['minimum_php_version'] ?? '8.4.1',
                 'required_php_extensions' => $overrides['required_php_extensions'] ?? ['ctype', 'json', 'pdo'],
                 'source_schema_fingerprint' => $overrides['source_schema_fingerprint'] ?? $sourceSchema,

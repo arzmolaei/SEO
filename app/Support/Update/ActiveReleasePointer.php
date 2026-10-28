@@ -48,7 +48,7 @@ final class ActiveReleasePointer
             'release_id' => $releaseId,
             'product_version' => $version,
             'package_digest_sha256' => $packageDigest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ];
         if ($marker !== $expected || trim((string) @file_get_contents($slot.'/VERSION')) !== $version) {
             throw $this->invalidState();
@@ -59,7 +59,7 @@ final class ActiveReleasePointer
             'release_id' => $releaseId,
             'product_version' => $version,
             'package_digest_sha256' => $packageDigest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ]);
     }
 
@@ -70,10 +70,11 @@ final class ActiveReleasePointer
             throw $this->invalidState();
         }
 
-        @unlink($this->pointerPath.'.tmp');
-        if (file_exists($this->pointerPath) && ! unlink($this->pointerPath)) {
-            throw $this->invalidState();
-        }
+        $this->atomicWrite([
+            'schema' => 'seo-root-release-pointer/1',
+            'product_version' => $version,
+            'launcher_schema' => 'seo-launcher/2',
+        ]);
     }
 
     /** @return array<string, mixed> */

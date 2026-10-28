@@ -242,7 +242,7 @@ class RuntimeReleaseLocatorTest extends TestCase
             'release_id' => $releaseId,
             'product_version' => $version,
             'package_digest_sha256' => $digest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ];
     }
 
@@ -264,7 +264,7 @@ class RuntimeReleaseLocatorTest extends TestCase
             'release_id' => $releaseId,
             'product_version' => $version,
             'package_digest_sha256' => $digest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ];
     }
 

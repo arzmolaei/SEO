@@ -155,7 +155,7 @@ class LifecycleAdmissionProcessTest extends TestCase
         File::put($slot.'/release.json', json_encode([
             'schema' => 'seo-release-slot/1', 'release_id' => $id,
             'product_version' => '0.1.0-alpha.2', 'package_digest_sha256' => str_repeat('a', 64),
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR));
         $this->pointer->activateSlot($id, '0.1.0-alpha.2', str_repeat('a', 64));
     }

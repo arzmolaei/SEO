@@ -59,6 +59,36 @@ class LifecycleDatabaseQueueTest extends TestCase
         $this->app->make(UpdateQuiescence::class)->assertReady();
     }
 
+    public function test_reservation_excludes_lifecycle_operations_but_not_ordinary_request_admission(): void
+    {
+        Queue::connection('database')->pushRaw('{"job":"probe"}');
+        $observed = [];
+        DB::listen(function ($query) use (&$observed): void {
+            if (isset($observed['request']) || ! str_contains(strtolower($query->sql), 'jobs')) {
+                return;
+            }
+            try {
+                (new LifecycleMutex)->acquireReadLease()->release();
+                $observed['request'] = true;
+            } catch (RuntimeException) {
+                $observed['request'] = false;
+            }
+            try {
+                (new LifecycleMutex)->acquire('update')->release();
+                $observed['lifecycle'] = true;
+            } catch (RuntimeException) {
+                $observed['lifecycle'] = false;
+            }
+        });
+
+        $this->assertInstanceOf(DatabaseJob::class, Queue::connection('database')->pop());
+
+        // A worker polling the queue must never turn user requests into 503s...
+        $this->assertTrue($observed['request'] ?? null, 'HTTP admission must coexist with a queue reservation.');
+        // ...while a lifecycle operation still cannot start mid-reservation.
+        $this->assertFalse($observed['lifecycle'] ?? null, 'Lifecycle ownership must wait for the reservation.');
+    }
+
     public function test_idle_worker_cannot_reserve_during_persistent_maintenance_between_update_requests(): void
     {
         $id = Queue::connection('database')->pushRaw('{"job":"probe"}');

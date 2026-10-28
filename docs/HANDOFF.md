@@ -1,6 +1,47 @@
 # SEO OS — handoff to the next implementation agent
 
-Checkpoint: 2026-10-23. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
+Checkpoint: 2026-10-24. Repository evidence and current CI always override stale chat context. This handoff records the current verified boundary; it does not mean the full self-host lifecycle is complete.
+
+## CURRENT STATE — 2026-10-28 (read this first; supersedes older lines below)
+
+Security review follow-up (2026-10-28): the bounded independent Update/Rollback
+review reproduced P1 missing-pointer root fallback and P2 retained-slot payload
+reuse. Corrections and RED/GREEN/process coverage are recorded in
+`docs/release-readiness/update-recovery-rollback.md`: explicit root pointers,
+fail-closed missing/corrupt/symlinked activation state, installed-version guard,
+fresh private slots on every stage attempt, and exclusive upload verification.
+Launcher contract is now `seo-launcher/2`; V1 hosts require a trusted manual
+launcher upgrade, not an automatic V1/V2 package transition. Local backend/PHP
+gates passed; connected MariaDB tests skipped locally. **New-head CI and merge
+remain unverified** because GitHub API access is denied. The owner will verify
+the pushed head and merge PR #21 with expected-head protection if all three
+workflows pass. Then verify main and continue the existing stacked import WIP;
+do not recreate its completed home/project work.
+
+Session paused by the owner; work is pushed. Verify with Git/CI before trusting this text.
+
+**Branches (none merged to `main` yet; `main` is still `43342c6`):**
+
+1. `feature/update-connected-acceptance` — ready for review/PR into `main`. Head CI: `CI` + `Update Rollback MariaDB` green; new permanent `Lifecycle E2E` workflow green at `042d5b3` (run 40641665038) and running on the latest head. Contains (each with RED regression test):
+    - browser install HTTP 500 before DB exists (rate limiter bound to DB cache) — fixed;
+    - fresh runtime defaulted to en/LTR — default locale `fa`;
+    - installer step 6 refresh of cron/worker evidence;
+    - `mariadb` driver unsupported by update fingerprint + export/backup REPEATABLE READ — fixed;
+    - slot launcher redeclare fatal after release switch — fixed;
+    - pre-switch failure left permanent maintenance — owner cancel (`CancelPendingUpdate`, `POST /settings/update/cancel`);
+    - target migration failure/interruption with no DDL/history residue now rolls back (design §28); residue still `recovery_required`;
+    - queue polling took the exclusive lifecycle lock (random 503s) — shared lease;
+    - Persian host-upload-limit message on the update page;
+    - `tests/Acceptance/Lifecycle/` dependency-free Chrome driver + `.github/workflows/lifecycle-e2e.yml`;
+    - PR #18 checkpoint commits cherry-picked; PR #18 is superseded by this branch.
+2. `feature/workspace-entry-keyword-import` — stacked on branch 1. Design: `docs/superpowers/specs/2026-10-28-workspace-entry-keyword-import-design.md`.
+    - DONE + tested: Persian workspace home at `/dashboard` (`HomeController`, `resources/js/pages/home.tsx`), form-based project creation.
+    - WIP (last commit `wip(imports)…`, intentionally RED): migration `2026_10_28_000000_*`, `config/keywords.php`, `StreamingCsvReader::headers()`, jobs `ProcessKeywordImportFile` / `CommitKeywordImport`, `KeywordImportFiles`, tests `tests/Feature/Keywords/KeywordImportFlowTest.php`.
+    - NEXT: `KeywordImportController` (index/store[file|text]/mapping/commit/discard) + routes named `projects.keyword-imports.{index,store,mapping,commit,discard}` under `projects/{project}/imports` with scoped `{batch}` binding and `stageKeywordImports` policy; page `resources/js/pages/projects/imports.tsx` (Persian, server-truth status, no fake progress); add `imports_url` back to `HomeController`; overview/keywords CTA; then replace `harness.php seed` in the Lifecycle E2E with the real import UI and extend E2E to intelligence → Persian export → backup → restore (second instance) → update.
+
+**Open gaps:** new-head CI/merge for the recorded Update/Rollback review fixes; release signing (integrity only, not claimed); chunked upload for packages over host limits; no `lang/fa` (framework/auth strings English); launcher 503 page is bare English text.
+
+**Lessons for local verification:** `api.github.com` zipballs may be blocked — build a local dist cache via shallow `git fetch` + `git archive`; set `COMPOSER_ALLOW_SUPERUSER=1`; serve with `php -S … -t public` (no router script); package uploads need `upload_max_filesize`/`post_max_size` ≥ package size.
 
 ## Start here
 
@@ -13,7 +54,8 @@ Read `AGENTS.md`, `docs/PROJECT_STATE.md`, `docs/DELIVERY_PLAN.md`, release-read
 - Persian Export: merged through PR #5 at `a6924d77b3a9b7f74b484f7e303c8168905c520c`.
 - Backup + Restore: merged through PR #7 at `761aede4927dd21ba6384b4d714cc80f2292019e`.
 - Backup + Restore post-merge `main` CI: `39978951778`, success across all six permanent jobs.
-- Next subsystem: **Update + Interrupted Recovery/Rollback**.
+- Update + Interrupted Recovery/Rollback: merged through PR #8 at `43342c667859d68a2bfe62b1fb2258aafedb6a5c` (2026-10-24); post-merge `CI` run `40074320817` and `Update Rollback MariaDB` run `40074320854` both success.
+- Next slice: **Final end-to-end lifecycle acceptance** (plus the open Update/Rollback items listed in `docs/release-readiness/update-recovery-rollback.md`).
 
 Do not restart Backup/Restore Tasks 1–10. They are integrated and independently verified on `main`.
 
@@ -63,32 +105,20 @@ Final evidence:
 - merge commit `761aede4927dd21ba6384b4d714cc80f2292019e`;
 - post-merge main CI `39978951778`: success.
 
-## Exact next actions — Update + Interrupted Recovery/Rollback
+## Update + Interrupted Recovery/Rollback — integrated boundary
 
-1. Audit existing lifecycle/release/package/migration/health primitives on current `main`; do not create parallel abstractions.
-2. Run mandatory brainstorming/architecture for Update/Rollback using the integrated Backup/Restore safety model.
-3. Write and review an Update/Rollback design spec before product code.
-4. Write and review an implementation plan with explicit RED -> GREEN tasks.
-5. Implement on one feature branch with permanent PHP 8.4/8.5, connected MariaDB and runtime release-tree gates.
-6. Require exact-head PR CI, expected-head merge and independent post-merge `main` CI before calling Update/Rollback integrated.
+Do not restart Update/Rollback Tasks 1–13. Code, design, plan and the Persian UI are on `main`. Evidence, coverage map and **known gaps** are in `docs/release-readiness/update-recovery-rollback.md`; operator behavior is in `docs/update-recovery-operations.md`.
 
-The design must cover at minimum:
+Open items before Update/Rollback can be called fully release-ready:
 
-- source/target ProductVersion compatibility and release metadata;
-- mandatory verified pre-update backup/snapshot;
-- global lifecycle serialization;
-- safe release staging/switching without runtime Composer/Node/npm/shell assumptions;
-- migration ordering and compatibility;
-- durable update journal phases;
-- interruption semantics before and after destructive boundaries;
-- health validation after code/schema transition;
-- rollback of code/data/settings where safe;
-- exact behavior when automatic rollback cannot prove a safe result;
-- session/cache/queue effects;
-- operator-visible Persian-first status/recovery actions;
-- connected MariaDB acceptance and packaged-runtime acceptance.
+1. connected-MariaDB acceptance of the full successful update path;
+2. connected-MariaDB acceptance for bootstrap failure, post-migration health failure, hard interruption between target migration and rollback, and drift -> `recovery_required` at whole-update level;
+3. a recorded whole-branch review (launcher fail-open, secret leakage, migration guesses, maintenance bypass, stale safety snapshot);
+4. release-signing remains out of V1 scope and **NEEDS VERIFICATION before public/commercial automatic distribution**.
 
-## After Update/Rollback
+Reuse `LifecycleMutex`, `MaintenanceWindow`, the shared snapshot recovery kernel and `ProductVersion`; never add a parallel lifecycle stack.
+
+## Next: Final end-to-end lifecycle acceptance
 
 Complete final end-to-end lifecycle acceptance:
 

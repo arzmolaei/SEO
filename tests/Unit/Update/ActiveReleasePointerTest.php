@@ -55,7 +55,7 @@ class ActiveReleasePointerTest extends TestCase
         $this->assertSame($releaseId, $pointer->current()['release_id']);
     }
 
-    public function test_activate_root_removes_pointer_only_after_matching_root_version_is_proven(): void
+    public function test_activate_root_persists_explicit_pointer_only_after_matching_root_version_is_proven(): void
     {
         $digest = str_repeat('b', 64);
         $releaseId = '0.1.0-alpha.2-'.substr($digest, 0, 16);
@@ -65,7 +65,12 @@ class ActiveReleasePointerTest extends TestCase
         $pointer->activateSlot($releaseId, '0.1.0-alpha.2', $digest);
         $pointer->activateRoot('0.1.0-alpha.1');
 
-        $this->assertFileDoesNotExist($this->pointerPath());
+        $this->assertFileExists($this->pointerPath());
+        $this->assertSame([
+            'schema' => 'seo-root-release-pointer/1',
+            'product_version' => '0.1.0-alpha.1',
+            'launcher_schema' => 'seo-launcher/2',
+        ], json_decode(file_get_contents($this->pointerPath()), true, flags: JSON_THROW_ON_ERROR));
         $this->assertFileDoesNotExist($this->pointerPath().'.tmp');
         $this->assertSame('root', $pointer->current()['kind']);
         $this->assertSame('0.1.0-alpha.1', $pointer->current()['product_version']);
@@ -114,8 +119,8 @@ class ActiveReleasePointerTest extends TestCase
         $releaseId = '0.1.0-alpha.2-'.substr($digest, 0, 16);
 
         foreach ([
-            'version' => ['0.1.0-alpha.9', $digest, 'seo-launcher/1'],
-            'digest' => ['0.1.0-alpha.2', str_repeat('d', 64), 'seo-launcher/1'],
+            'version' => ['0.1.0-alpha.9', $digest, 'seo-launcher/2'],
+            'digest' => ['0.1.0-alpha.2', str_repeat('d', 64), 'seo-launcher/2'],
             'launcher' => ['0.1.0-alpha.2', $digest, 'seo-launcher/999'],
         ] as $label => [$markerVersion, $markerDigest, $launcher]) {
             $this->removeDirectory($this->releaseRoot());
@@ -152,7 +157,7 @@ class ActiveReleasePointerTest extends TestCase
         $outside = sys_get_temp_dir().'/seo-os-active-release-outside-'.bin2hex(random_bytes(6));
         mkdir($outside, 0755, true);
         file_put_contents($outside.'/VERSION', "0.1.0-alpha.2\n");
-        file_put_contents($outside.'/release.json', json_encode($this->slotMarker($releaseId, '0.1.0-alpha.2', $digest, 'seo-launcher/1'), JSON_THROW_ON_ERROR));
+        file_put_contents($outside.'/release.json', json_encode($this->slotMarker($releaseId, '0.1.0-alpha.2', $digest, 'seo-launcher/2'), JSON_THROW_ON_ERROR));
         $this->ensureDirectory($this->releaseRoot());
 
         try {
@@ -188,7 +193,7 @@ class ActiveReleasePointerTest extends TestCase
         $this->assertFileDoesNotExist($this->pointerPath().'.tmp');
     }
 
-    private function seedSlot(string $releaseId, string $version, string $digest, string $launcher = 'seo-launcher/1'): void
+    private function seedSlot(string $releaseId, string $version, string $digest, string $launcher = 'seo-launcher/2'): void
     {
         $slot = $this->releaseRoot().'/'.$releaseId;
         $this->ensureDirectory($slot);

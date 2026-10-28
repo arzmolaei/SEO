@@ -40,6 +40,7 @@ final class UpdateMigrationRunner
     /** @param callable(UpdateMigrationState): void $afterEachCompleted */
     public function runPending(UpdateMigrationState $before, callable $afterEachCompleted): UpdateMigrationState
     {
+        $this->resolveAbandonedForwardAttempt($before);
         $completed = $this->completedAttempt();
         if ($completed !== null) {
             if ($completed['direction'] !== 'up') {
@@ -66,8 +67,7 @@ final class UpdateMigrationRunner
             try {
                 $this->migrator->usingConnection($this->connection, fn () => $this->migrator->run([$file], ['pretend' => false, 'step' => true]));
             } catch (Throwable $exception) {
-                // Unchanged DDL/history cannot exclude committed data-only work.
-                throw $this->recoveryRequired($exception);
+                throw $this->failedForwardStep($cursor, $exception);
             }
             $after = $this->snapshot();
             if (
@@ -95,6 +95,7 @@ final class UpdateMigrationRunner
      */
     public function rollbackExactSuffix(UpdateMigrationState $before, array $expectedAppliedSuffix, ?callable $afterEachCompleted = null): void
     {
+        $this->consumeFailedForwardRecord($before, $expectedAppliedSuffix);
         $completed = $this->completedAttempt();
         if ($completed !== null && $completed['direction'] !== 'down') {
             throw $this->recoveryRequired();
@@ -217,6 +218,84 @@ final class UpdateMigrationRunner
         return ['direction' => $attempt['direction'], 'before' => $before, 'after' => $after];
     }
 
+    /**
+     * A forward step that failed or was interrupted is never repeated. When the
+     * migration repository and the complete DDL fingerprint still equal the
+     * step's recorded starting checkpoint, nothing persistent beyond the
+     * recorded suffix can remain except data-only work, which the source safety
+     * snapshot replaces: exact rollback is provable. Any residue stays ambiguous.
+     */
+    private function failedForwardStep(UpdateMigrationState $cursor, ?Throwable $exception = null): UpdateException
+    {
+        try {
+            $current = $this->snapshot();
+        } catch (Throwable) {
+            return $this->recoveryRequired($exception);
+        }
+        if ($current->ran !== $cursor->ran || $current->schemaFingerprintSha256 !== $cursor->schemaFingerprintSha256) {
+            return $this->recoveryRequired($exception);
+        }
+        try {
+            // Retained as durable evidence so the step is never run again; only
+            // exact rollback from this checkpoint may consume it.
+            $this->writeAttempt(['phase' => 'failed', 'direction' => 'up', 'before_checkpoint' => $cursor->toArray()]);
+        } catch (Throwable) {
+            return $this->recoveryRequired($exception);
+        }
+
+        return new UpdateException('update_migration_failed', 'مهاجرت نسخه جدید کامل نشد؛ بازگردانی دقیق نسخه قبلی لازم است.', $exception);
+    }
+
+    /** @param list<array{migration:string,batch:int,schema_fingerprint_sha256:string}> $suffix */
+    private function consumeFailedForwardRecord(UpdateMigrationState $before, array $suffix): void
+    {
+        if (! is_file($this->attemptPath) || is_link($this->attemptPath)) {
+            return;
+        }
+        $raw = file_get_contents($this->attemptPath);
+        $attempt = is_string($raw) && strlen($raw) <= 65536 ? json_decode($raw, true) : null;
+        if (! is_array($attempt) || ($attempt['phase'] ?? null) !== 'failed') {
+            return;
+        }
+        $rows = array_map(static fn (array $row): array => ['migration' => $row['migration'], 'batch' => $row['batch']], $suffix);
+        try {
+            $failedAt = UpdateMigrationState::fromArray(is_array($attempt['before_checkpoint'] ?? null) ? $attempt['before_checkpoint'] : []);
+        } catch (Throwable $exception) {
+            throw $this->recoveryRequired($exception);
+        }
+        $expected = $this->reverseCheckpoint($before, $rows, $suffix);
+        if (($attempt['direction'] ?? null) !== 'up' || $failedAt->ran !== $expected->ran || $failedAt->schemaFingerprintSha256 !== $expected->schemaFingerprintSha256) {
+            throw $this->recoveryRequired();
+        }
+        $this->assertCheckpoint($expected);
+        $this->clearAttempt();
+    }
+
+    private function resolveAbandonedForwardAttempt(UpdateMigrationState $cursor): void
+    {
+        if (! file_exists($this->attemptPath) || is_link($this->attemptPath) || ! is_file($this->attemptPath)) {
+            return;
+        }
+        $raw = file_get_contents($this->attemptPath);
+        $attempt = is_string($raw) && strlen($raw) <= 65536 ? json_decode($raw, true) : null;
+        if (! is_array($attempt) || ! in_array($attempt['phase'] ?? null, ['started', 'failed'], true)) {
+            return; // completed or malformed records keep their existing handling
+        }
+        if (($attempt['schema'] ?? null) !== 'seo-update-migration-attempt/1' || ($attempt['direction'] ?? null) !== 'up' || ! is_array($attempt['before_checkpoint'] ?? null)) {
+            throw $this->recoveryRequired();
+        }
+        try {
+            $started = UpdateMigrationState::fromArray($attempt['before_checkpoint']);
+        } catch (Throwable $exception) {
+            throw $this->recoveryRequired($exception);
+        }
+        if ($started->toArray() !== $cursor->toArray()) {
+            throw $this->recoveryRequired();
+        }
+
+        throw $this->failedForwardStep($cursor);
+    }
+
     private function startAttempt(string $direction, string $migration, UpdateMigrationState $before): void
     {
         if (file_exists($this->attemptPath) || is_link($this->attemptPath)) {
@@ -263,7 +342,7 @@ final class UpdateMigrationRunner
         if ($connection->getDriverName() === 'sqlite') {
             $definitions = $connection->select("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE substr(name, 1, 7) <> 'sqlite_' ORDER BY type, name");
             $objects = array_map(static fn (object $row): array => (array) $row, $definitions);
-        } elseif ($connection->getDriverName() === 'mysql') {
+        } elseif (in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
             // V1 proves table/view/trigger DDL. Unsupported executable schema
             // objects cannot silently fall outside a recovery checkpoint.
             $unsupported = $connection->select('SELECT ROUTINE_NAME AS name FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() UNION ALL SELECT EVENT_NAME AS name FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE NOT IN (\'BASE TABLE\', \'VIEW\')');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\Update\CancelPendingUpdate;
 use App\Services\Update\ContinueSystemUpdate;
 use App\Services\Update\PrepareSystemUpdate;
 use App\Services\Update\RecoverInterruptedUpdate;
@@ -10,6 +11,7 @@ use App\Services\Update\SwitchSystemUpdateRelease;
 use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\VerifyUpdatePackage;
+use App\Support\HostUploadLimit;
 use App\Support\Lifecycle\ProductVersion;
 use App\Support\Lifecycle\RuntimeReleaseAdmission;
 use Illuminate\Http\JsonResponse;
@@ -38,10 +40,13 @@ final class SystemUpdateController extends Controller
             && ($state['migration_started'] ?? null) === false;
         $data = [
             'current_product_version' => $productVersion->requireDistributable(),
+            'max_upload_bytes' => HostUploadLimit::current(),
             'status' => $status,
             'preview' => $this->safePreview($state['preview'] ?? null),
             'canContinue' => in_array($status, ['target_active', 'migrating', 'validating', 'complete'], true),
             'canRecover' => $bootstrapRecovery || in_array($status, ['rollback_required', 'migration_rollback', 'source_switch_pending', 'snapshot_restore_required'], true),
+            // Before the release switch nothing destructive happened; the owner may abandon it.
+            'canCancel' => in_array($status, ['uploaded', 'verified', 'preparing', 'quiescing', 'snapshot_ready', 'staged'], true),
         ];
         if ($request->expectsJson()) {
             return response()->json($data, 200, $this->privateHeaders());
@@ -134,6 +139,21 @@ final class SystemUpdateController extends Controller
         RuntimeReleaseAdmission $admission,
     ): JsonResponse {
         return $this->performLifecycle($request, $admission, fn (): array => $continue->handle());
+    }
+
+    public function cancel(CancelPendingUpdate $cancel): JsonResponse
+    {
+        try {
+            return response()->json([
+                ...$cancel->handle(),
+                'requires_reload' => true,
+                'continue_url' => route('settings.update'),
+            ], 200, $this->privateHeaders());
+        } catch (UpdateException $exception) {
+            return response()->json(['code' => $exception->codeName(), 'message' => $exception->userMessage()], 409, $this->privateHeaders());
+        } catch (Throwable) {
+            return response()->json(['code' => 'update_operation_failed', 'message' => 'لغو به‌روزرسانی کامل نشد؛ وضعیت سرور را دوباره بررسی کنید.'], 409, $this->privateHeaders());
+        }
     }
 
     public function recover(

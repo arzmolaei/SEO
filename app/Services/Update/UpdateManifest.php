@@ -8,7 +8,7 @@ final class UpdateManifest
 {
     public const SCHEMA = 'seo-update/1';
 
-    public const LAUNCHER_SCHEMA = 'seo-launcher/1';
+    public const LAUNCHER_SCHEMA = 'seo-launcher/2';
 
     /** @var list<string> */
     private const REQUIRED_FIELDS = [

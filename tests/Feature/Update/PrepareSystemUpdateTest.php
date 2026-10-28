@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\ApplicationSchemaFingerprint;
 use App\Services\Backup\RestoreJournal;
+use App\Services\Update\CancelPendingUpdate;
 use App\Services\Update\PreparedSystemUpdate;
 use App\Services\Update\PrepareSystemUpdate;
 use App\Services\Update\UpdateException;
@@ -27,6 +28,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PrepareSystemUpdateTest extends TestCase
@@ -136,6 +138,57 @@ class PrepareSystemUpdateTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_owner_http_upload_can_persist_root_pointer_without_shared_lease_upgrade(): void
+    {
+        $schema = $this->app->make(ApplicationSchemaFingerprint::class)->forConnection(DB::connection());
+        $package = $this->makePackage('0.1.0-alpha.1', '0.1.0-alpha.2', $schema);
+        $this->actingAs(User::findOrFail(1))
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/verify', [
+                'update' => new UploadedFile($package, 'release.seoupdate', 'application/octet-stream', null, true),
+            ])->assertOk();
+        $this->assertSame('verified', $this->journal->state()['phase']);
+        $this->assertSame('root', $this->pointer->current()['kind']);
+    }
+
+    public static function retainedSlotDamage(): array
+    {
+        return [['changed'], ['missing'], ['symlink'], ['extra'], ['generated-cache']];
+    }
+
+    #[DataProvider('retainedSlotDamage')]
+    public function test_retry_stages_fresh_verified_bytes_instead_of_trusting_a_retained_slot(string $damage): void
+    {
+        [, $packagePath] = $this->verifyPackage('0.1.0-alpha.2');
+        $stream = fopen($packagePath, 'rb');
+        $manifest = $this->app->make(UpdatePackageReader::class)->read($stream);
+        fclose($stream);
+        $stager = $this->app->make(UpdateReleaseStager::class);
+        $slot = $stager->stage($packagePath, $manifest);
+
+        $path = $slot['release_root'].'/vendor/autoload.php';
+        if ($damage === 'changed') {
+            File::put($path, '<?php echo "changed";');
+        } elseif ($damage === 'missing') {
+            unlink($slot['release_root'].'/.env.example');
+        } elseif ($damage === 'symlink') {
+            unlink($path);
+            symlink($slot['release_root'].'/artisan', $path);
+        } elseif ($damage === 'extra') {
+            File::put($slot['release_root'].'/vendor/extra.php', '<?php');
+        } else {
+            File::put($slot['release_root'].'/bootstrap/cache/packages.php', '<?php return [];');
+            File::put($slot['release_root'].'/bootstrap/cache/services.php', '<?php return [];');
+        }
+        $fresh = $stager->stage($packagePath, $manifest);
+        $this->assertNotSame($slot['release_id'], $fresh['release_id']);
+        foreach ($manifest->toArray()['entries'] as $entry) {
+            $this->assertSame($entry['sha256'], hash_file('sha256', $fresh['release_root'].'/'.$entry['path']));
+        }
+        $this->assertFileDoesNotExist($fresh['release_root'].'/vendor/extra.php');
+        $this->assertFileDoesNotExist($fresh['release_root'].'/bootstrap/cache/packages.php');
+    }
+
     public function test_prepare_captures_source_then_stages_private_release_and_public_assets_without_switching_root_source(): void
     {
         [$preview, $packagePath] = $this->verifyPackage('0.1.0-alpha.2');
@@ -189,7 +242,7 @@ class PrepareSystemUpdateTest extends TestCase
             'release_id' => $prepared->targetReleaseId,
             'product_version' => '0.1.0-alpha.2',
             'package_digest_sha256' => $preview->packageDigestSha256,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], $marker);
         $this->assertTrue($this->app->make(ReleasePackageContract::class)->inspect($slot)['valid']);
 
@@ -228,6 +281,73 @@ class PrepareSystemUpdateTest extends TestCase
         $this->assertSame('root', $this->pointer->current()['kind']);
     }
 
+    public function test_owner_can_cancel_a_pre_switch_update_blocked_by_active_work_and_retry(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        config([
+            'queue.default' => 'database',
+            'queue.connections.database.connection' => null,
+            'queue.connections.database.table' => 'jobs',
+        ]);
+        $reserved = DB::table('jobs')->insertGetId([
+            'queue' => 'default',
+            'payload' => '{}',
+            'attempts' => 1,
+            'reserved_at' => time(),
+            'available_at' => time(),
+            'created_at' => time(),
+        ]);
+        try {
+            $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+            $this->fail('Reserved work must block preparation.');
+        } catch (UpdateException) {
+        }
+        $this->assertTrue(UpdateJournal::isMaintenancePhase($this->journal->state()['phase'] ?? null));
+
+        $result = $this->app->make(CancelPendingUpdate::class)->handle();
+
+        $this->assertSame('ready', $result['status']);
+        $this->assertNull($this->journal->state());
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertFileDoesNotExist($this->uploadRoot.'/'.$preview->uploadId.'.seoupdate');
+
+        DB::table('jobs')->where('id', $reserved)->delete();
+        [$retry] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($retry->packageDigestSha256);
+        $this->assertSame('staged', $this->journal->state()['phase'] ?? null);
+    }
+
+    public function test_cancelling_a_fully_prepared_update_discards_the_safety_snapshot_and_keeps_the_source_active(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+        $this->assertFileExists($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
+
+        $this->app->make(CancelPendingUpdate::class)->handle();
+
+        $this->assertNull($this->journal->state());
+        $this->assertFileDoesNotExist($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
+        $this->assertFileDoesNotExist($this->safetyRoot.'/'.$preview->uploadId.'.json');
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertSame('0.1.0-alpha.1', $this->productVersion->requireDistributable());
+    }
+
+    public function test_cancel_is_refused_once_the_release_pointer_may_have_moved(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+        $this->journal->transition('staged', 'switch_pending');
+
+        try {
+            $this->app->make(CancelPendingUpdate::class)->handle();
+            $this->fail('Cancellation after the switch began must be refused.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_invalid_state', $exception->codeName());
+        }
+        $this->assertSame('switch_pending', $this->journal->state()['phase'] ?? null);
+        $this->assertFileExists($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
+    }
+
     public function test_prepare_rechecks_package_digest_and_source_version_and_schema_under_mutex_before_snapshot(): void
     {
         foreach (['package', 'version', 'schema'] as $case) {
@@ -257,11 +377,16 @@ class PrepareSystemUpdateTest extends TestCase
 
             $this->assertDirectoryDoesNotExist($this->safetyRoot, $case);
             $this->assertDirectoryDoesNotExist($this->releaseRoot, $case);
-            $this->assertSame('root', $this->pointer->current()['kind'], $case);
-
             if ($case === 'version') {
+                try {
+                    $this->pointer->current();
+                    $this->fail('A root pointer with a mismatched VERSION must fail closed.');
+                } catch (UpdateException $exception) {
+                    $this->assertSame('update_invalid_state', $exception->codeName());
+                }
                 File::put($this->installationRoot.'/VERSION', "0.1.0-alpha.1\n");
             }
+            $this->assertSame('root', $this->pointer->current()['kind'], $case);
         }
     }
 
@@ -277,7 +402,7 @@ class PrepareSystemUpdateTest extends TestCase
             'release_id' => $sourceReleaseId,
             'product_version' => '0.1.0-alpha.2',
             'package_digest_sha256' => $sourceDigest,
-            'launcher_schema' => 'seo-launcher/1',
+            'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         @chmod($sourceSlot.'/release.json', 0600);
         $this->pointer->activateSlot($sourceReleaseId, '0.1.0-alpha.2', $sourceDigest);
@@ -382,7 +507,7 @@ class PrepareSystemUpdateTest extends TestCase
                 'target_product_version' => $targetVersion,
                 'allowed_source_product_versions' => [$sourceVersion],
                 'channel' => 'development',
-                'launcher_schema' => 'seo-launcher/1',
+                'launcher_schema' => 'seo-launcher/2',
                 'minimum_php_version' => '8.4.1',
                 'required_php_extensions' => ['ctype', 'json', 'pdo'],
                 'source_schema_fingerprint' => $schema,

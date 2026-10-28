@@ -357,3 +357,6 @@ jobs:
 
       - name: Run connected exact migration and partial DDL acceptance
         run: php artisan test tests/Feature/Acceptance/UpdateMigrationsMariaDbAcceptanceTest.php --fail-on-skipped
+
+      - name: Run connected MariaDB-driver snapshot isolation acceptance
+        run: php artisan test tests/Feature/Acceptance/MariaDbDriverSnapshotIsolationTest.php --fail-on-skipped

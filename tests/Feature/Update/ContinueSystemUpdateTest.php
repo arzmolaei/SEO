@@ -98,6 +98,13 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         $this->assertSame('root', $retention['source_release_kind']);
         $this->assertStringNotContainsString($this->directory, json_encode($retention, JSON_THROW_ON_ERROR));
         $this->assertSame($result, $this->app->make(ContinueSystemUpdate::class)->handle());
+        $pointerPath = $this->stableRoot.'/storage/app/lifecycle/update/active-release.json';
+        $this->assertFileExists($pointerPath);
+        $this->assertSame('slot', $this->pointer->current()['kind']);
+        $this->assertSame('0.1.0-alpha.2', $this->pointer->current()['product_version']);
+        unlink($pointerPath);
+        $this->expectException(UpdateException::class);
+        $this->pointer->current();
     }
 
     public function test_source_process_cannot_continue_target_migrations_in_the_same_request_graph(): void
@@ -181,6 +188,30 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         }
         $this->assertFalse(Schema::hasColumn('projects', 'update_probe_a'));
         $this->assertSame('recovery_required', $this->app->make(UpdateJournal::class)->state()['phase']);
+    }
+
+    public function test_target_migration_failure_without_schema_residue_requires_exact_rollback(): void
+    {
+        $path = $this->targetRoot.'/database/migrations/2099_01_01_000002_second.php';
+        File::put($path, str_replace('public function up(): void { ', "public function up(): void { throw new \\RuntimeException('private migration failure'); ", File::get($path)));
+        try {
+            $this->app->make(ContinueSystemUpdate::class)->handle();
+            $this->fail('A failed target migration must not finalize the update.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_migration_failed', $exception->codeName());
+            $this->assertStringNotContainsString('private migration failure', $exception->userMessage());
+        }
+        $state = $this->app->make(UpdateJournal::class)->state();
+        // Schema/history prove nothing beyond the recorded suffix persisted, and any
+        // data-only effect is reverted by the safety snapshot: rollback is provable.
+        $this->assertSame('rollback_required', $state['phase']);
+        $this->assertSame('update_migration_failed', $state['error_code']);
+        $this->assertCount(1, $state['migration_state']['applied_suffix']);
+        $this->assertTrue(Schema::hasColumn('projects', 'update_probe_a'));
+        $this->assertFalse(Schema::hasColumn('projects', 'update_probe_b'));
+        $this->assertFileExists($this->stableRoot.'/storage/app/lifecycle/update/migration-attempt.json');
+        $this->assertSame('target-probe', $this->pointer->current()['release_id']);
+        $this->assertFileExists($this->safetyPath());
     }
 
     public function test_unlogged_partial_target_ddl_retains_the_attempt_and_requires_recovery(): void
