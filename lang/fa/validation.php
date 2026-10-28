@@ -13,6 +13,7 @@ return [
     'array' => ':attribute باید یک آرایه باشد.',
     'array_keys' => ':attribute باید آرایه‌ای با این کلیدها باشد: :values.',
     'ascii' => ':attribute فقط می‌تواند شامل نویسه‌های تک‌بایتی و نمادها باشد.',
+    'base64' => ':attribute باید یک رشته base64 معتبر باشد.',
     'before' => ':attribute باید تاریخی پیش از :date باشد.',
     'before_or_equal' => ':attribute باید تاریخی برابر یا پیش از :date باشد.',
     'between' => [
