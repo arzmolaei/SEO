@@ -26,8 +26,13 @@ final class RobotsTxt
     {
         $body = substr($body, 0, self::MAX_BYTES);
         $token = strtolower((string) preg_replace('#/.*\z#', '', $userAgent));
-        $groups = [];
-        $current = null;
+        /** @var list<list<string>> $agents */
+        $agents = [];
+        /** @var list<list<array{allow: bool, pattern: string}>> $groupRules */
+        $groupRules = [];
+        /** @var list<?int> $groupDelays */
+        $groupDelays = [];
+        $current = -1;
         $lastWasAgent = false;
 
         foreach (preg_split('/\r\n|\r|\n/', $body) ?: [] as $line) {
@@ -39,35 +44,45 @@ final class RobotsTxt
             $field = strtolower($field);
             if ($field === 'user-agent') {
                 if (! $lastWasAgent) {
-                    $groups[] = ['agents' => [], 'rules' => [], 'delay' => null];
-                    $current = array_key_last($groups);
+                    $agents[] = [];
+                    $groupRules[] = [];
+                    $groupDelays[] = null;
+                    $current = count($agents) - 1;
                 }
-                $groups[$current]['agents'][] = strtolower($value);
+                $agents[$current][] = strtolower($value);
                 $lastWasAgent = true;
 
                 continue;
             }
             $lastWasAgent = false;
-            if ($current === null) {
+            if ($current < 0) {
                 continue;
             }
             if ($field === 'allow' || $field === 'disallow') {
                 if ($value !== '') {
-                    $groups[$current]['rules'][] = ['allow' => $field === 'allow', 'pattern' => $value];
+                    $groupRules[$current][] = ['allow' => $field === 'allow', 'pattern' => $value];
                 }
             } elseif ($field === 'crawl-delay' && is_numeric($value)) {
-                $groups[$current]['delay'] = (int) ceil((float) $value);
+                $groupDelays[$current] = (int) ceil((float) $value);
             }
         }
 
-        $specific = array_values(array_filter($groups, static fn (array $group): bool => in_array($token, $group['agents'], true)));
-        $chosen = $specific !== [] ? $specific : array_values(array_filter($groups, static fn (array $group): bool => in_array('*', $group['agents'], true)));
+        $chosen = array_keys(array_filter($agents, static fn (array $names): bool => in_array($token, $names, true)));
+        if ($chosen === []) {
+            $chosen = array_keys(array_filter($agents, static fn (array $names): bool => in_array('*', $names, true)));
+        }
         if ($chosen === []) {
             return self::allowAll();
         }
 
-        $rules = array_merge(...array_map(static fn (array $group): array => $group['rules'], $chosen));
-        $delays = array_filter(array_map(static fn (array $group): ?int => $group['delay'], $chosen), static fn (?int $delay): bool => $delay !== null);
+        $rules = [];
+        $delays = [];
+        foreach ($chosen as $index) {
+            $rules = [...$rules, ...$groupRules[$index]];
+            if ($groupDelays[$index] !== null) {
+                $delays[] = $groupDelays[$index];
+            }
+        }
 
         return new self($rules, $delays === [] ? null : max(0, min(10, max($delays))));
     }

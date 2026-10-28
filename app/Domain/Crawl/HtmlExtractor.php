@@ -6,6 +6,7 @@ use App\Domain\Pages\NormalizePageUrl;
 use Closure;
 use DOMDocument;
 use DOMElement;
+use DOMNode;
 use DOMXPath;
 use InvalidArgumentException;
 use JsonException;
@@ -106,12 +107,12 @@ final class HtmlExtractor
         // Join text nodes with spaces so adjacent blocks never merge words.
         $parts = [];
         foreach ($xpath->query('//body//text()') ?: [] as $node) {
-            $parts[] = $node->nodeValue;
+            $parts[] = (string) $node->nodeValue;
         }
         $text = implode(' ', $parts);
 
         return [
-            'title' => self::text($xpath->query('//title')?->item(0)?->textContent, self::MAX_TEXT),
+            'title' => self::text(self::first($xpath, '//title')?->textContent, self::MAX_TEXT),
             'meta_description' => self::text(self::metaContent($xpath, 'description'), self::MAX_TEXT),
             'robots' => self::text($robots, 255),
             'canonical' => $canonical,
@@ -119,7 +120,7 @@ final class HtmlExtractor
             'h2' => self::texts($xpath, '//h2', 20),
             'hreflang' => $hreflang,
             'schema_types' => self::schemaTypes($html),
-            'word_count' => preg_match_all('/[\p{L}\p{N}\p{M}][\p{L}\p{N}\p{M}\x{200C}\x{200D}\']*/u', $text),
+            'word_count' => (int) preg_match_all('/[\p{L}\p{N}\p{M}][\p{L}\p{N}\p{M}\x{200C}\x{200D}\']*/u', $text),
             'images' => $images,
             'images_missing_alt' => $missingAlt,
             'internal_links' => $internalCount,
@@ -163,9 +164,16 @@ final class HtmlExtractor
 
     private static function attribute(DOMXPath $xpath, string $query, string $attribute): ?string
     {
-        $node = $xpath->query($query)?->item(0);
+        $node = self::first($xpath, $query);
 
         return $node instanceof DOMElement ? $node->getAttribute($attribute) : null;
+    }
+
+    private static function first(DOMXPath $xpath, string $query): ?DOMNode
+    {
+        $nodes = $xpath->query($query);
+
+        return $nodes === false ? null : $nodes->item(0);
     }
 
     /** @return list<string> */

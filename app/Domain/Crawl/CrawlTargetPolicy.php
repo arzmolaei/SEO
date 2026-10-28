@@ -97,7 +97,7 @@ final class CrawlTargetPolicy
             }
         }
 
-        return array_values($addresses);
+        return $addresses;
     }
 
     public static function isPublicAddress(string $address): bool

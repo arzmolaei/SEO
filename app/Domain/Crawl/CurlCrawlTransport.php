@@ -21,6 +21,9 @@ final class CurlCrawlTransport implements CrawlTransport
         if (! function_exists('curl_init')) {
             throw new CrawlRefusal('transport_unavailable');
         }
+        if ($url === '') {
+            throw new CrawlRefusal('invalid_url');
+        }
         $parts = parse_url($url);
         if (! is_array($parts) || ! isset($parts['scheme'], $parts['host']) || $addresses === []) {
             throw new CrawlRefusal('invalid_url');
@@ -83,7 +86,8 @@ final class CurlCrawlTransport implements CrawlTransport
         if ($ok === false || $status === 0) {
             throw new CrawlRefusal(match ($errno) {
                 CURLE_OPERATION_TIMEDOUT => 'timeout',
-                CURLE_SSL_CONNECT_ERROR, CURLE_PEER_FAILED_VERIFICATION, CURLE_SSL_CACERT_BADFILE => 'tls_failed',
+                // 35 SSL connect error, 60 peer verification failed, 77 bad CA file.
+                35, 60, 77 => 'tls_failed',
                 default => 'connect_failed',
             });
         }
