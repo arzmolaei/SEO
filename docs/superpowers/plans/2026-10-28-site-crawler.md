@@ -14,3 +14,21 @@ commit, and verified by exact-head CI before the next one is considered done.
 | 7 | Page linking after completion (reuse page service; never overwrite user titles) | pending |
 | 8 | Persian-first crawl UI with polling, paginated/filterable URL table, authorization tests | pending |
 | 9 | Connected MariaDB claim-concurrency acceptance + docs/checkpoint update | pending |
+
+## Resumed verification — 2026-10-28
+
+At inherited head `56d96ef`, CI `40673704613` failed on HTML fixture formatting,
+two run-engine regressions, and an incomplete connected backup fixture. Both
+engine failures and the MariaDB backup failure were reproduced locally before
+correction. Network refusals now retain their stable code before robots rules;
+claimed pending rows schedule a delayed retry until reclaimable. The backup
+round-trip now seeds both crawl tables and compares their restored raw records.
+DOM node narrowing and the optional sitemap checkpoint shape fix strict static
+analysis without suppressions.
+
+Local: crawler suite 85 passed; ordinary backend 720 passed / 16 connected-only
+skips (5,053 assertions); connected backup/migration/isolation 11 passed with
+`--fail-on-skipped` (206 assertions); PHPStan, Pint and frontend check passed.
+Task 6 remains in progress pending exact-head CI and concurrency/batch review.
+Tasks 7–9 remain pending. The sandbox needs local TCP permission for socket tests;
+only the loopback-pinned `site.test` fixture was excluded from proxy routing.

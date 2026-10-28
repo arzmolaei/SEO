@@ -102,7 +102,9 @@ final class HtmlExtractor
         }
 
         foreach ($xpath->query('//script|//style|//noscript|//template') ?: [] as $node) {
-            $node->parentNode?->removeChild($node);
+            if ($node instanceof DOMNode) {
+                $node->parentNode?->removeChild($node);
+            }
         }
         // Join text nodes with spaces so adjacent blocks never merge words.
         $parts = [];
@@ -173,7 +175,9 @@ final class HtmlExtractor
     {
         $nodes = $xpath->query($query);
 
-        return $nodes === false ? null : $nodes->item(0);
+        $node = $nodes === false ? null : $nodes->item(0);
+
+        return $node instanceof DOMNode ? $node : null;
     }
 
     /** @return list<string> */
@@ -181,6 +185,9 @@ final class HtmlExtractor
     {
         $values = [];
         foreach ($xpath->query($query) ?: [] as $node) {
+            if (! $node instanceof DOMNode) {
+                continue;
+            }
             $text = self::text($node->textContent, self::MAX_HEADING);
             if ($text !== null) {
                 $values[] = $text;

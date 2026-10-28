@@ -2,6 +2,7 @@
 
 namespace App\Services\Crawl;
 
+use App\Domain\Crawl\CrawlRefusal;
 use App\Domain\Crawl\CrawlTargetPolicy;
 use App\Domain\Crawl\FetchResult;
 use App\Domain\Crawl\HtmlExtractor;
@@ -108,7 +109,10 @@ class CrawlRunProcessor
             return 'done';
         }
 
-        return (clone $pending)->where(fn ($q) => $q->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now()))->exists()
+        return (clone $pending)
+            ->where(fn ($q) => $q->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('claim_token')->orWhere('claimed_at', '<', now()->subSeconds(self::CLAIM_STALE_SECONDS)))
+            ->exists()
             ? 'more'
             : 'later';
     }
@@ -157,6 +161,15 @@ class CrawlRunProcessor
 
             return;
         }
+        try {
+            $policy->connectableAddresses($row->normalized_url);
+        } catch (CrawlRefusal $refusal) {
+            if (! in_array($refusal->reason, ['dns_failed', 'connect_failed', 'timeout'], true)) {
+                $this->finish($row, ['state' => 'failed', 'error_code' => $refusal->reason]);
+
+                return;
+            }
+        }
         $hostRobots = $robots[CrawlTargetPolicy::authority($row->normalized_url)] ?? RobotsTxt::allowAll();
         if (! $hostRobots->allows($pathAndQuery)) {
             $this->finish($row, ['state' => 'blocked', 'error_code' => 'blocked_by_robots']);
@@ -170,7 +183,7 @@ class CrawlRunProcessor
                 'attempts' => $row->attempts + 1,
                 'next_attempt_at' => now()->addSeconds(10 * (2 ** $row->attempts)),
                 'claim_token' => null,
-                'error_code' => $result->errorCode ?? 'http_'.($result->response?->status ?? 0),
+                'error_code' => $result->errorCode ?? 'http_'.($result->response->status ?? 0),
             ])->save();
 
             return;
@@ -310,7 +323,7 @@ class CrawlRunProcessor
                 $status !== null && $status >= 400 && $status < 500 => RobotsTxt::allowAll(),
                 default => RobotsTxt::parse("User-agent: *\nDisallow: /\n", 'SEO-OS-Crawler/1'),
             };
-            if ($status !== null && $status >= 200 && $status < 300 && $result->response !== null) {
+            if ($status !== null && $status >= 200 && $status < 300) {
                 $this->sitemapHints[$authority] = self::sitemapLines($result->response->body);
             }
         }
