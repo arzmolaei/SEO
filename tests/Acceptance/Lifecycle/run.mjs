@@ -459,7 +459,31 @@ async function importKeywordsThroughBrowser(browser, instance, projectId) {
         state,
     );
     await assertApplicationServes(browser, instance, projectId, 'سئو سایت');
+    await assertGuidedWorkflow(browser, instance, projectId);
     return { project_id: projectId, keywords: state.counts.keywords };
+}
+
+// The overview computes each SEO step from real data: after a real import
+// the import step is done and a later step is offered as the next action.
+async function assertGuidedWorkflow(browser, instance, projectId) {
+    log(`${instance.name}: guided workflow reflects the real import`);
+    await browser.goto(`${instance.base}/projects/${projectId}/overview`);
+    await browser.waitForText('الان چه کار کنم؟');
+    const steps = JSON.parse(
+        await browser.evaluate(
+            `JSON.stringify(Object.fromEntries([...document.querySelectorAll('[data-step]')].map((node) => [node.dataset.step, node.dataset.status])))`,
+        ),
+    );
+    assert(
+        steps.import === 'done' && steps.intent !== 'waiting',
+        'guided workflow marks import done and unlocks the next step',
+        steps,
+    );
+    assert(
+        Object.keys(steps).length === 8,
+        'guided workflow lists the eight SEO steps',
+        steps,
+    );
 }
 
 async function exerciseKeywordIntelligence(browser, instance, projectId) {

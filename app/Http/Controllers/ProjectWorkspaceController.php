@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
+use App\Services\Projects\ProjectGuide;
 use App\Support\ProjectWorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -16,11 +17,13 @@ class ProjectWorkspaceController extends Controller
     public function __construct(private ProjectPolicy $policy) {}
 
     /** @throws AuthorizationException */
-    public function overview(Request $request, Project $project): Response
+    public function overview(Request $request, Project $project, ProjectGuide $guide): Response
     {
         $this->authorizeProject($request, $project);
 
-        return Inertia::render('projects/overview');
+        return Inertia::render('projects/overview', [
+            'guide' => fn (): array => $guide->for($project),
+        ]);
     }
 
     /** @throws AuthorizationException */
