@@ -378,18 +378,14 @@ async function createProjectThroughBrowser(browser, instance) {
     );
     await browser.fill('#project_name', PROJECT_NAME);
     await submitClosestForm(browser, '#project_name');
-    await browser.waitFor(
-        () =>
-            browser.evaluate(`(() => [...document.querySelectorAll('a')].some(
-                (link) => link.textContent?.trim() === ${JSON.stringify(PROJECT_NAME)} && /\\/projects\\/\\d+/.test(link.getAttribute('href') ?? '')
-            ))()`),
-        'created project link',
+    await browser.waitForUrl(
+        (url) => /\/projects\/\d+/.test(url),
+        'created project workspace',
     );
-    const href = await browser.evaluate(`(() => [...document.querySelectorAll('a')].find(
-        (link) => link.textContent?.trim() === ${JSON.stringify(PROJECT_NAME)} && /\\/projects\\/\\d+/.test(link.getAttribute('href') ?? '')
-    )?.getAttribute('href') ?? '')()`);
-    const match = href.match(/\/projects\/(\d+)/);
-    assert(match, 'project id is visible in dashboard project link', { href });
+    const url = await browser.url();
+    const match = url.match(/\/projects\/(\d+)/);
+    assert(match, 'project id is visible in workspace URL', { url });
+    await browser.waitForText(PROJECT_NAME);
     return Number(match[1]);
 }
 
