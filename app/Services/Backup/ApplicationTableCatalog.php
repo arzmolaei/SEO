@@ -30,6 +30,7 @@ final class ApplicationTableCatalog
         'cluster_targets',
         'crawl_runs',
         'crawl_urls',
+        'crawl_changes',
     ];
 
     /** @var list<string> */

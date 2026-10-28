@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useLocale } from '@/hooks/use-locale';
 import { useServerPoll } from '@/hooks/use-server-poll';
 import { crawlErrorLabel } from '@/lib/crawl-errors';
+import { CrawlChanges, type ChangeRow } from '@/components/crawl/crawl-changes';
 
 type Page<T> = {
     data: T[];
@@ -29,6 +30,9 @@ type Run = {
     started_at: string | null;
     finished_at: string | null;
     created_at: string;
+    comparison_status: string | null;
+    baseline_run_id: number | null;
+    change_counts: Record<string, number | boolean> | null;
 };
 type Url = {
     id: number;
@@ -60,6 +64,7 @@ export default function Crawls({
     activeRun,
     runs,
     urls,
+    changes,
     canCrawl,
     filters,
     limits,
@@ -67,6 +72,7 @@ export default function Crawls({
     activeRun: Run | null;
     runs: Page<Run>;
     urls: Page<Url> | null;
+    changes: Page<ChangeRow> | null;
     canCrawl: boolean;
     filters: Record<string, string>;
     limits: { max_urls: number; max_depth: number };
@@ -75,7 +81,7 @@ export default function Crawls({
     const { t, direction, locale } = useLocale();
     const busy =
         activeRun?.status === 'queued' || activeRun?.status === 'running';
-    const poll = useServerPoll(['activeRun', 'urls', 'runs'], busy);
+    const poll = useServerPoll(['activeRun', 'urls', 'runs', 'changes'], busy);
     if (!projectContext) return null;
     const base = `/projects/${projectContext.project.id}/crawls`;
     const statuses: Record<string, string> = {
@@ -704,6 +710,18 @@ export default function Crawls({
                         </section>
                     ) : (
                         <p className="rounded border p-6">{t('crawl.empty')}</p>
+                    )}
+                    {activeRun && (
+                        <CrawlChanges
+                            runId={activeRun.id}
+                            status={activeRun.comparison_status}
+                            baselineRunId={activeRun.baseline_run_id}
+                            counts={activeRun.change_counts}
+                            changes={changes}
+                            base={base}
+                            activeType={filters.change_type}
+                            locale={locale}
+                        />
                     )}
                     <section className="space-y-3">
                         <h2 className="text-lg font-semibold">

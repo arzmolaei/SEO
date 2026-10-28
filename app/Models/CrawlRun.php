@@ -28,6 +28,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $started_at
  * @property CarbonImmutable|null $finished_at
  * @property CarbonImmutable $created_at
+ * @property string|null $comparison_status
+ * @property int|null $baseline_run_id
+ * @property array<string, int|bool>|null $change_counts
+ * @property string|null $comparison_phase
+ * @property string|null $comparison_cursor
  */
 #[Fillable([
     'project_id', 'created_by_id', 'mode', 'start_url', 'normalized_start_url', 'allowed_hosts', 'settings',
@@ -60,6 +65,7 @@ class CrawlRun extends Model
         return [
             'allowed_hosts' => 'array',
             'settings' => 'array',
+            'change_counts' => 'array',
             'discovered_count' => 'integer',
             'fetched_count' => 'integer',
             'failed_count' => 'integer',

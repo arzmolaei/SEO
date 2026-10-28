@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CrawlChange;
 use App\Models\CrawlRun;
 use App\Models\Project;
 use App\Models\User;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class CrawlController extends Controller
 {
-    private const RUN_COLUMNS = ['id', 'mode', 'start_url', 'status', 'discovered_count', 'fetched_count', 'failed_count', 'blocked_count', 'failure_code', 'pause_requested_at', 'cancel_requested_at', 'started_at', 'finished_at', 'created_at'];
+    private const RUN_COLUMNS = ['id', 'mode', 'start_url', 'status', 'discovered_count', 'fetched_count', 'failed_count', 'blocked_count', 'failure_code', 'pause_requested_at', 'cancel_requested_at', 'started_at', 'finished_at', 'created_at', 'comparison_status', 'baseline_run_id', 'change_counts'];
 
     public function index(Request $request, Project $project): Response
     {
@@ -30,6 +31,7 @@ class CrawlController extends Controller
             'indexable' => ['nullable', Rule::in(['yes', 'no', 'unknown'])],
             'sort' => ['nullable', Rule::in(['id', 'depth', 'status_code', 'response_ms', 'title'])],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
+            'change_type' => ['nullable', Rule::in(CrawlChange::TYPES)],
         ]);
         $run = $request->filled('run')
             ? $project->crawlRuns()->findOrFail($request->integer('run'))
@@ -62,7 +64,18 @@ class CrawlController extends Controller
                     ->paginate(25, ['id', 'url', 'depth', 'state', 'status_code', 'final_url', 'redirect_count', 'content_type', 'response_ms', 'bytes', 'title', 'meta_description', 'robots', 'canonical', 'h1', 'h2', 'hreflang', 'schema_types', 'word_count', 'images', 'images_missing_alt', 'internal_links', 'external_links', 'indexable', 'error_code', 'page_id', 'attempts', 'fetched_at'])
                     ->withQueryString();
             },
-            'filters' => $request->only(['state', 'status_class', 'indexable', 'sort', 'direction']),
+            'changes' => function () use ($request, $run) {
+                if ($run === null || $run->comparison_status !== 'compared') {
+                    return null;
+                }
+
+                return CrawlChange::query()->where('crawl_run_id', $run->id)
+                    ->when($request->filled('change_type'), fn ($query) => $query->where('change_type', $request->string('change_type')->toString()))
+                    ->orderBy('change_type')->orderBy('id')
+                    ->paginate(25, ['id', 'normalized_url', 'change_type', 'before', 'after'], 'changes_page')
+                    ->withQueryString();
+            },
+            'filters' => $request->only(['state', 'status_class', 'indexable', 'sort', 'direction', 'change_type']),
             'limits' => ['max_urls' => (int) config('crawler.max_urls_limit'), 'max_depth' => (int) config('crawler.max_depth_limit')],
         ]);
     }

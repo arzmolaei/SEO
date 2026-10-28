@@ -10,6 +10,7 @@ use App\Domain\Review\ReviewItemType;
 use App\Enums\WorkspaceRole;
 use App\Models\ActivityEvent;
 use App\Models\ChangeSet;
+use App\Models\CrawlChange;
 use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
 use App\Models\Keyword;
@@ -311,8 +312,21 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'indexable' => true,
             'fetched_at' => now(),
         ]);
+        $baselineCrawl = $crawl->replicate();
+        $baselineCrawl->save();
+        $crawlChange = CrawlChange::query()->create([
+            'crawl_run_id' => $crawl->id,
+            'baseline_run_id' => $baselineCrawl->id,
+            'url_hash' => hash('sha256', 'https://example.test/'),
+            'normalized_url' => 'https://example.test/',
+            'change_type' => 'title',
+            'before' => ['value' => 'عنوان قبلی'],
+            'after' => ['value' => 'عنوان خزش فارسی'],
+            'created_at' => now(),
+        ]);
         $crawlSnapshot = $crawl->fresh()->getRawOriginal();
         $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
+        $crawlChangeSnapshot = $crawlChange->fresh()->getRawOriginal();
 
         File::put($this->privateUploads.'/private-source.txt', 'private-source-durable');
         File::put($this->publicUploads.'/public-source.txt', 'public-source-durable');
@@ -395,6 +409,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertDatabaseMissing('passkeys', ['credential_id' => 'destination-passkey-credential']);
         $this->assertSame($crawlSnapshot, CrawlRun::query()->findOrFail($crawl->id)->getRawOriginal());
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
+        $this->assertSame($crawlChangeSnapshot, CrawlChange::query()->findOrFail($crawlChange->id)->getRawOriginal());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);

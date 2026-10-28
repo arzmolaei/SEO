@@ -32,6 +32,7 @@ class CrawlRunProcessor
     public function __construct(
         private readonly CrawlerFactory $factory,
         private readonly CrawlPageLinker $linker,
+        private readonly CrawlRunComparator $comparator,
     ) {}
 
     /** @return 'more'|'later'|'done' */
@@ -141,6 +142,11 @@ class CrawlRunProcessor
         $pending = CrawlUrl::query()->where('crawl_run_id', $run->id)->where('state', 'pending');
         if (! (clone $pending)->exists()) {
             if (! $this->linker->link($run)) {
+                return 'more';
+            }
+            // The change set is part of the result: the run is reported as
+            // completed only once its comparison has finished.
+            if (! $this->comparator->compare($run)) {
                 return 'more';
             }
             $run->forceFill(['status' => 'completed', 'finished_at' => now()])->save();
