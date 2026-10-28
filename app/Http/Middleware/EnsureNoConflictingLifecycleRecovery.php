@@ -20,7 +20,7 @@ final class EnsureNoConflictingLifecycleRecovery
     public function handle(Request $request, Closure $next): Response
     {
         try {
-            if ($this->updateJournal->state() !== null || $this->restoreJournal->state() !== null) {
+            if ($this->updateJournal->state() !== null || $this->restoreJournal->hasActiveOperation()) {
                 return $this->conflict();
             }
         } catch (Throwable) {

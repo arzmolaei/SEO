@@ -43,7 +43,7 @@ final class SwitchSystemUpdateRelease
             throw $this->invalidState();
         }
 
-        if ($this->restoreJournal->state() !== null) {
+        if ($this->restoreJournal->hasActiveOperation()) {
             throw new UpdateException('update_lifecycle_conflict', 'یک عملیات بازیابی دیگر باید ابتدا تعیین تکلیف شود.');
         }
 

@@ -176,7 +176,7 @@ final class VerifyUpdatePackage
     private function assertLifecycleAvailable(): void
     {
         try {
-            if ($this->journal->state() !== null || $this->restoreJournal->state() !== null) {
+            if ($this->journal->state() !== null || $this->restoreJournal->hasActiveOperation()) {
                 throw $this->lifecycleConflict();
             }
         } catch (UpdateException $exception) {

@@ -48,7 +48,7 @@ final class RecoverInterruptedUpdate
             $sourcePhase = $this->isBootstrapRecovery($state) || $state['phase'] === 'snapshot_restore_required' || ($state['phase'] === 'source_switch_pending' && $sourceActive);
             $this->assertBooted($current, $state, $sourcePhase);
             try {
-                if ($this->restoreJournal->state() !== null || ($state['lifecycle_mutex_path_sha256'] ?? null) !== $ownership->pathFingerprint()) {
+                if ($this->restoreJournal->hasActiveOperation() || ($state['lifecycle_mutex_path_sha256'] ?? null) !== $ownership->pathFingerprint()) {
                     throw $this->recoveryRequired();
                 }
                 $this->quiescence->assertReady();

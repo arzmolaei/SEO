@@ -111,6 +111,23 @@ final class RestoreJournal
         return $next;
     }
 
+    /**
+     * A restore that reached 'complete' keeps its terminal record (a second
+     * restore into the now non-clean target stays refused), but it is not an
+     * operation other lifecycle work must wait for. Unreadable state counts as
+     * active so callers fail closed.
+     */
+    public function hasActiveOperation(): bool
+    {
+        try {
+            $state = $this->state();
+        } catch (Throwable) {
+            return true;
+        }
+
+        return $state !== null && ($state['phase'] ?? null) !== 'complete';
+    }
+
     public function clear(): void
     {
         $path = $this->path();

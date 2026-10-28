@@ -113,6 +113,25 @@ class UpdateAuthorizationTest extends TestCase
         $this->assertNull($journal->state());
     }
 
+    public function test_a_completed_restore_does_not_make_update_uploads_conflict(): void
+    {
+        $owner = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
+        $this->markInstalled($owner);
+        File::ensureDirectoryExists($this->directory.'/lifecycle/restore');
+        File::put($this->directory.'/lifecycle/restore/state.json', json_encode([
+            'phase' => 'complete',
+            'upload_id' => str_repeat('a', 32),
+            'restored_at' => '2026-10-28T00:00:00Z',
+        ], JSON_THROW_ON_ERROR));
+
+        // Reaches package verification (422 for this invalid file), not a 409 conflict.
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->post('/settings/update/verify', ['update' => UploadedFile::fake()->createWithContent('x.seoupdate', 'invalid')])
+            ->assertStatus(422)
+            ->assertJson(['code' => 'update_invalid_package']);
+    }
+
     public function test_update_verify_requires_recent_password_and_system_owner(): void
     {
         $owner = User::factory()->create([
