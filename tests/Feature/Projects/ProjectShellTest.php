@@ -35,7 +35,7 @@ class ProjectShellTest extends TestCase
             ->where('projectContext.project.workspace_id', $workspace->id)
             ->where('projectContext.mode', 'guided')
             // Only built, in-scope sections are offered (docs/OWNER_INTENT.md).
-            ->has('projectContext.navigation', 6)
+            ->has('projectContext.navigation', 7)
             ->where('projectContext.navigation.0.key', 'overview')
             ->where('projectContext.navigation.1.key', 'keywords')
             ->where('projectContext.navigation.2.key', 'imports')
@@ -45,6 +45,8 @@ class ProjectShellTest extends TestCase
             ->where('projectContext.navigation.4.href', route('projects.pages.index', $project))
             ->where('projectContext.navigation.5.key', 'site-audit')
             ->where('projectContext.navigation.5.href', route('projects.crawls.index', $project))
+            ->where('projectContext.navigation.6.key', 'content')
+            ->where('projectContext.navigation.6.href', route('projects.content.index', $project))
         );
     }
 
@@ -54,12 +56,12 @@ class ProjectShellTest extends TestCase
         $workspace = app(CreateWorkspace::class)->handle($owner, 'Studio');
         $project = app(CreateProject::class)->handle($owner, $workspace, 'Example.com');
 
-        $response = $this->actingAs($owner)->get("/projects/{$project->id}/content");
+        $response = $this->actingAs($owner)->get("/projects/{$project->id}/tasks");
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('projects/section')
-            ->where('section', 'content')
+            ->where('section', 'tasks')
             ->where('projectContext.mode', 'guided')
         );
     }
