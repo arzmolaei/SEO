@@ -218,3 +218,41 @@ requires an offline, trusted full-runtime/manual launcher upgrade; automatic
 in-place V1-to-V2 launcher migration is not implemented or claimed. V2 slot/root
 rollback remains covered by the runtime and recovery tests. A regression pins the
 V2 contract and rejects legacy V1 manifests.
+
+## Connected regression correction — 2026-10-28
+
+API access is restored. PR #21 at 085442a failed the connected rollback gate
+(run 40648710998, job 122683496203), despite ordinary CI and Lifecycle E2E passing.
+This failure was reproduced unchanged against real MariaDB 10.11 with
+--fail-on-skipped: the exact-suffix test failed during source snapshot capture,
+before target activation or rollback. The fresh-runtime process test passed.
+
+The fixture had already created a retained target slot while still relying on an
+absent pointer to imply root. That setup is invalid under the P1 contract.
+Production VerifyUpdatePackage establishes explicit root activation before
+staging. The fixture now calls the existing, version-checked activateRoot before
+snapshot admission. No product fallback rule was relaxed and no pointer deletion
+was introduced. The existing product root activation and bootstrap recovery
+already atomically write explicit root metadata.
+
+Regression assertions now verify that completed updates retain an explicit slot
+pointer and rolled-back connected updates retain an explicit root pointer, with
+the expected version. Deleting either pointer afterwards must throw
+update_invalid_state. All prior data, schema, environment, identity, queue and
+asset assertions remain intact. A focused review of the exact patch text found
+no actionable issue; the reviewer did not independently rerun the tests.
+
+Real MariaDB 10.11 results, each invoked with --fail-on-skipped:
+
+- UpdateRollbackMariaDbAcceptanceTest + UpdateRuntimeProcessMariaDbAcceptanceTest:
+  2 passed, 62 assertions.
+- BackupRestoreMariaDbAcceptanceTest + UpdateMigrationsMariaDbAcceptanceTest +
+  MariaDbDriverSnapshotIsolationTest: 11 passed, 198 assertions.
+- SelfHostInstallerAcceptanceTest: 1 passed, 125 assertions.
+- PersianExportMariaDbAcceptanceTest + ProjectSeoExportLargeDatasetTest:
+  2 passed, 110 assertions.
+
+Normal suite: 625 tests, 609 passed, 16 env-gated skips, 4,633 assertions.
+These ordinary-run skips are distinct from the connected runs above, which had
+no skips. Pint, PHPStan, frontend check, TypeScript and production build passed.
+Exact-head CI and post-merge main verification remain required before integration.

@@ -10,6 +10,7 @@ use App\Services\Backup\ApplicationSchemaFingerprint;
 use App\Services\Backup\CaptureSystemState;
 use App\Services\Backup\RestoreJournal;
 use App\Services\Update\RecoverInterruptedUpdate;
+use App\Services\Update\UpdateException;
 use App\Services\Update\UpdateJournal;
 use App\Services\Update\UpdateMigrationRunner;
 use App\Services\Update\UpdateRuntimeIdentity;
@@ -147,9 +148,12 @@ class UpdateRollbackMariaDbAcceptanceTest extends TestCase
         ]);
 
         $this->app->setBasePath($this->stableRoot);
+        // A retained target slot is already present: source activation must be explicit,
+        // just as VerifyUpdatePackage establishes it before production staging.
+        $this->pointer = new ActiveReleasePointer($this->stableRoot);
+        $this->pointer->activateRoot('0.1.0-alpha.1');
         $this->captureSourceSafety();
 
-        $this->pointer = new ActiveReleasePointer($this->stableRoot);
         File::put($this->targetRoot.'/release.json', json_encode([
             'schema' => 'seo-release-slot/1',
             'release_id' => 'target-probe',
@@ -274,6 +278,14 @@ PHP;
         $this->assertNull($this->app->make(UpdateJournal::class)->state());
         $this->assertFileExists($this->stableRoot.'/public/build/assets/source-hash.js');
         $this->assertFileExists($this->stableRoot.'/public/build/assets/target-hash.js');
+        $pointerPath = $this->stableRoot.'/storage/app/lifecycle/update/active-release.json';
+        $this->assertFileExists($pointerPath);
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertSame('0.1.0-alpha.1', $this->pointer->current()['product_version']);
+        $this->assertSame('seo-root-release-pointer/1', json_decode(File::get($pointerPath), true)['schema']);
+        unlink($pointerPath);
+        $this->expectException(UpdateException::class);
+        $this->pointer->current();
     }
 
     private function configureConnectedDatabase(): void

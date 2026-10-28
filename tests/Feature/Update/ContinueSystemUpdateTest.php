@@ -98,6 +98,13 @@ class ContinueSystemUpdateTest extends UpdateTargetTestCase
         $this->assertSame('root', $retention['source_release_kind']);
         $this->assertStringNotContainsString($this->directory, json_encode($retention, JSON_THROW_ON_ERROR));
         $this->assertSame($result, $this->app->make(ContinueSystemUpdate::class)->handle());
+        $pointerPath = $this->stableRoot.'/storage/app/lifecycle/update/active-release.json';
+        $this->assertFileExists($pointerPath);
+        $this->assertSame('slot', $this->pointer->current()['kind']);
+        $this->assertSame('0.1.0-alpha.2', $this->pointer->current()['product_version']);
+        unlink($pointerPath);
+        $this->expectException(UpdateException::class);
+        $this->pointer->current();
     }
 
     public function test_source_process_cannot_continue_target_migrations_in_the_same_request_graph(): void
