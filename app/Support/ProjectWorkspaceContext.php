@@ -22,6 +22,7 @@ class ProjectWorkspaceContext
         'reviews',
         'pages',
         'site-audit',
+        'content',
     ];
 
     public const SECTIONS = [
@@ -59,18 +60,14 @@ class ProjectWorkspaceContext
             'navigation' => array_map(
                 fn (string $section): array => [
                     'key' => $section,
-                    'href' => $section === 'pages'
-                        ? route('projects.pages.index', $project)
-                        : ($section === 'site-audit'
-                        ? route('projects.crawls.index', $project)
-                        : ($section === 'imports'
-                        ? route('projects.keyword-imports.index', $project)
-                        : ($section === 'overview'
-                        ? route('projects.overview', $project)
-                        : route('projects.section', [
-                            'project' => $project,
-                            'section' => $section,
-                        ])))),
+                    'href' => match ($section) {
+                        'overview' => route('projects.overview', $project),
+                        'imports' => route('projects.keyword-imports.index', $project),
+                        'pages' => route('projects.pages.index', $project),
+                        'content' => route('projects.content.index', $project),
+                        'site-audit' => route('projects.crawls.index', $project),
+                        default => route('projects.section', ['project' => $project, 'section' => $section]),
+                    },
                 ],
                 self::NAVIGATION,
             ),

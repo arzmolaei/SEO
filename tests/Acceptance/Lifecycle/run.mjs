@@ -661,6 +661,34 @@ async function exercisePagesWorkspace(browser, instance, projectId) {
     );
 }
 
+// A brief is generated from the reviewed cluster, scheduled, and appears in
+// the content calendar's next-seven-days group.
+async function exerciseContentBrief(browser, instance, projectId) {
+    log(`${instance.name}: content brief and calendar through UI`);
+    const contentUrl = `${instance.base}/projects/${projectId}/content`;
+    await browser.goto(contentUrl);
+    await browser.waitForText('بریف تازه از یک خوشه');
+    await browser.check('input[name="cluster_id"]');
+    await browser.click('ساخت بریف', { exact: true });
+    await browser.waitForText('کلمه کلیدی اصلی');
+    const title = await browser.evaluate(
+        `document.querySelector('#title')?.value ?? ''`,
+    );
+    assert(title !== '', 'generated brief has a title', { title });
+    const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    await browser.fill('#due_on', due);
+    await browser.click('ذخیره', { exact: true });
+    await browser.waitForText('ذخیره شد.');
+    await browser.goto(contentUrl);
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `(document.querySelector('[data-bucket="week"]')?.innerText || '').includes(${JSON.stringify(title)})`,
+            ),
+        'scheduled brief appears in the next seven days',
+    );
+}
+
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
     log(
         `${instance.name}: download and validate Persian SEO CSV through UI link`,
@@ -1350,6 +1378,7 @@ async function main() {
         );
         await exerciseKeywordIntelligence(browser, source, projectId);
         await exercisePagesWorkspace(browser, source, projectId);
+        await exerciseContentBrief(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
         const restored = await backupRestoreLifecycle(
             browser,

@@ -10,6 +10,7 @@ use App\Domain\Review\ReviewItemType;
 use App\Enums\WorkspaceRole;
 use App\Models\ActivityEvent;
 use App\Models\ChangeSet;
+use App\Models\ContentBrief;
 use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
 use App\Models\Keyword;
@@ -32,6 +33,7 @@ use App\Services\Backup\RestoreJournal;
 use App\Services\Backup\RestorePreview;
 use App\Services\Backup\RestoreSystemBackup;
 use App\Services\Backup\VerifyRestoreBundle;
+use App\Services\Content\ContentBriefs;
 use App\Services\Keywords\CommitKeywordImportBatch;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Keywords\MapClusterToTarget;
@@ -311,6 +313,13 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'indexable' => true,
             'fetched_at' => now(),
         ]);
+        $briefs = app(ContentBriefs::class);
+        $brief = $briefs->generate($sourceProject, $sourceOwner, $cluster->id);
+        $briefs->update($sourceProject, $brief, $sourceOwner, [
+            'title' => 'بریف فارسی پایدار', 'headings' => ['سرفصل یک', 'پرسش‌های متداول'], 'notes' => "یادداشت\u{200C}دار",
+            'status' => 'review', 'due_on' => '2026-12-01', 'published_on' => null,
+        ]);
+        $briefSnapshot = $brief->fresh()?->getRawOriginal();
         $crawlSnapshot = $crawl->fresh()->getRawOriginal();
         $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
 
@@ -395,6 +404,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertDatabaseMissing('passkeys', ['credential_id' => 'destination-passkey-credential']);
         $this->assertSame($crawlSnapshot, CrawlRun::query()->findOrFail($crawl->id)->getRawOriginal());
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
+        $this->assertSame($briefSnapshot, ContentBrief::query()->findOrFail($brief->id)->getRawOriginal());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);

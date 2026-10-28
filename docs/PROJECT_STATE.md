@@ -15,14 +15,20 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   checks (16) green; post-merge main green: CI `40718135594`, Update Rollback MariaDB
   `40718135399`, Lifecycle E2E `40718135224`. Design note
   `docs/superpowers/specs/2026-10-28-pages-workspace-design.md`.
-- **Slice 3 — own-site page check: in review** on `feature/own-site-page-check`.
-  Design note `docs/superpowers/specs/2026-10-28-own-site-page-check-design.md`. Reuses
-  the crawler unchanged (list mode, depth 0, ≤ 500 own page addresses); results are
-  read from completed runs by URL hash. Local evidence on PHP 8.4.16: full suite
-  771 passed / 19 gated skips; Pint, PHPStan, npm check, tsc and vitest pass; new and
-  crawl-engine tests also pass on MariaDB 10.11. Not done until exact-head CI on all
-  three workflows is green, merged and post-merge main is green.
-- Next after slice 3: slice 4 (content briefs + calendar).
+- **Slice 3 — own-site page check: done.** PR #36 merged with expected head
+  `c6b9eeb` as `a70c80e6789e4251c12f3a49cbbb55b37aae463e`. Exact-head PR checks (16)
+  green; post-merge main green: CI `40720668121`, Update Rollback MariaDB
+  `40720668193`, Lifecycle E2E `40720668186`. Design note
+  `docs/superpowers/specs/2026-10-28-own-site-page-check-design.md`. The crawler is
+  unchanged (list mode, depth 0, ≤ 500 own page addresses).
+- **Slice 4 — content briefs + calendar: in review** on `feature/content-briefs`.
+  Design note `docs/superpowers/specs/2026-10-28-content-briefs-design.md`. New
+  durable table `content_briefs` is in the backup catalog and the connected
+  backup/restore fixture. Local evidence on PHP 8.4.16 + MariaDB 10.11: full suite
+  781 passed / 19 gated skips; Pint, PHPStan, npm check, tsc, vitest pass; all six
+  connected suites pass with `--fail-on-skipped`. Not done until exact-head CI on
+  all three workflows is green, merged and post-merge main is green.
+- Next after slice 4: slice 5 (single-user tasks).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over

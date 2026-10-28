@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BulkKeywordStatusController;
+use App\Http\Controllers\ContentBriefController;
 use App\Http\Controllers\CrawlController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InstallerController;
@@ -67,6 +68,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('projects/{project}/pages/{page}/adopt-live', [PageLiveCheckController::class, 'adopt'])->name('projects.pages.adopt-live');
     });
 
+    Route::get('projects/{project}/content', [ContentBriefController::class, 'index'])->name('projects.content.index');
+    Route::post('projects/{project}/content', [ContentBriefController::class, 'store'])->name('projects.content.store');
+    Route::scopeBindings()->group(function (): void {
+        Route::get('projects/{project}/content/{contentBrief}', [ContentBriefController::class, 'show'])->name('projects.content.show');
+        Route::patch('projects/{project}/content/{contentBrief}', [ContentBriefController::class, 'update'])->name('projects.content.update');
+        Route::delete('projects/{project}/content/{contentBrief}', [ContentBriefController::class, 'destroy'])->name('projects.content.destroy');
+    });
+
     Route::get('projects/{project}/imports', [KeywordImportController::class, 'index'])->name('projects.keyword-imports.index');
     Route::post('projects/{project}/imports', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.store');
     Route::scopeBindings()->group(function (): void {
@@ -103,7 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])->name('projects.overview');
     Route::get('projects/{project}/keywords', [KeywordGridController::class, 'index'])->name('projects.keywords.index');
     Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
-        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews', 'pages'], true))))
+        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews', 'pages', 'content'], true))))
         ->name('projects.section');
 });
 
