@@ -50,11 +50,11 @@ class PageChecklistFacts
 
         $facts = [];
         foreach ($pages as $page) {
-            $pageTargets = ($targets->get($page->id) ?? collect())->map(fn ($row): array => [
+            $pageTargets = array_values(($targets->get($page->id) ?? collect())->map(fn ($row): array => [
                 'cluster_id' => (int) $row->cluster_id,
                 'cluster' => (string) $row->cluster,
                 'primary_keyword' => (string) $row->primary_keyword,
-            ])->values()->all();
+            ])->all());
             $key = $titleKey($page->seo_title);
             $items = OnPageChecklist::evaluate(
                 [
