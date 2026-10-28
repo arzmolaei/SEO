@@ -1,9 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import InputError from '@/components/input-error';
 import { ProjectWorkspaceShell } from '@/components/project-workspace-shell';
 import { Button } from '@/components/ui/button';
 import { useLocale } from '@/hooks/use-locale';
+import { useServerPoll } from '@/hooks/use-server-poll';
 import { statusLabels } from '@/lib/on-page-checklist';
 
 type PageRow = {
@@ -15,6 +17,18 @@ type PageRow = {
     on_page_status: 'todo' | 'in_progress' | 'done';
     score: { passed: number; applicable: number };
     targets: { cluster_id: number; cluster: string; primary_keyword: string }[];
+    live: { checked_at: string | null; problems: number } | null;
+};
+type CheckState = {
+    active: {
+        id: number;
+        status: string;
+        discovered: number;
+        fetched: number;
+        failed: number;
+    } | null;
+    checkable: number;
+    canCheck: boolean;
 };
 type Paginated = {
     data: PageRow[];
@@ -27,12 +41,16 @@ type Filters = { q?: string; status?: string; kind?: string };
 export default function Pages({
     pages,
     filters,
+    check,
 }: {
     pages: Paginated;
     filters: Filters;
     canEdit: boolean;
+    check: CheckState;
 }) {
-    const { projectContext } = usePage().props;
+    const { projectContext, errors } = usePage().props;
+    const [starting, setStarting] = useState(false);
+    useServerPoll(['pages', 'check'], check.active !== null);
     const { t, locale } = useLocale();
     const [busy, setBusy] = useState(false);
     const base = `/projects/${projectContext?.project.id}/pages`;
@@ -75,6 +93,65 @@ export default function Pages({
                             {t('pages.intro')}
                         </p>
                     </header>
+
+                    <section
+                        aria-labelledby="site-check-title"
+                        className="space-y-3 rounded-lg border p-4"
+                        data-site-check={check.active ? 'running' : 'idle'}
+                    >
+                        <h2
+                            id="site-check-title"
+                            className="text-lg font-semibold"
+                        >
+                            {t('pages.checkTitle')}
+                        </h2>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                            {t('pages.checkIntro')}
+                        </p>
+                        {check.active ? (
+                            <p role="status" className="text-sm">
+                                {t('pages.checkRunning')}{' '}
+                                {t('pages.checkProgress')}:{' '}
+                                {num(
+                                    check.active.fetched + check.active.failed,
+                                )}
+                                /{num(check.active.discovered)}{' '}
+                                <Link
+                                    href={`/projects/${projectContext?.project.id}/crawls?run=${check.active.id}`}
+                                    className="text-muted-foreground underline"
+                                >
+                                    {t('pages.checkDetails')}
+                                </Link>
+                            </p>
+                        ) : check.checkable === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                {t('pages.checkNone')}
+                            </p>
+                        ) : (
+                            check.canCheck && (
+                                <Button
+                                    disabled={starting}
+                                    onClick={() =>
+                                        router.post(
+                                            `${base}/check`,
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                                onStart: () =>
+                                                    setStarting(true),
+                                                onFinish: () =>
+                                                    setStarting(false),
+                                            },
+                                        )
+                                    }
+                                >
+                                    {t('pages.checkStart')} (
+                                    {num(check.checkable)})
+                                </Button>
+                            )
+                        )}
+                        <InputError message={errors?.check} />
+                    </section>
 
                     <form
                         onSubmit={submit}
@@ -169,7 +246,23 @@ export default function Pages({
                                                     : t('pages.noTarget')}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs">
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                            {page.kind === 'existing' && (
+                                                <span
+                                                    data-live-problems={
+                                                        page.live?.problems ??
+                                                        'unchecked'
+                                                    }
+                                                    className={`rounded-full px-3 py-1 ${page.live && page.live.problems > 0 ? 'bg-destructive/10 text-destructive' : 'border text-muted-foreground'}`}
+                                                >
+                                                    {page.live === null
+                                                        ? t('pages.notChecked')
+                                                        : page.live.problems ===
+                                                            0
+                                                          ? t('pages.liveOk')
+                                                          : `${num(page.live.problems)} ${t('pages.liveProblems')}`}
+                                                </span>
+                                            )}
                                             <span
                                                 className={`rounded-full px-3 py-1 ${complete ? 'bg-primary/10 text-primary' : 'border text-muted-foreground'}`}
                                                 aria-label={t('pages.score')}
