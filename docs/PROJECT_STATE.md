@@ -1,5 +1,49 @@
 # SEO OS — Durable Project State & Handoff
 
+## CURRENT STATE — 2026-10-28: crawler continuation
+
+This checkpoint supersedes all older pause notes and CURRENT STATE sections below.
+Live Git + exact-head CI remain authoritative. No force-push or stale branch deletion.
+
+- PR #27 merged with expected-head protection (`511a1c0`) as
+  `771d7cc3d007924479fcf0474ca18ca2e13f5364`. Independent main workflows passed:
+  CI `40681906483`, Update Rollback MariaDB `40681906748`, Lifecycle E2E `40681906334`.
+- PR #29 merged with expected-head protection (`c2973c3`) as
+  `df7f87490c4c3de2e04e69b8fa255444ccd294e5`. Independent main workflows passed:
+  CI `40682707635`, Update Rollback MariaDB `40682707688`, Lifecycle E2E `40682707657`.
+  This is the verified main baseline. Persian framework/auth strings, offline-default
+  password policy, upload-limit decision/warning and bilingual launcher pages are integrated.
+- PR #28 remains draft/unmerged on `feature/site-crawler`. Its inherited failing
+  `56d96ef` was reproduced and fixed at `314d0d1`; all exact-head PR workflows passed:
+  CI `40682575360`, rollback `40682575358`, Lifecycle E2E `40682575345`.
+- Current crawler implementation includes run serialization, checkpointed sitemap
+  discovery, fail-closed forward-proxy handling, whole-chain network budgets
+  (`d5c2c45`); bounded project-page linking without replacing human titles (`0e5ee07`);
+  and authorized Persian-first crawl UI with polling/pagination/audit (`f5a14c4`).
+  Current main was merged into the branch normally; no history was rewritten.
+- Task 9 adds real MariaDB separate-process claim/kill/start concurrency tests to
+  permanent CI. Local connected result: **3 passed / 27 assertions, zero skips**,
+  invoked with `--fail-on-skipped`. Other local connected backup/migration/isolation
+  suites: 11 passed / 206 assertions. Ordinary suite: 745 passed / 19 gated skips
+  (5,221 assertions); Pint, PHPStan, TypeScript, npm check/build and frontend tests passed.
+  These gated skips are not acceptance passes.
+- **Not finished:** whole-branch focused review, browser crawl UI inspection, final
+  exact-head three-workflow verification, PR #28 integration and post-merge main CI.
+  Do not mark the crawler complete or advance to history/diff before that boundary.
+- Next: finish those checks and fix real review findings with RED→GREEN. Keep the
+  existing lifecycle acceptance and fail-closed guarantees intact. Then crawl
+  history/diff (§17), issues (§18), architecture (§19), execution and performance
+  per the master spec and delivery plan. No JS-rendering or issue-engine claim here.
+
+Environment actually has PHP 8.4.24/Composer at `/workspace/.php-runtime/bin`;
+activate that PATH. Existing MariaDB 10.11 containers `seo-connected-source` and
+`seo-connected-destination` worked. Read workflow env blocks; never print secrets.
+Local TCP tests and PHPStan need execution outside the socket-restricted sandbox.
+Only the loopback-pinned `site.test` test host was excluded from proxy routing.
+GitHub API works with normal configured proxy/credentials.
+
+## Historical checkpoints (superseded where they conflict)
+
 Last checkpoint: 2026-10-28
 
 This file is the durable source of truth for continuing SEO OS across agent sessions. **Current Git heads + exact-head CI override stale chat, stale hashes and stale prose.** Never force-push over unexpected movement and never recreate a subsystem that is already verified.

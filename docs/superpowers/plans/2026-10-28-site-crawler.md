@@ -58,3 +58,10 @@ pass, including viewer/outsider denial, foreign IDs, audit attribution and atomi
 database-queue failure rollback. PHPStan, TypeScript, frontend check/build and
 Pint passed. Ordinary backend: 745 passed / 19 connected-only skips (5,221
 assertions). Browser UI visual review and final-head CI are not yet claimed.
+
+Task 9 acceptance implemented: three real MariaDB 10.11 separate-process tests
+pass with `--fail-on-skipped` (27 assertions), covering concurrent starts, one
+worker/request per run, and OS-kill lease release plus stale unfinished-claim
+recovery. The permanent backup-restore MariaDB job runs this suite explicitly.
+An unfinished GET may repeat after a hard kill; completed snapshots remain unique.
+Whole-branch review, browser inspection and final-head CI/integration remain pending.
