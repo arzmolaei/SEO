@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\SystemProbe;
+use App\Domain\Crawl\CrawlTransport;
+use App\Domain\Crawl\CurlCrawlTransport;
 use App\Domain\Keywords\KeywordRowReader;
 use App\Domain\Keywords\StreamingCsvReader;
 use App\Services\Update\UpdateJournal;
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePreInstallRuntime();
         $this->app->bind(KeywordRowReader::class, StreamingCsvReader::class);
         $this->app->bind(SystemProbe::class, NativeSystemProbe::class);
+        $this->app->bind(CrawlTransport::class, CurlCrawlTransport::class);
         $this->app->bind(RuntimeReleaseAdmission::class, static fn () => new RuntimeReleaseAdmission);
         $this->callAfterResolving('queue', function (QueueManager $queue): void {
             $queue->addConnector('database', fn () => new LifecycleDatabaseConnector(

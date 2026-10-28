@@ -365,3 +365,6 @@ jobs:
 
       - name: Run connected MariaDB-driver snapshot isolation acceptance
         run: php artisan test tests/Feature/Acceptance/MariaDbDriverSnapshotIsolationTest.php --fail-on-skipped
+
+      - name: Run connected crawl worker concurrency acceptance
+        run: php artisan test tests/Feature/Acceptance/CrawlRunMariaDbAcceptanceTest.php --fail-on-skipped

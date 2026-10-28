@@ -1,5 +1,24 @@
 # SEO OS delivery gates
 
+## Current execution boundary — 2026-10-28
+
+The browser lifecycle gate is integrated through #23/#24 and independently green
+on main, including real project/import/intelligence → export → backup → clean
+second-instance restore → update/recovery → health. #25/#26 add server polling and
+transient lifecycle-lease draining. #27/#29 are now merged and post-merge verified
+at `df7f874`; see PROJECT_STATE for exact workflow IDs. Signing authenticity and
+chunked uploads remain explicitly outside V1; SHA-256 claims integrity only.
+
+Active subsystem: Site Intelligence HTTP crawler, draft #28. Tasks 1–9 now have
+implementation/acceptance code; final focused review, browser UI inspection,
+exact-head CI and integration remain pending. Do not restart integrated lifecycle
+work. After this crawler is verified and merged, continue history/diff → technical
+issues → architecture → execution → performance, each with its own design/plan,
+RED/GREEN evidence, review and protected merge/post-merge verification.
+
+The older detailed delivery history below is retained as historical context; its
+“remaining lifecycle” and “not yet verified” lists are superseded by this checkpoint.
+
 This is the durable delivery map, not a claim that the whole product is implemented. The active plan, current Git heads and exact-head CI are authoritative.
 
 ## Continue autonomously

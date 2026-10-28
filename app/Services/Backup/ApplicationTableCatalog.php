@@ -28,6 +28,8 @@ final class ApplicationTableCatalog
         'keyword_cluster_members',
         'pages',
         'cluster_targets',
+        'crawl_runs',
+        'crawl_urls',
     ];
 
     /** @var list<string> */

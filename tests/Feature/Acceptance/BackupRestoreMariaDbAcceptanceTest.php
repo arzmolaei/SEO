@@ -10,6 +10,8 @@ use App\Domain\Review\ReviewItemType;
 use App\Enums\WorkspaceRole;
 use App\Models\ActivityEvent;
 use App\Models\ChangeSet;
+use App\Models\CrawlRun;
+use App\Models\CrawlUrl;
 use App\Models\Keyword;
 use App\Models\KeywordIntentAssignment;
 use App\Models\KeywordMetric;
@@ -281,6 +283,37 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'metadata' => ['persian' => 'داده پایدار'],
         ]);
 
+        $crawl = CrawlRun::query()->create([
+            'project_id' => $sourceProject->id,
+            'created_by_id' => $sourceOwner->id,
+            'mode' => 'site',
+            'start_url' => 'https://example.test/',
+            'normalized_start_url' => 'https://example.test/',
+            'allowed_hosts' => ['example.test'],
+            'settings' => ['include' => [], 'exclude' => [], 'max_depth' => 10, 'max_urls' => 1000, 'delay_ms' => 500, 'include_www' => false],
+            'status' => 'completed',
+            'discovered_count' => 1,
+            'fetched_count' => 1,
+            'finished_at' => now(),
+        ]);
+        $crawlUrl = CrawlUrl::query()->create([
+            'crawl_run_id' => $crawl->id,
+            'page_id' => $page->id,
+            'url' => 'https://example.test/',
+            'normalized_url' => 'https://example.test/',
+            'url_hash' => hash('sha256', 'https://example.test/'),
+            'depth' => 0,
+            'source' => 'start',
+            'state' => 'fetched',
+            'status_code' => 200,
+            'title' => 'عنوان خزش فارسی',
+            'h1' => ['خدمات سئو'],
+            'indexable' => true,
+            'fetched_at' => now(),
+        ]);
+        $crawlSnapshot = $crawl->fresh()->getRawOriginal();
+        $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
+
         File::put($this->privateUploads.'/private-source.txt', 'private-source-durable');
         File::put($this->publicUploads.'/public-source.txt', 'public-source-durable');
         $this->seedVolatileRows('source', $sourceOwner->id);
@@ -360,6 +393,8 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertDatabaseHas('review_items', ['fingerprint' => hash('sha256', 'backup-restore-acceptance-review')]);
         $this->assertDatabaseHas('passkeys', ['credential_id' => 'source-passkey-credential']);
         $this->assertDatabaseMissing('passkeys', ['credential_id' => 'destination-passkey-credential']);
+        $this->assertSame($crawlSnapshot, CrawlRun::query()->findOrFail($crawl->id)->getRawOriginal());
+        $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);

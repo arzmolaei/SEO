@@ -30,6 +30,8 @@ class ApplicationTableCatalogTest extends TestCase
             'keyword_cluster_members',
             'pages',
             'cluster_targets',
+            'crawl_runs',
+            'crawl_urls',
         ];
 
         $catalog = new ApplicationTableCatalog;

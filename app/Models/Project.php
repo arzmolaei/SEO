@@ -15,6 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['workspace_id', 'name'])]
 class Project extends Model
 {
+    /** @return HasMany<CrawlRun, $this> */
+    public function crawlRuns(): HasMany
+    {
+        return $this->hasMany(CrawlRun::class);
+    }
+
     /** @return HasMany<ImportBatch, $this> */
     public function batches(): HasMany
     {

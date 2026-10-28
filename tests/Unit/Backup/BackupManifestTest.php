@@ -93,8 +93,9 @@ class BackupManifestTest extends TestCase
                 'staged_keyword_rows', 'keywords', 'keyword_sources', 'keyword_metrics',
                 'saved_keyword_views', 'change_sets', 'activity_events', 'keyword_intent_assignments',
                 'review_items', 'keyword_clusters', 'keyword_cluster_members', 'pages', 'cluster_targets',
+                'crawl_runs', 'crawl_urls',
             ],
-            array_keys(array_fill(0, 19, null)),
+            array_keys(array_fill(0, 21, null)),
         );
 
         return [
