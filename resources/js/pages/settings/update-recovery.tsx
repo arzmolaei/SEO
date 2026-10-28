@@ -23,6 +23,7 @@ type UpdateState = {
     preview: Preview | null;
     canContinue: boolean;
     canRecover: boolean;
+    canCancel: boolean;
 };
 type Result = {
     message?: string;
@@ -91,6 +92,9 @@ const copy = {
             'این بسته پایدار نیست؛ نسخه‌های آزمایشی را فقط پس از بررسی سازگاری و داشتن پشتیبان مستقل نصب کنید.',
         continue: 'ادامه به‌روزرسانی',
         recover: 'ادامه بازگردانی ایمن',
+        cancel: 'لغو به‌روزرسانی',
+        cancelHint:
+            'نسخه فعال هنوز تغییر نکرده است. با لغو، حالت نگهداری برداشته می‌شود و می‌توانید بعداً دوباره تلاش کنید.',
         refresh: 'بررسی دوباره وضعیت',
         manual: 'ادامه خودکار مسدود است. فایل‌های ایمنی را حفظ کنید و با مدیر فنی برای بررسی بسته و شواهد بازیابی هماهنگ کنید.',
         busy: 'در حال انجام عملیات…',
@@ -121,6 +125,9 @@ const copy = {
             'This is a non-stable release. Check compatibility and retain an independent backup before installing.',
         continue: 'Continue update',
         recover: 'Continue safe rollback',
+        cancel: 'Cancel update',
+        cancelHint:
+            'The active release has not changed. Cancelling lifts maintenance so you can retry later.',
         refresh: 'Refresh status',
         manual: 'Automatic continuation is blocked. Retain the safety artifacts and ask your system operator to inspect the recovery evidence.',
         busy: 'Working…',
@@ -147,7 +154,9 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
         phaseLabels[update.status]?.[locale === 'fa' ? 0 : 1] ?? update.status;
     const canUpload = update.status === 'ready';
 
-    async function run(action: 'verify' | 'confirm' | 'continue' | 'recover') {
+    async function run(
+        action: 'verify' | 'confirm' | 'continue' | 'recover' | 'cancel',
+    ) {
         if (inFlight.current) return;
         const body = new FormData();
         if (action === 'verify') {
@@ -267,6 +276,20 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
                                 {t.continue}
                             </Button>
                         )}
+                        {update.canCancel && (
+                            <>
+                                <p className="text-sm text-muted-foreground">
+                                    {t.cancelHint}
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    disabled={busy}
+                                    onClick={() => void run('cancel')}
+                                >
+                                    {t.cancel}
+                                </Button>
+                            </>
+                        )}
                         {update.canRecover && (
                             <Button
                                 disabled={busy}
@@ -362,6 +385,7 @@ export default function UpdateRecovery({ update }: { update: UpdateState }) {
                             <Button
                                 disabled={
                                     busy ||
+                                    update.status !== 'verified' ||
                                     digest !== preview.package_digest_sha256
                                 }
                                 onClick={() => void run('confirm')}

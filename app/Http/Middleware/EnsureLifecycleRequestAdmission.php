@@ -58,6 +58,7 @@ final class EnsureLifecycleRequestAdmission
             'POST /settings/update/confirm',
             'POST /settings/update/continue',
             'POST /settings/update/recover',
+            'POST /settings/update/cancel',
         ], true);
     }
 

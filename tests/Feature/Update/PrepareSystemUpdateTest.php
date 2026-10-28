@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\ApplicationSchemaFingerprint;
 use App\Services\Backup\RestoreJournal;
+use App\Services\Update\CancelPendingUpdate;
 use App\Services\Update\PreparedSystemUpdate;
 use App\Services\Update\PrepareSystemUpdate;
 use App\Services\Update\UpdateException;
@@ -226,6 +227,73 @@ class PrepareSystemUpdateTest extends TestCase
         $this->assertDirectoryDoesNotExist($this->safetyRoot);
         $this->assertDirectoryDoesNotExist($this->releaseRoot);
         $this->assertSame('root', $this->pointer->current()['kind']);
+    }
+
+    public function test_owner_can_cancel_a_pre_switch_update_blocked_by_active_work_and_retry(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        config([
+            'queue.default' => 'database',
+            'queue.connections.database.connection' => null,
+            'queue.connections.database.table' => 'jobs',
+        ]);
+        $reserved = DB::table('jobs')->insertGetId([
+            'queue' => 'default',
+            'payload' => '{}',
+            'attempts' => 1,
+            'reserved_at' => time(),
+            'available_at' => time(),
+            'created_at' => time(),
+        ]);
+        try {
+            $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+            $this->fail('Reserved work must block preparation.');
+        } catch (UpdateException) {
+        }
+        $this->assertTrue(UpdateJournal::isMaintenancePhase($this->journal->state()['phase'] ?? null));
+
+        $result = $this->app->make(CancelPendingUpdate::class)->handle();
+
+        $this->assertSame('ready', $result['status']);
+        $this->assertNull($this->journal->state());
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertFileDoesNotExist($this->uploadRoot.'/'.$preview->uploadId.'.seoupdate');
+
+        DB::table('jobs')->where('id', $reserved)->delete();
+        [$retry] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($retry->packageDigestSha256);
+        $this->assertSame('staged', $this->journal->state()['phase'] ?? null);
+    }
+
+    public function test_cancelling_a_fully_prepared_update_discards_the_safety_snapshot_and_keeps_the_source_active(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+        $this->assertFileExists($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
+
+        $this->app->make(CancelPendingUpdate::class)->handle();
+
+        $this->assertNull($this->journal->state());
+        $this->assertFileDoesNotExist($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
+        $this->assertFileDoesNotExist($this->safetyRoot.'/'.$preview->uploadId.'.json');
+        $this->assertSame('root', $this->pointer->current()['kind']);
+        $this->assertSame('0.1.0-alpha.1', $this->productVersion->requireDistributable());
+    }
+
+    public function test_cancel_is_refused_once_the_release_pointer_may_have_moved(): void
+    {
+        [$preview] = $this->verifyPackage('0.1.0-alpha.2');
+        $this->app->make(PrepareSystemUpdate::class)->handle($preview->packageDigestSha256);
+        $this->journal->transition('staged', 'switch_pending');
+
+        try {
+            $this->app->make(CancelPendingUpdate::class)->handle();
+            $this->fail('Cancellation after the switch began must be refused.');
+        } catch (UpdateException $exception) {
+            $this->assertSame('update_invalid_state', $exception->codeName());
+        }
+        $this->assertSame('switch_pending', $this->journal->state()['phase'] ?? null);
+        $this->assertFileExists($this->safetyRoot.'/'.$preview->uploadId.'.seobak');
     }
 
     public function test_prepare_rechecks_package_digest_and_source_version_and_schema_under_mutex_before_snapshot(): void

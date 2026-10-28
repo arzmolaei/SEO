@@ -6,6 +6,7 @@ use App\Enums\WorkspaceRole;
 use App\Models\Membership;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Update\UpdateJournal;
 use App\Support\InstallationState;
 use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,6 +72,45 @@ class UpdateAuthorizationTest extends TestCase
             ])
             ->assertHeader('Cache-Control', 'no-cache, no-store, private')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    public function test_owner_can_cancel_a_pre_switch_update_and_leave_maintenance(): void
+    {
+        $owner = User::factory()->create([
+            'email_verified_at' => now(),
+            'onboarded_at' => now(),
+        ]);
+        $otherOwner = $this->workspaceOwner(true);
+        $this->markInstalled($owner);
+        config(['backup.lifecycle_mutex_path' => $this->directory.'/lifecycle/lifecycle.lock']);
+        $journal = new UpdateJournal($this->directory.'/lifecycle/update/state.json');
+        $this->app->instance(UpdateJournal::class, $journal);
+        File::ensureDirectoryExists($this->directory.'/lifecycle/update');
+        File::put($this->directory.'/lifecycle/update/state.json', json_encode([
+            'phase' => 'quiescing',
+            'upload_id' => str_repeat('a', 32),
+        ], JSON_THROW_ON_ERROR));
+
+        $this->actingAs($owner)->getJson('/settings/update')
+            ->assertOk()
+            ->assertJson(['status' => 'quiescing', 'canCancel' => true, 'canContinue' => false]);
+        $this->actingAs($otherOwner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/cancel')
+            ->assertForbidden();
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => 0])
+            ->post('/settings/update/cancel')
+            ->assertRedirect(route('password.confirm'));
+        $this->assertSame('quiescing', $journal->state()['phase'] ?? null);
+
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->postJson('/settings/update/cancel')
+            ->assertOk()
+            ->assertJson(['status' => 'ready'])
+            ->assertHeader('Cache-Control', 'no-cache, no-store, private');
+        $this->assertNull($journal->state());
     }
 
     public function test_update_verify_requires_recent_password_and_system_owner(): void

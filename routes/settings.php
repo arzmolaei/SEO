@@ -69,6 +69,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
         ->name('settings.update.continue');
 
+    Route::post('settings/update/cancel', [SystemUpdateController::class, 'cancel'])
+        ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
+        ->name('settings.update.cancel');
+
     Route::post('settings/update/recover', [SystemUpdateController::class, 'recover'])
         ->middleware([RequirePassword::class, EnsureSystemOwner::class, 'throttle:update-lifecycle'])
         ->name('settings.update.recover');
