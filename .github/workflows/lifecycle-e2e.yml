@@ -1,0 +1,92 @@
+name: Lifecycle E2E
+
+# Real browser + real MariaDB + separately served packaged runtime processes.
+# Proves the self-host lifecycle the way an operator performs it; see
+# docs/release-readiness/update-recovery-rollback.md.
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lifecycle-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lifecycle-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-secret
+          MARIADB_USER: seo_e2e
+          MARIADB_PASSWORD: e2e-secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      LIFECYCLE_DB_HOST: 127.0.0.1
+      LIFECYCLE_DB_PORT: '3306'
+      LIFECYCLE_DB_USERNAME: seo_e2e
+      LIFECYCLE_DB_PASSWORD: e2e-secret
+      LIFECYCLE_DB_ROOT_USERNAME: root
+      LIFECYCLE_DB_ROOT_PASSWORD: root-secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_mysql
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Grant the application user its disposable databases
+        run: >-
+          mysql -h 127.0.0.1 -P 3306 -u root -proot-secret
+          -e "GRANT ALL ON \`seo\\_e2e\\_%\`.* TO 'seo_e2e'@'%'; FLUSH PRIVILEGES;"
+
+      - name: Install dependencies and build frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --prefer-dist --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate --ansi
+          timeout 180s npm ci --prefer-offline --no-audit
+          bash scripts/fonts/fetch-vazirmatn.sh
+          php artisan wayfinder:generate --with-form
+          npm run build
+
+      - name: Build the runtime-only release tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
+          php scripts/release/build-release.php "$RUNNER_TEMP/seo-os-release"
+          test ! -e "$RUNNER_TEMP/seo-os-release/vendor/phpunit/phpunit"
+          test ! -e "$RUNNER_TEMP/seo-os-release/.env"
+
+      - name: Run browser lifecycle acceptance
+        run: node tests/Acceptance/Lifecycle/run.mjs "$RUNNER_TEMP/seo-os-release"
