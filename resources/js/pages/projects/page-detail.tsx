@@ -108,12 +108,20 @@ export default function PageDetail({
             <ProjectWorkspaceShell>
                 <div className="mx-auto max-w-5xl space-y-6">
                     <header className="space-y-2">
-                        <Link
-                            href={base}
-                            className="text-sm text-muted-foreground hover:underline"
-                        >
-                            {t('pages.back')}
-                        </Link>
+                        <div className="flex flex-wrap justify-between gap-2">
+                            <Link
+                                href={base}
+                                className="text-sm text-muted-foreground hover:underline"
+                            >
+                                {t('pages.back')}
+                            </Link>
+                            <Link
+                                href={`/projects/${projectContext?.project.id}/tasks?page_id=${page.id}`}
+                                className="text-sm text-muted-foreground hover:underline"
+                            >
+                                {t('tasks.pageLink')}
+                            </Link>
+                        </div>
                         <h1 className="text-2xl font-semibold tracking-tight">
                             {page.title || page.seo_title || page.url}
                         </h1>
