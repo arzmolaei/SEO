@@ -13,6 +13,7 @@ use App\Http\Controllers\KeywordIntelligenceController;
 use App\Http\Controllers\PageLiveCheckController;
 use App\Http\Controllers\PageWorkspaceController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectReportController;
 use App\Http\Controllers\ProjectSeoExportController;
 use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\ReviewQueueController;
@@ -94,6 +95,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('projects/{project}/performance/imports/{searchConsoleImport}', [SearchConsoleController::class, 'destroy'])
         ->scopeBindings()->name('projects.performance.destroy');
 
+    Route::get('projects/{project}/reports', [ProjectReportController::class, 'index'])->name('projects.reports.index');
+    Route::get('projects/{project}/reports/report.csv', [ProjectReportController::class, 'csv'])->name('projects.reports.csv');
+
     Route::get('projects/{project}/imports', [KeywordImportController::class, 'index'])->name('projects.keyword-imports.index');
     Route::post('projects/{project}/imports', [KeywordImportController::class, 'store'])->name('projects.keyword-imports.store');
     Route::scopeBindings()->group(function (): void {
@@ -130,7 +134,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/overview', [ProjectWorkspaceController::class, 'overview'])->name('projects.overview');
     Route::get('projects/{project}/keywords', [KeywordGridController::class, 'index'])->name('projects.keywords.index');
     Route::get('projects/{project}/{section}', [ProjectWorkspaceController::class, 'section'])
-        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews', 'pages', 'content', 'tasks', 'internal-links', 'performance'], true))))
+        ->whereIn('section', array_values(array_filter(ProjectWorkspaceContext::SECTIONS, fn (string $section): bool => ! in_array($section, ['overview', 'keywords', 'reviews', 'pages', 'content', 'tasks', 'internal-links', 'performance', 'reports'], true))))
         ->name('projects.section');
 });
 

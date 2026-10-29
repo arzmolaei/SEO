@@ -141,3 +141,26 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Printing a report shows only the report itself, whatever the app layout. */
+@media print {
+    body:has([data-print-root]) * {
+        visibility: hidden;
+    }
+
+    [data-print-root],
+    [data-print-root] * {
+        visibility: visible;
+    }
+
+    [data-print-root] {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        max-width: none;
+    }
+
+    [data-print-hide] {
+        display: none !important;
+    }
+}
