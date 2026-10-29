@@ -281,6 +281,20 @@ export class Browser {
         );
     }
 
+    // One-shot variant of click(): the page may navigate away (e.g. to
+    // /login) between seeing a control and clicking it.
+    async tryClick(label) {
+        return this.evaluate(`(() => {
+            const label = ${JSON.stringify(label)};
+            const element = [...document.querySelectorAll('button, a, [role="button"]')].find((node) =>
+                (node.innerText || node.getAttribute('aria-label') || '').includes(label) &&
+                !node.disabled && node.getAttribute('aria-disabled') !== 'true' && node.offsetParent !== null);
+            if (!element) return false;
+            element.click();
+            return true;
+        })()`);
+    }
+
     async hasControl(label) {
         return this.evaluate(
             `(() => [...document.querySelectorAll('button, a')].some((node) => (node.innerText || '').includes(${JSON.stringify(label)}) && node.offsetParent !== null))()`,
