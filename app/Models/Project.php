@@ -39,6 +39,12 @@ class Project extends Model
         return $this->hasMany(ProjectTask::class);
     }
 
+    /** @return HasMany<SearchConsoleImport, $this> */
+    public function searchConsoleImports(): HasMany
+    {
+        return $this->hasMany(SearchConsoleImport::class);
+    }
+
     /** @return HasMany<ImportBatch, $this> */
     public function batches(): HasMany
     {

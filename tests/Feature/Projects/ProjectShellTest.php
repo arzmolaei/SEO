@@ -35,7 +35,7 @@ class ProjectShellTest extends TestCase
             ->where('projectContext.project.workspace_id', $workspace->id)
             ->where('projectContext.mode', 'guided')
             // Only built, in-scope sections are offered (docs/OWNER_INTENT.md).
-            ->has('projectContext.navigation', 8)
+            ->has('projectContext.navigation', 9)
             ->where('projectContext.navigation.0.key', 'overview')
             ->where('projectContext.navigation.1.key', 'keywords')
             ->where('projectContext.navigation.2.key', 'imports')
@@ -49,6 +49,8 @@ class ProjectShellTest extends TestCase
             ->where('projectContext.navigation.6.href', route('projects.content.index', $project))
             ->where('projectContext.navigation.7.key', 'tasks')
             ->where('projectContext.navigation.7.href', route('projects.tasks.index', $project))
+            ->where('projectContext.navigation.8.key', 'performance')
+            ->where('projectContext.navigation.8.href', route('projects.performance.index', $project))
         );
     }
 

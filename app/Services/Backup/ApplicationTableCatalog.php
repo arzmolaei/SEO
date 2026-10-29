@@ -32,6 +32,8 @@ final class ApplicationTableCatalog
         'crawl_urls',
         'content_briefs',
         'project_tasks',
+        'search_console_imports',
+        'search_console_rows',
     ];
 
     /** @var list<string> */

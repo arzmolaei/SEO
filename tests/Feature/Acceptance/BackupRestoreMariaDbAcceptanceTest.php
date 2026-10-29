@@ -22,6 +22,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ReviewItem;
 use App\Models\SavedKeywordView;
+use App\Models\SearchConsoleImport;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Backup\ApplicationSchemaFingerprint;
@@ -41,11 +42,13 @@ use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\StageKeywordImport;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
+use App\Services\SearchConsole\ImportSearchConsoleCsv;
 use App\Services\Tasks\ProjectTasks;
 use App\Services\Workspaces\CreateWorkspace;
 use App\Support\InstallationState;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Lifecycle\ProductVersion;
+use Carbon\CarbonImmutable;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
@@ -327,6 +330,14 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'page_id' => $page->id, 'keyword_cluster_id' => $cluster->id,
         ]);
         $taskSnapshot = $task->fresh()?->getRawOriginal();
+        $searchCsv = $this->directory.'/Queries.csv';
+        File::put($searchCsv, "\xEF\xBB\xBFپرسش‌های برتر,کلیک‌ها,نمایش‌ها,CTR,جایگاه\nخدمات سئو,۱۲,۴۰۰,3%,۶٫۴\n");
+        $searchImport = app(ImportSearchConsoleCsv::class)->handle(
+            $sourceProject, $sourceOwner, $searchCsv, 'Queries.csv',
+            CarbonImmutable::parse('2026-09-01'), CarbonImmutable::parse('2026-09-30'),
+        );
+        $searchImportSnapshot = $searchImport->fresh()?->getRawOriginal();
+        $searchRowSnapshot = (array) DB::table('search_console_rows')->where('search_console_import_id', $searchImport->id)->sole();
         $crawlSnapshot = $crawl->fresh()->getRawOriginal();
         $crawlUrlSnapshot = $crawlUrl->fresh()->getRawOriginal();
 
@@ -413,6 +424,8 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
         $this->assertSame($briefSnapshot, ContentBrief::query()->findOrFail($brief->id)->getRawOriginal());
         $this->assertSame($taskSnapshot, ProjectTask::query()->findOrFail($task->id)->getRawOriginal());
+        $this->assertSame($searchImportSnapshot, SearchConsoleImport::query()->findOrFail($searchImport->id)->getRawOriginal());
+        $this->assertSame($searchRowSnapshot, (array) DB::table('search_console_rows')->where('search_console_import_id', $searchImport->id)->sole());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());
         $this->assertSame(1, Keyword::query()->where('project_id', $isolatedProject->id)->count());
         $this->assertSame("+سئو\u{200C}سایت", Keyword::query()->findOrFail($primary->id)->display_text);
