@@ -35,6 +35,8 @@ class ApplicationTableCatalogTest extends TestCase
             'content_briefs',
             'project_tasks',
             'internal_link_decisions',
+            'search_console_imports',
+            'search_console_rows',
         ];
 
         $catalog = new ApplicationTableCatalog;

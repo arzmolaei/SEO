@@ -35,14 +35,23 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   because the half-started Chrome kept Node alive. Fixed in PR #39 (failed launch
   attempts are killed and retried once; the runner always exits after cleanup).
   Design note `docs/superpowers/specs/2026-10-28-tasks-design.md`.
-- **Slice 6 — internal link suggestions: in review** on `feature/internal-links`.
-  Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`. New
-  durable table `internal_link_decisions` (backup catalog + connected fixture).
-  Local evidence on PHP 8.4.16 + MariaDB 10.11: full suite 792 passed / 19 gated
-  skips; Pint, PHPStan, npm check, tsc, vitest pass; all six connected suites pass
-  with `--fail-on-skipped`. Not done until exact-head CI on all three workflows is
-  green, merged and post-merge main is green.
-- Next after slice 6: slice 7 (Search Console CSV import + opportunities).
+- **Slice 6 — internal link suggestions: done.** PR #39 merged with expected head
+  `10c0c23` as `258fd94072f908fbde72d6247d0a0e7b7c577443`; all 16 exact-head checks
+  green. It also carries two fixes found on main: the lifecycle harness no longer
+  hangs when Chrome fails to start (`0cea727`), and `symfony/mime` 8.1.7 → 8.1.10
+  for CVE-2026-45070, which had turned `composer audit` red on every branch
+  (`10c0c23`). Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`.
+- **Slice 7 — Search Console CSV import + opportunities: in review** on
+  `feature/search-console`. Design note
+  `docs/superpowers/specs/2026-10-29-search-console-design.md`. New durable tables
+  `search_console_imports` and `search_console_rows` (backup catalog + connected
+  fixture). Local evidence on PHP 8.4.16 + MariaDB 10.11 after merging main: full
+  suite 800 passed / 19 gated skips; Pint, PHPStan, npm check, tsc and vitest pass;
+  connected backup/restore and update-migration suites pass with
+  `--fail-on-skipped` (the other four connected suites passed before the merge).
+  Not done until exact-head CI on all three workflows is green, merged and
+  post-merge main is green.
+- Next after slice 7: slice 8 (project report), the last V1 slice.
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over

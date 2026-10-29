@@ -717,6 +717,32 @@ async function exerciseTasks(browser, instance, projectId) {
     await browser.waitForText('پیشنهادها (');
 }
 
+// A Persian Search Console queries export is imported; its opportunities are
+// listed and one becomes a task.
+async function importSearchConsole(browser, instance, projectId) {
+    log(
+        `${instance.name}: Search Console CSV import and opportunities through UI`,
+    );
+    await browser.goto(`${instance.base}/projects/${projectId}/performance`);
+    await browser.waitForText('وارد کردن فایل سرچ کنسول');
+    await browser.setFile(
+        '#sc-file',
+        join(fixtures, 'search-console-queries-fa.csv'),
+    );
+    await browser.click('وارد کردن', { exact: true });
+    await browser.waitFor(
+        () =>
+            browser.evaluate(
+                `!!document.querySelector('[data-summary="queries"]')`,
+            ),
+        'imported queries summary',
+    );
+    await browser.waitForText('نزدیک صدر (۱)');
+    await browser.waitForText('کلیک کمتر از انتظار (۱)');
+    await browser.click('افزودن به کارها', { exact: true });
+    await browser.waitForText('به کارها اضافه شد');
+}
+
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
     log(
         `${instance.name}: download and validate Persian SEO CSV through UI link`,
@@ -1408,6 +1434,7 @@ async function main() {
         await exercisePagesWorkspace(browser, source, projectId);
         await exerciseContentBrief(browser, source, projectId);
         await exerciseTasks(browser, source, projectId);
+        await importSearchConsole(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
         const restored = await backupRestoreLifecycle(
             browser,
