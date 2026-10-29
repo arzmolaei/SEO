@@ -26,6 +26,7 @@ class ProjectWorkspaceContext
         'tasks',
         'internal-links',
         'performance',
+        'reports',
     ];
 
     public const SECTIONS = [
@@ -71,6 +72,7 @@ class ProjectWorkspaceContext
                         'tasks' => route('projects.tasks.index', $project),
                         'internal-links' => route('projects.internal-links.index', $project),
                         'performance' => route('projects.performance.index', $project),
+                        'reports' => route('projects.reports.index', $project),
                         'site-audit' => route('projects.crawls.index', $project),
                         default => route('projects.section', ['project' => $project, 'section' => $section]),
                     },

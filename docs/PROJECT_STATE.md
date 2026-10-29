@@ -41,17 +41,19 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   hangs when Chrome fails to start (`0cea727`), and `symfony/mime` 8.1.7 → 8.1.10
   for CVE-2026-45070, which had turned `composer audit` red on every branch
   (`10c0c23`). Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`.
-- **Slice 7 — Search Console CSV import + opportunities: in review** on
-  `feature/search-console`. Design note
+- **Slice 7 — Search Console CSV import + opportunities: done.** PR #40 merged with
+  expected head `5a8406c` as `8e2580c00c72e58e8661e6b72c96d33eb58d170a`; all 16
+  exact-head checks green. Design note
   `docs/superpowers/specs/2026-10-29-search-console-design.md`. New durable tables
-  `search_console_imports` and `search_console_rows` (backup catalog + connected
-  fixture). Local evidence on PHP 8.4.16 + MariaDB 10.11 after merging main: full
-  suite 800 passed / 19 gated skips; Pint, PHPStan, npm check, tsc and vitest pass;
-  connected backup/restore and update-migration suites pass with
-  `--fail-on-skipped` (the other four connected suites passed before the merge).
+  `search_console_imports` / `search_console_rows` (backup catalog + connected fixture).
+- **Slice 8 — project report: in review** on `feature/project-report`. Design note
+  `docs/superpowers/specs/2026-10-29-project-report-design.md`. Read-only (no new
+  table). Local evidence on PHP 8.4.16: full suite 804 passed / 19 gated skips;
+  Pint, PHPStan, npm check, tsc and vitest pass; report tests pass on MariaDB 10.11.
   Not done until exact-head CI on all three workflows is green, merged and
   post-merge main is green.
-- Next after slice 7: slice 8 (project report), the last V1 slice.
+- After slice 8 (the last V1 slice): tag a release, the owner uses it, and only
+  problems found in real use become new work (docs/DELIVERY_PLAN.md).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over

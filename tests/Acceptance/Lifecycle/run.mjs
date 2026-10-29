@@ -743,6 +743,32 @@ async function importSearchConsole(browser, instance, projectId) {
     await browser.waitForText('به کارها اضافه شد');
 }
 
+// The project report summarises the work done above and downloads as CSV.
+async function checkProjectReport(browser, instance, projectId) {
+    log(`${instance.name}: project report and CSV through UI`);
+    const base = `/projects/${projectId}/reports`;
+    await browser.goto(`${instance.base}${base}`);
+    await browser.waitForText('کارهای انجام‌شده در این دوره');
+    const recorded = await browser.evaluate(
+        `[...document.querySelectorAll('[data-activity]')].map((node) => node.dataset.activity)`,
+    );
+    assert(
+        recorded.includes('task.created') &&
+            recorded.includes('search_console.imported'),
+        'report lists the work done in the period',
+        recorded,
+    );
+    const csvHref = await browser.evaluate(
+        `document.querySelector('a[href*="/reports/report.csv"]')?.getAttribute('href') ?? ''`,
+    );
+    const csv = await browser.fetchText(csvHref);
+    assert(csv.status === 200, 'report CSV downloads', csv);
+    assert(
+        csv.body.includes('tasks.done_in_period'),
+        'report CSV contains the task figures',
+    );
+}
+
 async function downloadAndValidatePersianExport(browser, instance, projectId) {
     log(
         `${instance.name}: download and validate Persian SEO CSV through UI link`,
@@ -1435,6 +1461,7 @@ async function main() {
         await exerciseContentBrief(browser, source, projectId);
         await exerciseTasks(browser, source, projectId);
         await importSearchConsole(browser, source, projectId);
+        await checkProjectReport(browser, source, projectId);
         await downloadAndValidatePersianExport(browser, source, projectId);
         const restored = await backupRestoreLifecycle(
             browser,
