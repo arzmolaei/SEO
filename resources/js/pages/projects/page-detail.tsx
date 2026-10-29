@@ -121,6 +121,12 @@ export default function PageDetail({
                             >
                                 {t('tasks.pageLink')}
                             </Link>
+                            <Link
+                                href={`/projects/${projectContext?.project.id}/internal-links?page_id=${page.id}`}
+                                className="text-sm text-muted-foreground hover:underline"
+                            >
+                                {t('links.pageLink')}
+                            </Link>
                         </div>
                         <h1 className="text-2xl font-semibold tracking-tight">
                             {page.title || page.seo_title || page.url}

@@ -13,6 +13,7 @@ use App\Models\ChangeSet;
 use App\Models\ContentBrief;
 use App\Models\CrawlRun;
 use App\Models\CrawlUrl;
+use App\Models\InternalLinkDecision;
 use App\Models\Keyword;
 use App\Models\KeywordIntentAssignment;
 use App\Models\KeywordMetric;
@@ -40,6 +41,7 @@ use App\Services\Keywords\CommitKeywordImportBatch;
 use App\Services\Keywords\CreateKeywordCluster;
 use App\Services\Keywords\MapClusterToTarget;
 use App\Services\Keywords\StageKeywordImport;
+use App\Services\Links\InternalLinks;
 use App\Services\Pages\CreatePlannedPage;
 use App\Services\Projects\CreateProject;
 use App\Services\SearchConsole\ImportSearchConsoleCsv;
@@ -330,6 +332,10 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
             'page_id' => $page->id, 'keyword_cluster_id' => $cluster->id,
         ]);
         $taskSnapshot = $task->fresh()?->getRawOriginal();
+        $linkedPage = app(CreatePlannedPage::class)->handle($sourceOwner, $sourceProject, 'صفحه آموزش سئو');
+        app(InternalLinks::class)->decide($sourceProject, $sourceOwner, $linkedPage->id, $page->id, 'done', 'خدمات سئو');
+        $linkDecision = InternalLinkDecision::query()->where('project_id', $sourceProject->id)->sole();
+        $linkSnapshot = $linkDecision->getRawOriginal();
         $searchCsv = $this->directory.'/Queries.csv';
         File::put($searchCsv, "\xEF\xBB\xBFپرسش‌های برتر,کلیک‌ها,نمایش‌ها,CTR,جایگاه\nخدمات سئو,۱۲,۴۰۰,3%,۶٫۴\n");
         $searchImport = app(ImportSearchConsoleCsv::class)->handle(
@@ -424,6 +430,7 @@ class BackupRestoreMariaDbAcceptanceTest extends TestCase
         $this->assertSame($crawlUrlSnapshot, CrawlUrl::query()->findOrFail($crawlUrl->id)->getRawOriginal());
         $this->assertSame($briefSnapshot, ContentBrief::query()->findOrFail($brief->id)->getRawOriginal());
         $this->assertSame($taskSnapshot, ProjectTask::query()->findOrFail($task->id)->getRawOriginal());
+        $this->assertSame($linkSnapshot, InternalLinkDecision::query()->findOrFail($linkDecision->id)->getRawOriginal());
         $this->assertSame($searchImportSnapshot, SearchConsoleImport::query()->findOrFail($searchImport->id)->getRawOriginal());
         $this->assertSame($searchRowSnapshot, (array) DB::table('search_console_rows')->where('search_console_import_id', $searchImport->id)->sole());
         $this->assertSame(2, Keyword::query()->where('project_id', $sourceProject->id)->count());

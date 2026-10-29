@@ -16,61 +16,83 @@ const CHROME_CANDIDATES = [
 
 export class Browser {
     static async launch() {
-        const profile = mkdtempSync(join(tmpdir(), 'seo-lifecycle-chrome-'));
         let lastError = null;
-        for (const binary of CHROME_CANDIDATES) {
-            try {
-                const child = spawn(
-                    binary,
-                    [
-                        '--headless=new',
-                        '--no-sandbox',
-                        '--disable-gpu',
-                        '--disable-dev-shm-usage',
-                        '--no-first-run',
-                        '--no-default-browser-check',
-                        '--remote-debugging-port=0',
-                        '--lang=fa-IR',
-                        `--user-data-dir=${profile}`,
-                        'about:blank',
-                    ],
-                    { stdio: ['ignore', 'ignore', 'pipe'], detached: true },
+        // A runner occasionally starts Chrome without DevTools; one more
+        // round of attempts separates that from a real launch problem.
+        for (let round = 1; round <= 2; round++) {
+            for (const binary of CHROME_CANDIDATES) {
+                const profile = mkdtempSync(
+                    join(tmpdir(), 'seo-lifecycle-chrome-'),
                 );
-                const endpoint = await new Promise((resolve, reject) => {
-                    let buffer = '';
-                    const timer = setTimeout(
-                        () =>
-                            reject(
-                                new Error('Chrome did not expose DevTools.'),
-                            ),
-                        20000,
+                let child = null;
+                try {
+                    child = spawn(
+                        binary,
+                        [
+                            '--headless=new',
+                            '--no-sandbox',
+                            '--disable-gpu',
+                            '--disable-dev-shm-usage',
+                            '--no-first-run',
+                            '--no-default-browser-check',
+                            '--remote-debugging-port=0',
+                            '--lang=fa-IR',
+                            `--user-data-dir=${profile}`,
+                            'about:blank',
+                        ],
+                        { stdio: ['ignore', 'ignore', 'pipe'], detached: true },
                     );
-                    child.once('error', (error) => {
-                        clearTimeout(timer);
-                        reject(error);
-                    });
-                    child.stderr.on('data', (chunk) => {
-                        buffer += chunk.toString();
-                        const match = buffer.match(
-                            /DevTools listening on (ws:\/\/\S+)/,
+                    const started = child;
+                    const endpoint = await new Promise((resolve, reject) => {
+                        let buffer = '';
+                        const timer = setTimeout(
+                            () =>
+                                reject(
+                                    new Error(
+                                        'Chrome did not expose DevTools.',
+                                    ),
+                                ),
+                            20000,
                         );
-                        if (match) {
+                        started.once('error', (error) => {
                             clearTimeout(timer);
-                            resolve(match[1]);
-                        }
+                            reject(error);
+                        });
+                        started.stderr.on('data', (chunk) => {
+                            buffer += chunk.toString();
+                            const match = buffer.match(
+                                /DevTools listening on (ws:\/\/\S+)/,
+                            );
+                            if (match) {
+                                clearTimeout(timer);
+                                resolve(match[1]);
+                            }
+                        });
                     });
-                });
-                const browser = new Browser(child, profile, endpoint);
-                await browser.connect();
-                return browser;
-            } catch (error) {
-                lastError = error;
+                    const browser = new Browser(child, profile, endpoint);
+                    await browser.connect();
+                    return browser;
+                } catch (error) {
+                    lastError = error;
+                    // A half-started Chrome keeps this process alive; end it.
+                    Browser.kill(child);
+                    rmSync(profile, { recursive: true, force: true });
+                }
             }
         }
-        rmSync(profile, { recursive: true, force: true });
         throw new Error(
             `Unable to launch Chrome: ${lastError?.message ?? 'not found'}`,
         );
+    }
+
+    static kill(child) {
+        if (!child || child.exitCode !== null) return;
+        child.stderr?.destroy();
+        try {
+            process.kill(-child.pid, 'SIGKILL');
+        } catch {
+            child.kill('SIGKILL');
+        }
     }
 
     constructor(child, profile, endpoint) {

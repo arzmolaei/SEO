@@ -27,11 +27,31 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   `40726148292`, Lifecycle E2E `40726148376`. Design note
   `docs/superpowers/specs/2026-10-28-content-briefs-design.md`.
   New durable table `content_briefs` is in backups and the connected fixture.
-- **Slice 5 — tasks: in review** on `feature/tasks`. Design note
-  `docs/superpowers/specs/2026-10-28-tasks-design.md`. New durable table
-  `project_tasks` (backup catalog + connected fixture). Not done until exact-head CI
-  on all three workflows is green, merged and post-merge main is green.
-- Next after slice 5: slice 6 (internal link suggestions).
+- **Slice 5 — tasks: done.** PR #38 merged with expected head `5d7f310` as
+  `0ef539f3ca51079479b4c6a80490c51737029668`. Exact-head PR checks (16) green;
+  post-merge main: CI `40728478716` and Update Rollback MariaDB `40728478679` green;
+  Lifecycle E2E `40728478800` was cancelled at the job timeout before any test
+  step: Chrome did not expose DevTools on that runner, and the harness then hung
+  because the half-started Chrome kept Node alive. Fixed in PR #39 (failed launch
+  attempts are killed and retried once; the runner always exits after cleanup).
+  Design note `docs/superpowers/specs/2026-10-28-tasks-design.md`.
+- **Slice 6 — internal link suggestions: done.** PR #39 merged with expected head
+  `10c0c23` as `258fd94072f908fbde72d6247d0a0e7b7c577443`; all 16 exact-head checks
+  green. It also carries two fixes found on main: the lifecycle harness no longer
+  hangs when Chrome fails to start (`0cea727`), and `symfony/mime` 8.1.7 → 8.1.10
+  for CVE-2026-45070, which had turned `composer audit` red on every branch
+  (`10c0c23`). Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`.
+- **Slice 7 — Search Console CSV import + opportunities: in review** on
+  `feature/search-console`. Design note
+  `docs/superpowers/specs/2026-10-29-search-console-design.md`. New durable tables
+  `search_console_imports` and `search_console_rows` (backup catalog + connected
+  fixture). Local evidence on PHP 8.4.16 + MariaDB 10.11 after merging main: full
+  suite 800 passed / 19 gated skips; Pint, PHPStan, npm check, tsc and vitest pass;
+  connected backup/restore and update-migration suites pass with
+  `--fail-on-skipped` (the other four connected suites passed before the merge).
+  Not done until exact-head CI on all three workflows is green, merged and
+  post-merge main is green.
+- Next after slice 7: slice 8 (project report), the last V1 slice.
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over

@@ -315,6 +315,26 @@ const messages = {
         'pages.primaryKeyword': 'کلمه کلیدی اصلی',
         'pages.secondaryKeywords': 'کلمات کلیدی مرتبط برای استفاده در متن',
         'pages.noAddress': 'بدون آدرس',
+        'links.intro':
+            'صفحه‌هایی که موضوع مشترک دارند باید به هم لینک بدهند. این پیشنهادها از خوشه‌ها و صفحه‌های هدفشان ساخته شده‌اند؛ متن لینک پیشنهادی همان کلمه کلیدی صفحه مقصد است.',
+        'links.view.open': 'پیشنهادها',
+        'links.view.done': 'اضافه‌شده',
+        'links.view.dismissed': 'کنار گذاشته',
+        'links.from': 'در صفحه',
+        'links.to': 'به این صفحه لینک بدهید',
+        'links.anchor': 'متن لینک',
+        'links.alternatives': 'متن‌های دیگر',
+        'links.shared': 'موضوع مشترک',
+        'links.done': 'لینک را اضافه کردم',
+        'links.dismiss': 'مفید نیست',
+        'links.reopen': 'بازگرداندن',
+        'links.empty': 'پیشنهادی در این فهرست نیست.',
+        'links.needMapping':
+            'برای پیشنهاد لینک، دست‌کم دو خوشه باید به صفحه اختصاص داده شده باشند (بخش کلمات کلیدی، تب «اختصاص صفحه»).',
+        'links.focus': 'لینک‌های مربوط به صفحه',
+        'links.clearFocus': 'نمایش همه',
+        'links.copied': 'کپی شد',
+        'links.pageLink': 'پیشنهاد لینک داخلی',
         'perf.intro':
             'داده‌های سرچ کنسول را با فایل CSV وارد کنید تا ببینید سایت در گوگل چطور دیده می‌شود و کجا فرصت رشد دارد. هیچ اتصالی به گوگل لازم نیست.',
         'perf.howTo':
@@ -815,6 +835,26 @@ const messages = {
         'pages.primaryKeyword': 'Primary keyword',
         'pages.secondaryKeywords': 'Related keywords to use in the copy',
         'pages.noAddress': 'No address',
+        'links.intro':
+            'Pages that share a topic should link to each other. These suggestions come from your clusters and their target pages; the suggested link text is the target page’s keyword.',
+        'links.view.open': 'Suggestions',
+        'links.view.done': 'Added',
+        'links.view.dismissed': 'Dismissed',
+        'links.from': 'On page',
+        'links.to': 'link to this page',
+        'links.anchor': 'Link text',
+        'links.alternatives': 'Other texts',
+        'links.shared': 'Shared topic',
+        'links.done': 'I added the link',
+        'links.dismiss': 'Not useful',
+        'links.reopen': 'Restore',
+        'links.empty': 'No suggestions in this list.',
+        'links.needMapping':
+            'Link suggestions need at least two clusters mapped to pages (Keywords, “Page mapping” tab).',
+        'links.focus': 'Links for page',
+        'links.clearFocus': 'Show all',
+        'links.copied': 'Copied',
+        'links.pageLink': 'Internal link suggestions',
         'perf.intro':
             'Import Search Console data as CSV to see how your site appears in Google and where it can grow. No connection to Google is needed.',
         'perf.howTo':

@@ -32,6 +32,7 @@ final class ApplicationTableCatalog
         'crawl_urls',
         'content_briefs',
         'project_tasks',
+        'internal_link_decisions',
         'search_console_imports',
         'search_console_rows',
     ];
