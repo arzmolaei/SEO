@@ -1397,10 +1397,7 @@ async function finishRecovery(browser, instance) {
             await openUpdatePage(browser, instance, OWNER);
         const text = await browser.text();
         if (text.includes('آماده دریافت بسته')) return;
-        if (await browser.hasControl('ادامه بازگردانی ایمن')) {
-            await browser.click('ادامه بازگردانی ایمن');
-            continue;
-        }
+        if (await browser.tryClick('ادامه بازگردانی ایمن')) continue;
         if (text.includes('بازیابی خودکار قابل اثبات نیست'))
             throw new Error('Recovery stopped in recovery_required');
     }
@@ -1412,7 +1409,8 @@ async function finishRecovery(browser, instance) {
 async function resolveAfterInterruption(browser, instance) {
     const text = await browser.text();
     if (await browser.hasControl('ادامه بازگردانی ایمن')) {
-        await browser.click('ادامه بازگردانی ایمن');
+        // finishRecovery re-logs in and retries if this click is lost.
+        await browser.tryClick('ادامه بازگردانی ایمن');
         await finishRecovery(browser, instance);
         return;
     }
@@ -1421,7 +1419,7 @@ async function resolveAfterInterruption(browser, instance) {
         await sleep(3000);
         await openUpdatePage(browser, instance, OWNER);
         if (await browser.hasControl('ادامه بازگردانی ایمن')) {
-            await browser.click('ادامه بازگردانی ایمن');
+            await browser.tryClick('ادامه بازگردانی ایمن');
             await finishRecovery(browser, instance);
         }
         return;
