@@ -29,8 +29,11 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   New durable table `content_briefs` is in backups and the connected fixture.
 - **Slice 5 — tasks: done.** PR #38 merged with expected head `5d7f310` as
   `0ef539f3ca51079479b4c6a80490c51737029668`. Exact-head PR checks (16) green;
-  post-merge main: CI `40728478716` and Update Rollback MariaDB `40728478679` green,
-  Lifecycle E2E `40728478800` was still running at this checkpoint (verify it).
+  post-merge main: CI `40728478716` and Update Rollback MariaDB `40728478679` green;
+  Lifecycle E2E `40728478800` was cancelled at the job timeout before any test
+  step: Chrome did not expose DevTools on that runner, and the harness then hung
+  because the half-started Chrome kept Node alive. Fixed in PR #39 (failed launch
+  attempts are killed and retried once; the runner always exits after cleanup).
   Design note `docs/superpowers/specs/2026-10-28-tasks-design.md`.
 - **Slice 6 — internal link suggestions: in review** on `feature/internal-links`.
   Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`. New

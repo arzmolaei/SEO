@@ -1442,4 +1442,6 @@ try {
             retryDelay: 200,
         });
     else log(`artifacts kept in ${work}`);
+    // Never let a stray child handle keep the job running until its timeout.
+    process.exit(process.exitCode ?? 0);
 }
