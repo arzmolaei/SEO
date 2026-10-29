@@ -82,7 +82,7 @@ class CrawlController extends Controller
         ]);
         foreach (['include', 'exclude'] as $field) {
             $prefixes = $this->lines($data[$field] ?? '');
-            if (count($prefixes) > 50 || array_any($prefixes, static fn (string $prefix): bool => ! str_starts_with(trim($prefix), '/') || strlen(trim($prefix)) > 512)) {
+            if (count($prefixes) > 50 || collect($prefixes)->contains(static fn (string $prefix): bool => ! str_starts_with(trim($prefix), '/') || strlen(trim($prefix)) > 512)) {
                 throw ValidationException::withMessages([$field => 'حداکثر ۵۰ پیشوند مسیر معتبر با / وارد کنید.']);
             }
         }

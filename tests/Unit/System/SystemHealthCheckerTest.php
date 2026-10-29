@@ -184,7 +184,7 @@ class SystemHealthCheckerTest extends TestCase
     private function probe(array $overrides = []): SystemProbe
     {
         $state = array_merge([
-            'phpVersion' => '8.4.1',
+            'phpVersion' => '8.3.0',
             'missingExtensions' => [],
             'writable' => true,
             'databaseReachable' => true,

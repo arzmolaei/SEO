@@ -132,7 +132,7 @@ class InstallerFinalizationTest extends TestCase
 
     public function test_failed_preflight_cannot_write_installed_lock(): void
     {
-        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.4.0'));
+        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.2.0'));
 
         $this->finalizeRequest()
             ->assertRedirect('/install')
@@ -344,7 +344,7 @@ class InstallerFinalizationTest extends TestCase
         ];
     }
 
-    private function probe(string $phpVersion = '8.4.1'): SystemProbe
+    private function probe(string $phpVersion = '8.3.0'): SystemProbe
     {
         return new class($phpVersion) implements SystemProbe
         {

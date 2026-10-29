@@ -174,7 +174,7 @@ class BuildSystemUpdatePackageTest extends TestCase
             'source_schema_fingerprint' => str_repeat('1', 64),
             'target_schema_fingerprint' => str_repeat('2', 64),
             'channel' => 'development',
-            'minimum_php_version' => '8.4.1',
+            'minimum_php_version' => '8.3.0',
             'required_php_extensions' => ['ctype', 'json', 'pdo'],
             'created_at_utc' => '2026-10-24T00:00:00Z',
         ];

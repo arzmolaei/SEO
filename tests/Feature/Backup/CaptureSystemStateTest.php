@@ -14,6 +14,7 @@ use App\Services\Backup\CaptureSystemState;
 use App\Support\Backup\BackupBundleReader;
 use App\Support\InstallationState;
 use App\Support\Lifecycle\LifecycleMutex;
+use App\Support\Lifecycle\ProductVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -87,7 +88,7 @@ class CaptureSystemStateTest extends TestCase
 
         (new InstallationState)->markInstalled([
             'installer_schema_version' => 2,
-            'product_version' => '0.1.0-alpha.1',
+            'product_version' => (new ProductVersion)->requireDistributable(),
             'installation_id' => '0123456789abcdef0123456789abcdef',
             'database_fingerprint' => str_repeat('d', 64),
             'owner_user_id' => $owner->id,
@@ -144,7 +145,7 @@ class CaptureSystemStateTest extends TestCase
         $owner = User::factory()->create();
         (new InstallationState)->markInstalled([
             'installer_schema_version' => 2,
-            'product_version' => '0.1.0-alpha.1',
+            'product_version' => (new ProductVersion)->requireDistributable(),
             'installation_id' => '0123456789abcdef0123456789abcdef',
             'database_fingerprint' => str_repeat('d', 64),
             'owner_user_id' => $owner->id,

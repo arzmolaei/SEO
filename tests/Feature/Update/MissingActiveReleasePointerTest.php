@@ -53,7 +53,7 @@ class MissingActiveReleasePointerTest extends TestCase
         File::ensureDirectoryExists(dirname($path));
         File::put($path, match ($evidence) {
             'state.json' => '{"phase":"uploaded"}',
-            'installed-version' => '{"product_version":"0.1.0-alpha.2"}',
+            'installed-version' => '{"product_version":"0.0.1-other-release"}',
             default => '{}',
         });
         $pointerPath = $this->root.'/storage/app/lifecycle/update/active-release.json';

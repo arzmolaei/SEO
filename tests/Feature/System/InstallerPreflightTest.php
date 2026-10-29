@@ -28,7 +28,7 @@ class InstallerPreflightTest extends TestCase
     public function test_true_host_blockers_fail_preflight_before_database_setup(): void
     {
         $report = (new InstallerPreflight($this->probe([
-            'phpVersion' => '8.4.0',
+            'phpVersion' => '8.2.0',
             'missingExtensions' => ['mbstring'],
             'writable' => false,
             'freeDiskBytes' => 64 * 1024 * 1024,
@@ -93,7 +93,7 @@ class InstallerPreflightTest extends TestCase
     private function probe(array $overrides = []): SystemProbe
     {
         $state = array_merge([
-            'phpVersion' => '8.4.1',
+            'phpVersion' => '8.3.0',
             'missingExtensions' => [],
             'writable' => true,
             'databaseReachable' => true,

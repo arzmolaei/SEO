@@ -32,7 +32,7 @@ Then fetch the current `main` head, open PRs and CI status before choosing a wor
 
 ## Product Constraints
 
-- PHP 8.4.1+ is the supported runtime floor; permanent compatibility gates are PHP 8.4 and 8.5.
+- PHP 8.3+ is the supported runtime floor (Symfony 7.4 LTS components); permanent compatibility gates are PHP 8.3, 8.4 and 8.5.
 - Laravel 13 + Inertia 3 + React + TypeScript are the current application foundation.
 - Persian is the initial default locale; English and RTL/LTR support are foundational.
 - Core runtime must not require an international CDN, AI provider, OAuth provider, or external API.

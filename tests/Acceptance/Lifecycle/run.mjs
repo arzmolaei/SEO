@@ -31,6 +31,18 @@ if (!process.argv[2] || !existsSync(join(runtime, 'VERSION'))) {
     );
     process.exit(2);
 }
+// Update targets are the next two prereleases after the built VERSION, so
+// bumping the product version never collides with a synthetic target.
+const releaseVersion = readFileSync(join(runtime, 'VERSION'), 'utf8').trim();
+const versionParts = releaseVersion.match(/^(.*\.)(\d+)$/);
+if (!versionParts) {
+    console.error(
+        `Unsupported VERSION for lifecycle targets: ${releaseVersion}`,
+    );
+    process.exit(2);
+}
+const nextVersion = (step) =>
+    `${versionParts[1]}${Number(versionParts[2]) + step}`;
 const php = process.env.LIFECYCLE_PHP ?? 'php';
 const db = {
     host: process.env.LIFECYCLE_DB_HOST ?? '127.0.0.1',
@@ -1151,7 +1163,7 @@ async function updateLifecycle(browser, a, workflow) {
 
     // 1. Successful update through the Persian UI with live cron/worker running.
     log('update: successful source -> target');
-    const t2 = buildTarget('alpha2', '0.1.0-alpha.2', 'ok');
+    const t2 = buildTarget('alpha2', nextVersion(1), 'ok');
     const p2 = buildPackage(t2, sourceVersion, sourceFingerprint);
     await uploadAndConfirm(browser, a, OWNER, p2, t2.version);
     await waitForStatus(browser, 'نسخه جدید راه‌اندازی شده');
@@ -1208,7 +1220,7 @@ async function updateLifecycle(browser, a, workflow) {
     const brokenFingerprint = sourceFingerprint;
     const t3broken = buildTarget(
         'alpha3-broken',
-        '0.1.0-alpha.3',
+        nextVersion(2),
         'broken-boot',
         t2,
     );
@@ -1244,7 +1256,7 @@ async function updateLifecycle(browser, a, workflow) {
 
     // 3. Post-migration health failure: exact suffix reversed, source snapshot applied.
     log('update: post-migration health failure');
-    const t3 = buildTarget('alpha3', '0.1.0-alpha.3', 'ok', t2);
+    const t3 = buildTarget('alpha3', nextVersion(2), 'ok', t2);
     const p3bad = buildPackage(t3, t2.version, t2.fingerprint, t2.fingerprint);
     const p3ok = buildPackage(t3, t2.version, t2.fingerprint);
     await uploadAndConfirm(browser, a, OWNER, p3bad, t3.version);
@@ -1279,7 +1291,7 @@ async function updateLifecycle(browser, a, workflow) {
 
     // 4. Hard process interruption while the target migration is running.
     log('update: hard interruption during migration');
-    const t3slow = buildTarget('alpha3-slow', '0.1.0-alpha.3', 'slow', t2);
+    const t3slow = buildTarget('alpha3-slow', nextVersion(2), 'slow', t2);
     const p3slow = buildPackage(
         t3slow,
         t2.version,

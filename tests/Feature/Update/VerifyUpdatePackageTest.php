@@ -75,9 +75,9 @@ class VerifyUpdatePackageTest extends TestCase
         $data = $preview->toArray();
         $this->assertSame($expectedDigest, $data['package_digest_sha256']);
         $this->assertSame((new ProductVersion)->requireDistributable(), $data['source_product_version']);
-        $this->assertSame('0.1.0-alpha.2', $data['target_product_version']);
+        $this->assertSame(self::nextVersion(), $data['target_product_version']);
         $this->assertSame('development', $data['channel']);
-        $this->assertSame('8.4.1', $data['minimum_php_version']);
+        $this->assertSame('8.3.0', $data['minimum_php_version']);
         $this->assertSame(['ctype', 'json', 'pdo'], $data['required_php_extensions']);
         $this->assertSame(0, $data['migration_count']);
         $this->assertSame(str_repeat('3', 64), $data['migration_tree_sha256']);
@@ -264,7 +264,7 @@ class VerifyUpdatePackageTest extends TestCase
         $sourceSchema = $this->app->make(ApplicationSchemaFingerprint::class)->forConnection(DB::connection());
         $version = fopen('php://temp', 'w+b');
         $this->assertIsResource($version);
-        fwrite($version, "0.1.0-alpha.2\n");
+        fwrite($version, self::nextVersion()."\n");
 
         $output = fopen('php://temp', 'w+b');
         $this->assertIsResource($output);
@@ -273,11 +273,11 @@ class VerifyUpdatePackageTest extends TestCase
             $this->app->make(UpdatePackageWriter::class)->write($output, [
                 'schema' => 'seo-update/1',
                 'created_at_utc' => '2026-10-23T16:30:00Z',
-                'target_product_version' => $overrides['target_product_version'] ?? '0.1.0-alpha.2',
+                'target_product_version' => $overrides['target_product_version'] ?? self::nextVersion(),
                 'allowed_source_product_versions' => $overrides['allowed_source_product_versions'] ?? [$sourceVersion],
                 'channel' => $overrides['channel'] ?? 'development',
                 'launcher_schema' => $overrides['launcher_schema'] ?? 'seo-launcher/2',
-                'minimum_php_version' => $overrides['minimum_php_version'] ?? '8.4.1',
+                'minimum_php_version' => $overrides['minimum_php_version'] ?? '8.3.0',
                 'required_php_extensions' => $overrides['required_php_extensions'] ?? ['ctype', 'json', 'pdo'],
                 'source_schema_fingerprint' => $overrides['source_schema_fingerprint'] ?? $sourceSchema,
                 'target_schema_fingerprint' => $overrides['target_schema_fingerprint'] ?? $sourceSchema,
@@ -306,6 +306,16 @@ class VerifyUpdatePackageTest extends TestCase
     {
         $this->app->make(VerifyUpdatePackage::class)->handle(
             new UploadedFile($path, $name, 'application/octet-stream', null, true),
+        );
+    }
+
+    /** A target always newer than the checked-out VERSION. */
+    private static function nextVersion(): string
+    {
+        return (string) preg_replace_callback(
+            '/(\d+)\z/',
+            static fn (array $match): string => (string) ((int) $match[1] + 1),
+            (new ProductVersion)->requireDistributable(),
         );
     }
 }

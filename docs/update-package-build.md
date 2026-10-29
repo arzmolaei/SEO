@@ -29,7 +29,7 @@ SOURCE_DATE_EPOCH=1792713600 php scripts/release/build-update-package.php \
   development
 ```
 
-Replace both fingerprint placeholders with actual 64-character lowercase SHA-256 values from the verified source/target schemas. The command defaults to `stable` if channel is omitted. It uses the supported PHP 8.4.1 floor and explicit baseline extensions; the `BuildSystemUpdatePackage::build` API accepts runtime requirements in compatibility metadata for release automation. `SOURCE_DATE_EPOCH` fixes the timestamp; without it the command uses build time.
+Replace both fingerprint placeholders with actual 64-character lowercase SHA-256 values from the verified source/target schemas. The command defaults to `stable` if channel is omitted. It uses the supported PHP 8.3.0 floor and explicit baseline extensions; the `BuildSystemUpdatePackage::build` API accepts runtime requirements in compatibility metadata for release automation. `SOURCE_DATE_EPOCH` fixes the timestamp; without it the command uses build time.
 
 Output must be outside the target tree, in an existing directory, and must not already exist. The builder writes a private temporary file and fully reads the package back through the production verifier before publishing. Failed builds clean their owned temporary file and preserve existing output. Source symlinks, development/secret root files, private runtime state and stable public launchers are not valid update payloads. Live storage is never read into the bundle.
 

@@ -185,7 +185,7 @@ PHP);
                 'source_schema_fingerprint' => $sourceFingerprint,
                 'target_schema_fingerprint' => $targetFingerprint,
                 'channel' => 'development',
-                'minimum_php_version' => '8.4.1',
+                'minimum_php_version' => '8.3.0',
                 'required_php_extensions' => ['ctype', 'json', 'mbstring', 'pdo', 'pdo_mysql'],
                 'created_at_utc' => '2026-10-28T00:00:00Z',
             ]);

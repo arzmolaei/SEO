@@ -283,7 +283,7 @@ class SelfHostInstallerAcceptanceTest extends TestCase
         {
             public function phpVersion(): string
             {
-                return '8.4.1';
+                return '8.3.0';
             }
 
             public function extensionLoaded(string $extension): bool

@@ -26,7 +26,7 @@ try {
         'source_schema_fingerprint' => $argv[4],
         'target_schema_fingerprint' => $argv[5],
         'channel' => $argv[6] ?? 'stable',
-        'minimum_php_version' => '8.4.1',
+        'minimum_php_version' => '8.3.0',
         'required_php_extensions' => ['ctype', 'fileinfo', 'json', 'mbstring', 'openssl', 'pdo', 'tokenizer', 'xml'],
         'created_at_utc' => gmdate('Y-m-d\TH:i:s\Z', $epoch === false ? time() : (int) $epoch),
     ]);

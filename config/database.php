@@ -58,7 +58,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // DYNAMIC is already the default on MariaDB 10.2+ / MySQL 5.7+;
+            // naming it keeps utf8mb4 unique keys working on hosts that set
+            // innodb_default_row_format=compact (767-byte index limit).
+            'engine' => 'InnoDB ROW_FORMAT=DYNAMIC',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -78,7 +81,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // DYNAMIC is already the default on MariaDB 10.2+ / MySQL 5.7+;
+            // naming it keeps utf8mb4 unique keys working on hosts that set
+            // innodb_default_row_format=compact (767-byte index limit).
+            'engine' => 'InnoDB ROW_FORMAT=DYNAMIC',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
