@@ -27,11 +27,22 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   `40726148292`, Lifecycle E2E `40726148376`. Design note
   `docs/superpowers/specs/2026-10-28-content-briefs-design.md`.
   New durable table `content_briefs` is in backups and the connected fixture.
-- **Slice 5 — tasks: in review** on `feature/tasks`. Design note
-  `docs/superpowers/specs/2026-10-28-tasks-design.md`. New durable table
-  `project_tasks` (backup catalog + connected fixture). Not done until exact-head CI
-  on all three workflows is green, merged and post-merge main is green.
-- Next after slice 5: slice 6 (internal link suggestions).
+- **Slice 5 — tasks: done.** PR #38 merged with expected head `5d7f310` as
+  `0ef539f3ca51079479b4c6a80490c51737029668`. Exact-head PR checks (16) green;
+  post-merge main: CI `40728478716` and Update Rollback MariaDB `40728478679` green;
+  Lifecycle E2E `40728478800` was cancelled at the job timeout before any test
+  step: Chrome did not expose DevTools on that runner, and the harness then hung
+  because the half-started Chrome kept Node alive. Fixed in PR #39 (failed launch
+  attempts are killed and retried once; the runner always exits after cleanup).
+  Design note `docs/superpowers/specs/2026-10-28-tasks-design.md`.
+- **Slice 6 — internal link suggestions: in review** on `feature/internal-links`.
+  Design note `docs/superpowers/specs/2026-10-28-internal-links-design.md`. New
+  durable table `internal_link_decisions` (backup catalog + connected fixture).
+  Local evidence on PHP 8.4.16 + MariaDB 10.11: full suite 792 passed / 19 gated
+  skips; Pint, PHPStan, npm check, tsc, vitest pass; all six connected suites pass
+  with `--fail-on-skipped`. Not done until exact-head CI on all three workflows is
+  green, merged and post-merge main is green.
+- Next after slice 6: slice 7 (Search Console CSV import + opportunities).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over
