@@ -46,14 +46,17 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   exact-head checks green. Design note
   `docs/superpowers/specs/2026-10-29-search-console-design.md`. New durable tables
   `search_console_imports` / `search_console_rows` (backup catalog + connected fixture).
-- **Slice 8 — project report: in review** on `feature/project-report`. Design note
-  `docs/superpowers/specs/2026-10-29-project-report-design.md`. Read-only (no new
-  table). Local evidence on PHP 8.4.16: full suite 804 passed / 19 gated skips;
-  Pint, PHPStan, npm check, tsc and vitest pass; report tests pass on MariaDB 10.11.
-  Not done until exact-head CI on all three workflows is green, merged and
-  post-merge main is green.
-- After slice 8 (the last V1 slice): tag a release, the owner uses it, and only
-  problems found in real use become new work (docs/DELIVERY_PLAN.md).
+- **Slice 8 — project report: done.** PR #41 merged with expected head `94d8987`
+  as `a3ced3b71ec214472e08944f56a17568fd39507d`; all 16 exact-head checks green.
+  Design note `docs/superpowers/specs/2026-10-29-project-report-design.md`.
+- **All eight V1 slices are integrated.** Post-merge main was green on all three
+  workflows after #39 (`258fd94`) and #40 (`8e2580c`).
+- **Release 0.1.0-alpha.1: in progress** on `release/v0.1.0-alpha.1`. A tag
+  `v<VERSION>` runs `.github/workflows/release.yml`: it builds the runtime-only tree
+  (same builder CI smoke-tests), packages tar.gz + zip with `SHA256SUMS` and
+  publishes a GitHub pre-release with `docs/releases/0.1.0-alpha.1.md` (Persian
+  install/use notes). After the release the owner uses the product; only problems
+  found in real use become new work (docs/DELIVERY_PLAN.md).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over
