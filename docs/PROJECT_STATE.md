@@ -51,14 +51,19 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   Design note `docs/superpowers/specs/2026-10-29-project-report-design.md`.
 - **All eight V1 slices are integrated.** Post-merge main was green on all three
   workflows after #39 (`258fd94`) and #40 (`8e2580c`).
-- **Release 0.1.0-alpha.1: prepared.** PR #42 merged as `7a2da03`; post-merge
-  main green on all three workflows. Pushing a tag `v<VERSION>`, or running the
-  Release workflow manually on main (it then creates the tag itself), runs
-  `.github/workflows/release.yml`: it builds the runtime-only tree
-  (same builder CI smoke-tests), packages tar.gz + zip with `SHA256SUMS` and
-  publishes a GitHub pre-release with `docs/releases/0.1.0-alpha.1.md` (Persian
-  install/use notes). After the release the owner uses the product; only problems
-  found in real use become new work (docs/DELIVERY_PLAN.md).
+- **Release 0.1.0-alpha.1: published (pre-release).** Release notes PR #42 merged
+  as `7a2da03`; a lifecycle harness race (login redirect during update recovery)
+  fixed in #43 (`e577e36`); manual publishing added to
+  `.github/workflows/release.yml` in #44 (`e83a02c`), because tags cannot be pushed
+  from the agent's git connection. Post-merge main green on all three workflows
+  after each. Release run `40821334415` (workflow_dispatch on `e83a02c`) built,
+  audited and published https://github.com/arzmolaei/SEO/releases/tag/v0.1.0-alpha.1
+  with `seo-os-0.1.0-alpha.1.tar.gz`, `.zip` and `SHA256SUMS`; the downloaded files
+  match their sums and contain no `.env`, `node_modules`, tests or dev packages.
+  Next releases: bump `VERSION`, add `docs/releases/<VERSION>.md`, then push tag
+  `v<VERSION>` or run the Release workflow on main.
+- **Next:** the owner uses the product; only problems found in real use become new
+  work (docs/DELIVERY_PLAN.md).
 
 Local toolchain used in this session (the container is ephemeral; re-create it):
 PHP 8.4 from the NixOS binary cache via `nix build --impure --expr` over
