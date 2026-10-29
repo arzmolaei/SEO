@@ -9,6 +9,7 @@ use App\Support\Installer\DatabaseVerifier;
 use App\Support\Installer\EnvironmentWriter;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Installer\InstallerJournal;
+use App\Support\Installer\InstallerMigrationFailed;
 use App\Support\Installer\InstallerMigrationRunner;
 use App\Support\Installer\InstallerMutex;
 use App\Support\Installer\InstallerPhase;
@@ -200,7 +201,13 @@ class InstallerController extends Controller
 
                 try {
                     $result = $this->migrationRunner->runPending();
-                } catch (Throwable) {
+                } catch (InstallerMigrationFailed $exception) {
+                    report($exception);
+
+                    return 'Database migrations could not be completed. Retrying is safe. Reason: '.$exception->reason();
+                } catch (Throwable $exception) {
+                    report($exception);
+
                     return 'Database migrations could not be completed. Retrying is safe.';
                 }
 
@@ -221,7 +228,8 @@ class InstallerController extends Controller
 
                 return null;
             });
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
             $error = 'Database migrations could not be completed. Retrying is safe.';
         }
 

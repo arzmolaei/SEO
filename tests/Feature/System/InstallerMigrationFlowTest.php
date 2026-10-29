@@ -5,11 +5,15 @@ namespace Tests\Feature\System;
 use App\Contracts\SystemProbe;
 use App\Support\Installer\InstallerEnvironment;
 use App\Support\Installer\InstallerJournal;
+use App\Support\Installer\InstallerMigrationFailed;
 use App\Support\Installer\InstallerMigrationRunner;
 use App\Support\Installer\InstallerMutex;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
+use PDOException;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -208,6 +212,38 @@ class InstallerMigrationFlowTest extends TestCase
         $this->assertStringNotContainsString('raw database failure', $serialized);
     }
 
+    public function test_failed_migration_shows_only_a_sanitized_reason_and_is_reported(): void
+    {
+        $this->writeVerifiedMigrationState();
+        $driverError = new PDOException('SQLSTATE[HY000]: Index column size too large');
+        $driverError->errorInfo = ['HY000', 1709, 'Index column size too large'];
+        $failure = new QueryException(
+            'mariadb',
+            'alter table `users` add unique `users_email_unique`(`email`) /* secret-password /home/cpaneluser */',
+            ['browser-secret'],
+            $driverError,
+        );
+        $runner = Mockery::mock(InstallerMigrationRunner::class);
+        $runner->allows('status')->andReturn(['pending' => ['0001_01_01_000000_create_users_table'], 'complete' => false]);
+        $runner->allows('runPending')->andThrow(new InstallerMigrationFailed('0001_01_01_000000_create_users_table', $failure));
+        $this->app->instance(InstallerMigrationRunner::class, $runner);
+        $reported = [];
+        $this->app->make(ExceptionHandler::class)->reportable(function (InstallerMigrationFailed $exception) use (&$reported): void {
+            $reported[] = $exception;
+        });
+
+        // Exactly this: the migration, the exception class and the SQL error
+        // codes; no SQL, bindings, credentials, paths or driver message.
+        $this->from('/install')->post('/install/migrations/run')
+            ->assertRedirect('/install')
+            ->assertSessionHasErrors([
+                'migrations' => 'Database migrations could not be completed. Retrying is safe. Reason: '
+                    .'0001_01_01_000000_create_users_table — '.QueryException::class.' — SQLSTATE HY000 — code 1709',
+            ]);
+        $this->assertCount(1, $reported);
+        $this->assertSame('migrations', $this->journal->read()['phase']);
+    }
+
     public function test_run_endpoint_is_phase_guarded_and_does_not_reopen_completed_work(): void
     {
         $this->journal->replace([
@@ -295,7 +331,7 @@ class InstallerMigrationFlowTest extends TestCase
         {
             public function phpVersion(): string
             {
-                return '8.4.1';
+                return '8.3.0';
             }
 
             public function extensionLoaded(string $extension): bool

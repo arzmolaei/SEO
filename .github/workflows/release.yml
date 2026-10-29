@@ -99,6 +99,7 @@ jobs:
           test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
           test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
           test -f "$RELEASE_ROOT/public/build/manifest.json"
+          test -f "$RELEASE_ROOT/public/.htaccess"
           test "$(tr -d '[:space:]' < "$RELEASE_ROOT/VERSION")" = "$VERSION"
 
       - name: Package and checksum

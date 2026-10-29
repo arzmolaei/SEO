@@ -2,11 +2,12 @@
 <?php
 use Illuminate\Foundation\Application;
 use Symfony\Component\Console\Input\ArgvInput;
+if (PHP_VERSION_ID < 80300) { fwrite(STDERR, 'PHP 8.3+ لازم است (نسخه فعلی: '.PHP_VERSION.') / PHP 8.3+ required (current: '.PHP_VERSION.")\n"); exit(1); }
 define('LARAVEL_START', microtime(true));
 $installationRoot = __DIR__;
 require_once $installationRoot.'/bootstrap/runtime-release.php';
 $updateGate = new SeoOsUpdateMaintenanceGate($installationRoot);
 if ($updateGate->shouldBlockCli()) { fwrite(STDERR, "Application update is in progress.\n"); exit(1); }
-try { $release = (new SeoOsRuntimeReleaseLocator($installationRoot))->resolve(); if (! defined('SEO_OS_INSTALLATION_ROOT')) define('SEO_OS_INSTALLATION_ROOT', $installationRoot); require $release['release_root'].'/vendor/autoload.php'; /** @var Application $app */ $app = require_once $release['release_root'].'/bootstrap/app.php'; } catch (Throwable) { fwrite(STDERR, "Application update recovery is required.\n"); exit(1); }
+try { $release = (new SeoOsRuntimeReleaseLocator($installationRoot))->resolve(); if (! defined('SEO_OS_INSTALLATION_ROOT')) define('SEO_OS_INSTALLATION_ROOT', $installationRoot); require $release['release_root'].'/vendor/autoload.php'; /** @var Application $app */ $app = require_once $release['release_root'].'/bootstrap/app.php'; } catch (Throwable $bootError) { fwrite(STDERR, "Application update recovery is required.\n"); exit(1); }
 $status = $app->handleCommand(new ArgvInput);
 exit($status);

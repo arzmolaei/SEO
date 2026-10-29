@@ -76,7 +76,7 @@ class InstallerEnvironmentFlowTest extends TestCase
 
     public function test_environment_write_is_blocked_when_preflight_has_a_required_failure(): void
     {
-        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.4.0'));
+        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.2.0'));
 
         $this->from('/install')->post('/install/environment', [
             ...$this->validPayload(),
@@ -217,7 +217,7 @@ class InstallerEnvironmentFlowTest extends TestCase
         ]);
     }
 
-    private function probe(string $phpVersion = '8.4.1'): SystemProbe
+    private function probe(string $phpVersion = '8.3.0'): SystemProbe
     {
         return new class($phpVersion) implements SystemProbe
         {

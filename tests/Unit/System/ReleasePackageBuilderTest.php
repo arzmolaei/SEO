@@ -4,6 +4,7 @@ namespace Tests\Unit\System;
 
 use App\Support\ReleasePackageBuilder;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 class ReleasePackageBuilderTest extends TestCase
@@ -32,6 +33,9 @@ class ReleasePackageBuilderTest extends TestCase
         $this->writeFixture('database/migrations/0001_example.php', '<?php');
         $this->writeFixture('lang/fa/validation.php', '<?php return [];');
         $this->writeFixture('public/index.php', '<?php');
+        $this->writeFixture('public/.htaccess', 'RewriteEngine On');
+        $this->writeFixture('public/favicon.svg', '<svg/>');
+        $this->writeFixture('public/apple-touch-icon.png', 'png');
         $this->writeFixture('public/build/manifest.json', '{}');
         $this->writeFixture('public/fonts/open/vazirmatn/Vazirmatn[wght].woff2', 'font');
         $this->writeFixture('resources/views/app.blade.php', '<html></html>');
@@ -57,6 +61,24 @@ class ReleasePackageBuilderTest extends TestCase
         $this->removeDirectory($this->destination);
 
         parent::tearDown();
+    }
+
+    #[Test]
+    public function it_ships_the_web_server_rewrite_rules_and_icons_and_refuses_a_tree_without_them(): void
+    {
+        (new ReleasePackageBuilder)->build($this->source, $this->destination);
+
+        // Without public/.htaccess Apache/LiteSpeed answer 404 for every route but "/".
+        $this->assertSame('RewriteEngine On', file_get_contents($this->destination.'/public/.htaccess'));
+        $this->assertFileExists($this->destination.'/public/favicon.svg');
+        $this->assertFileExists($this->destination.'/public/apple-touch-icon.png');
+
+        unlink($this->source.'/public/.htaccess');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('public/.htaccess');
+
+        (new ReleasePackageBuilder)->build($this->source, $this->destination);
     }
 
     #[Test]

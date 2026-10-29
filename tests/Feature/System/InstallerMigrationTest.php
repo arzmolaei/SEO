@@ -7,7 +7,6 @@ use Illuminate\Database\Migrations\MigrationRepositoryInterface;
 use Illuminate\Database\Migrations\Migrator;
 use Mockery;
 use Mockery\MockInterface;
-use RuntimeException;
 use Tests\TestCase;
 
 class InstallerMigrationTest extends TestCase
@@ -51,73 +50,6 @@ class InstallerMigrationTest extends TestCase
             'complete' => false,
         ], $runner->status());
         $repository->shouldNotHaveReceived('createRepository');
-    }
-
-    public function test_run_creates_repository_when_needed_and_executes_only_pending_migrations(): void
-    {
-        $files = [
-            '2026_01_01_000000_first' => '/migrations/2026_01_01_000000_first.php',
-            '2026_01_01_000001_second' => '/migrations/2026_01_01_000001_second.php',
-        ];
-        $repository = Mockery::mock(MigrationRepositoryInterface::class);
-        $migrator = Mockery::mock(Migrator::class);
-
-        $migrator->shouldReceive('usingConnection')
-            ->once()
-            ->with('installer', Mockery::type('callable'))
-            ->andReturnUsing(static fn (string $connection, callable $callback): mixed => $callback());
-        $migrator->shouldReceive('getMigrationFiles')->once()->with('/migrations')->andReturn($files);
-        $migrator->shouldReceive('repositoryExists')->once()->andReturn(false);
-        $migrator->shouldReceive('getRepository')->twice()->andReturn($repository);
-        $repository->shouldReceive('createRepository')->once();
-        $repository->shouldReceive('getRan')->once()->andReturn(['2026_01_01_000000_first', '2026_01_01_000001_second']);
-        $migrator->shouldReceive('run')
-            ->once()
-            ->with('/migrations', ['pretend' => false, 'step' => false])
-            ->andReturn(array_values($files));
-
-        $runner = new InstallerMigrationRunner($migrator, 'installer', '/migrations');
-
-        $this->assertSame([
-            'ran' => ['2026_01_01_000000_first', '2026_01_01_000001_second'],
-            'remaining' => [],
-            'complete' => true,
-        ], $runner->runPending());
-    }
-
-    public function test_interrupted_run_leaves_completed_migration_recorded_and_retry_status_incomplete(): void
-    {
-        $files = [
-            '2026_01_01_000000_first' => '/migrations/2026_01_01_000000_first.php',
-            '2026_01_01_000001_second' => '/migrations/2026_01_01_000001_second.php',
-        ];
-        $repository = Mockery::mock(MigrationRepositoryInterface::class);
-        $migrator = Mockery::mock(Migrator::class);
-
-        $migrator->shouldReceive('usingConnection')
-            ->twice()
-            ->andReturnUsing(static fn (string $connection, callable $callback): mixed => $callback());
-        $migrator->shouldReceive('repositoryExists')->twice()->andReturn(true);
-        $migrator->shouldReceive('getRepository')->twice()->andReturn($repository);
-        $migrator->shouldReceive('getMigrationFiles')->twice()->with('/migrations')->andReturn($files);
-        $repository->shouldReceive('getRan')->twice()->andReturn(['2026_01_01_000000_first']);
-        $migrator->shouldReceive('run')
-            ->once()
-            ->andThrow(new RuntimeException('simulated interruption'));
-
-        $runner = new InstallerMigrationRunner($migrator, 'installer', '/migrations');
-
-        try {
-            $runner->runPending();
-            $this->fail('Expected simulated migration interruption.');
-        } catch (RuntimeException $exception) {
-            $this->assertSame('simulated interruption', $exception->getMessage());
-        }
-
-        $this->assertSame([
-            'pending' => ['2026_01_01_000001_second'],
-            'complete' => false,
-        ], $runner->status());
     }
 
     public function test_complete_repository_is_idempotent_and_does_not_rerun_migrations(): void

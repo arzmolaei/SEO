@@ -64,7 +64,7 @@ class UpdateSettingsPageTest extends TestCase
             'preview' => [
                 'package_digest_sha256' => str_repeat('d', 64), 'target_product_version' => '0.1.0-alpha.2',
                 'source_product_version' => '0.1.0-alpha.1', 'channel' => 'development',
-                'minimum_php_version' => '8.4.1', 'required_php_extensions' => ['pdo'],
+                'minimum_php_version' => '8.3.0', 'required_php_extensions' => ['pdo'],
                 'migration_count' => 2, 'credential' => 'private-credential',
             ],
         ], JSON_THROW_ON_ERROR));

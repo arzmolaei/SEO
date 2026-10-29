@@ -185,7 +185,7 @@ class UpdatePackageWriterTest extends TestCase
             'allowed_source_product_versions' => ['0.1.0-alpha.1'],
             'channel' => 'development',
             'launcher_schema' => 'seo-launcher/2',
-            'minimum_php_version' => '8.4.1',
+            'minimum_php_version' => '8.3.0',
             'required_php_extensions' => ['ctype', 'json', 'pdo'],
             'source_schema_fingerprint' => str_repeat('1', 64),
             'target_schema_fingerprint' => str_repeat('2', 64),

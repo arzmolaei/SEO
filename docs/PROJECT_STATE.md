@@ -62,6 +62,18 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   match their sums and contain no `.env`, `node_modules`, tests or dev packages.
   Next releases: bump `VERSION`, add `docs/releases/<VERSION>.md`, then push tag
   `v<VERSION>` or run the Release workflow on main.
+- **Real-host install fix → 0.1.0-alpha.2** (first problem found in real use, cPanel/
+  CloudLinux LiteSpeed). (1) `public/.htaccess` was not in the release allowlist, so every
+  route but `/` returned 404; it and the icons now ship, and installable releases require
+  it. (2) Installer migrations failed on hosts with `innodb_default_row_format=compact`:
+  `users_email_unique` exceeded the 767-byte key limit (1709) after `users` was already
+  created, so every retry then failed with 1050. Tables are now created with
+  `ROW_FORMAT=DYNAMIC` (the default on MariaDB 10.2+/MySQL 5.7+); all migrations were run
+  from scratch on MariaDB 10.6 (compact and dynamic), 10.11 and MySQL 8.0 (compact and
+  dynamic). The installer runner now runs time-bounded batches, drops only the tables a
+  failed migration created, reports the exception and shows a sanitized reason. (3) PHP
+  floor lowered to 8.3 (Symfony 7.4 LTS; CI matrix 8.3/8.4/8.5) with a dependency-free
+  version page in `public/index.php` and `artisan`.
 - **Next:** the owner uses the product; only problems found in real use become new
   work (docs/DELIVERY_PLAN.md).
 

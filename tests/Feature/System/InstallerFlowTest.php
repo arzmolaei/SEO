@@ -73,7 +73,7 @@ class InstallerFlowTest extends TestCase
 
     public function test_failed_preflight_stays_on_preflight_and_does_not_offer_environment_save(): void
     {
-        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.4.0'));
+        $this->app->bind(SystemProbe::class, fn () => $this->probe(phpVersion: '8.2.0'));
 
         $this->get('/install')
             ->assertOk()
@@ -111,7 +111,7 @@ class InstallerFlowTest extends TestCase
         string $databaseDriver = 'mysql',
         string $queueConnection = 'database',
         bool $schedulerSupported = true,
-        string $phpVersion = '8.4.1',
+        string $phpVersion = '8.3.0',
     ): SystemProbe {
         return new class($databaseReachable, $databaseDriver, $queueConnection, $schedulerSupported, $phpVersion) implements SystemProbe
         {

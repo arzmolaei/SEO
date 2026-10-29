@@ -508,7 +508,7 @@ class PrepareSystemUpdateTest extends TestCase
                 'allowed_source_product_versions' => [$sourceVersion],
                 'channel' => 'development',
                 'launcher_schema' => 'seo-launcher/2',
-                'minimum_php_version' => '8.4.1',
+                'minimum_php_version' => '8.3.0',
                 'required_php_extensions' => ['ctype', 'json', 'pdo'],
                 'source_schema_fingerprint' => $schema,
                 'target_schema_fingerprint' => $schema,

@@ -13,6 +13,7 @@ use App\Services\Update\UpdateMigrationRunner;
 use App\Services\Update\UpdateRuntimeIdentity;
 use App\Support\InstallationState;
 use App\Support\Lifecycle\LifecycleMutex;
+use App\Support\Lifecycle\ProductVersion;
 use App\Support\ReleasePackageContract;
 use App\Support\Update\ActiveReleasePointer;
 use Illuminate\Database\Migrations\Migrator;
@@ -28,6 +29,11 @@ use Throwable;
 class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
 {
     private string $directory;
+
+    /** The checked-out VERSION; the in-process app captures as this release. */
+    private string $sourceVersion;
+
+    private string $targetVersion;
 
     private string $stableRoot;
 
@@ -47,6 +53,13 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
     {
         parent::setUp();
 
+        $this->sourceVersion = (new ProductVersion)->requireDistributable();
+        $this->targetVersion = (string) preg_replace_callback(
+            '/(\d+)\z/',
+            static fn (array $match): string => (string) ((int) $match[1] + 1),
+            $this->sourceVersion,
+        );
+
         if (getenv('UPDATE_ROLLBACK_CONNECTED') !== '1') {
             $this->markTestSkipped('Connected Update/Rollback acceptance runs only in the MariaDB CI gate.');
         }
@@ -60,8 +73,8 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
 
         $this->configureConnectedDatabase();
         $this->migrateFresh();
-        $this->buildRuntimeFixture($this->stableRoot, '0.1.0-alpha.1', 'source-runtime.js');
-        $this->buildRuntimeFixture($this->targetRoot, '0.1.0-alpha.2', 'target-runtime.js');
+        $this->buildRuntimeFixture($this->stableRoot, $this->sourceVersion, 'source-runtime.js');
+        $this->buildRuntimeFixture($this->targetRoot, $this->targetVersion, 'target-runtime.js');
         File::ensureDirectoryExists($this->stableRoot.'/public/build/assets');
         File::copy(
             $this->targetRoot.'/public/build/assets/target-runtime.js',
@@ -130,7 +143,7 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
         ]);
         (new InstallationState)->markInstalled([
             'installer_schema_version' => 2,
-            'product_version' => '0.1.0-alpha.1',
+            'product_version' => $this->sourceVersion,
             'installation_id' => str_repeat('a', 32),
             'database_fingerprint' => str_repeat('b', 64),
             'owner_user_id' => $this->owner->id,
@@ -145,20 +158,20 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
         File::put($this->targetRoot.'/release.json', json_encode([
             'schema' => 'seo-release-slot/1',
             'release_id' => 'target-probe',
-            'product_version' => '0.1.0-alpha.2',
+            'product_version' => $this->targetVersion,
             'package_digest_sha256' => str_repeat('d', 64),
             'launcher_schema' => 'seo-launcher/2',
         ], JSON_THROW_ON_ERROR));
         $this->pointer = new ActiveReleasePointer($this->stableRoot);
-        $this->pointer->activateSlot('target-probe', '0.1.0-alpha.2', str_repeat('d', 64));
+        $this->pointer->activateSlot('target-probe', $this->targetVersion, str_repeat('d', 64));
 
         $runtimeIdentity = $this->app->make(UpdateRuntimeIdentity::class)->capture();
         $state = [
             ...$runtimeIdentity,
             'phase' => 'rollback_required',
             'upload_id' => str_repeat('c', 32),
-            'source_product_version' => '0.1.0-alpha.1',
-            'target_product_version' => '0.1.0-alpha.2',
+            'source_product_version' => $this->sourceVersion,
+            'target_product_version' => $this->targetVersion,
             'target_release_id' => 'target-probe',
             'package_digest_sha256' => str_repeat('d', 64),
             'target_schema_fingerprint' => $after->schemaFingerprintSha256,
@@ -231,7 +244,7 @@ class UpdateRuntimeProcessMariaDbAcceptanceTest extends TestCase
         $this->assertSame('root', $source['release']['kind'] ?? null);
         $this->assertSame(realpath($this->stableRoot), $source['base_path'] ?? null);
         $this->assertSame('rolled_back', $source['result']['status'] ?? null);
-        $this->assertSame('0.1.0-alpha.1', $source['result']['product_version'] ?? null);
+        $this->assertSame($this->sourceVersion, $source['result']['product_version'] ?? null);
 
         $this->assertSame($originalName, User::query()->findOrFail($this->owner->id)->name);
         $this->assertSame('source durable content', File::get($this->stableRoot.'/storage/app/private/uploads/source.txt'));

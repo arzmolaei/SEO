@@ -22,6 +22,17 @@ final class ReleasePackageContract
         '.env.example',
     ];
 
+    /**
+     * The web entrypoint files a fresh install serves from public/. Update
+     * slots never carry them: they stay in the stable installation root.
+     *
+     * @var list<string>
+     */
+    private const INSTALLABLE_PATHS = [
+        'public/index.php',
+        'public/.htaccess',
+    ];
+
     /** @var list<string> */
     private const FORBIDDEN_PATHS = [
         '.env',
@@ -42,13 +53,14 @@ final class ReleasePackageContract
     /**
      * @return array{valid: bool, missing: list<string>, forbidden: list<string>}
      */
-    public function inspect(string $root): array
+    public function inspect(string $root, bool $installable = false): array
     {
         $root = rtrim($root, DIRECTORY_SEPARATOR);
         $missing = [];
         $forbidden = [];
+        $required = $installable ? [...self::REQUIRED_PATHS, ...self::INSTALLABLE_PATHS] : self::REQUIRED_PATHS;
 
-        foreach (self::REQUIRED_PATHS as $path) {
+        foreach ($required as $path) {
             $absolutePath = $root.DIRECTORY_SEPARATOR.$path;
 
             if ($path === 'VERSION') {

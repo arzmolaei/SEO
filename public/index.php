@@ -5,6 +5,23 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 
+// First, before anything that needs it: on older PHP, Composer's platform
+// check would fail during boot and be misreported as an update recovery.
+if (PHP_VERSION_ID < 80300) {
+    http_response_code(500);
+    if (! headers_sent()) {
+        header('Content-Type: text/html; charset=UTF-8');
+        header('Cache-Control: no-store, private');
+    }
+    $phpVersion = htmlspecialchars(PHP_VERSION, ENT_QUOTES, 'UTF-8');
+    echo '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">'
+        .'<meta name="viewport" content="width=device-width, initial-scale=1"><title>PHP 8.3+</title></head>'
+        .'<body style="font-family:system-ui,Tahoma,sans-serif;margin:10vh auto;max-width:36rem;padding:1rem;line-height:1.8">'
+        .'<h1 data-seo-os-php-version="unsupported">PHP 8.3+ لازم است (نسخه فعلی: '.$phpVersion.')</h1>'
+        .'<p lang="en" dir="ltr">PHP 8.3+ required (current: '.$phpVersion.')</p></body></html>';
+    exit(1);
+}
+
 define('LARAVEL_START', microtime(true));
 $installationRoot = dirname(__DIR__);
 // Dependency-free maintenance response: browsers get a bilingual
@@ -55,7 +72,7 @@ if ($updateGate->shouldBlockHttp($_SERVER['REQUEST_URI'] ?? '/')) {
 try {
     $locator = new SeoOsRuntimeReleaseLocator($installationRoot);
     $release = $locator->resolve();
-} catch (Throwable) {
+} catch (Throwable $bootError) {
     $serviceUnavailable(false);
     exit(1);
 }
@@ -105,7 +122,7 @@ try {
     $app->instance('request', $request);
     Facade::clearResolvedInstance('request');
     $app->make(HttpKernel::class)->bootstrap();
-} catch (Throwable) {
+} catch (Throwable $bootError) {
     $failBootstrap();
     exit(1);
 }

@@ -81,6 +81,7 @@ class LifecycleReleaseIdentityTest extends TestCase
             'database/migrations/0001_example.php' => '<?php',
             'lang/fa/validation.php' => '<?php return [];',
             'public/index.php' => '<?php',
+            'public/.htaccess' => 'RewriteEngine On',
             'public/build/manifest.json' => '{}',
             'public/fonts/open/vazirmatn/Vazirmatn[wght].woff2' => 'font',
             'resources/views/app.blade.php' => '<html></html>',

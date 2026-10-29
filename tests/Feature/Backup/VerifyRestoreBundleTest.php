@@ -103,7 +103,7 @@ class VerifyRestoreBundleTest extends TestCase
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/', $preview->uploadId());
         $this->assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/', $preview->digest());
         $this->assertSame(str_repeat('3', 32), $preview->sourceInstallationId());
-        $this->assertSame('0.1.0-alpha.1', $preview->sourceProductVersion());
+        $this->assertSame((new ProductVersion)->requireDistributable(), $preview->sourceProductVersion());
         $this->assertSame(0, $preview->tableRecordCount());
         $this->assertSame(0, $preview->durableFileCount());
 

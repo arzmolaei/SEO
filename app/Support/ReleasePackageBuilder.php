@@ -17,6 +17,9 @@ final class ReleasePackageBuilder
         'composer.json',
         'composer.lock',
         '.env.example',
+        'public/index.php',
+        // Apache/LiteSpeed route every path through index.php only with this.
+        'public/.htaccess',
     ];
 
     /** @var list<string> */
@@ -35,9 +38,10 @@ final class ReleasePackageBuilder
 
     /** @var list<string> */
     private const RUNTIME_PUBLIC_FILES = [
-        'public/index.php',
         'public/robots.txt',
         'public/favicon.ico',
+        'public/favicon.svg',
+        'public/apple-touch-icon.png',
     ];
 
     /** @var list<string> */
@@ -94,7 +98,7 @@ final class ReleasePackageBuilder
             }
         }
 
-        $report = $this->contract->inspect($destination);
+        $report = $this->contract->inspect($destination, installable: true);
 
         if (! $report['valid']) {
             $details = json_encode($report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
