@@ -51,8 +51,10 @@ one owner, ordered slices 1–8; the archived master spec is never a source of s
   Design note `docs/superpowers/specs/2026-10-29-project-report-design.md`.
 - **All eight V1 slices are integrated.** Post-merge main was green on all three
   workflows after #39 (`258fd94`) and #40 (`8e2580c`).
-- **Release 0.1.0-alpha.1: in progress** on `release/v0.1.0-alpha.1`. A tag
-  `v<VERSION>` runs `.github/workflows/release.yml`: it builds the runtime-only tree
+- **Release 0.1.0-alpha.1: prepared.** PR #42 merged as `7a2da03`; post-merge
+  main green on all three workflows. Pushing a tag `v<VERSION>`, or running the
+  Release workflow manually on main (it then creates the tag itself), runs
+  `.github/workflows/release.yml`: it builds the runtime-only tree
   (same builder CI smoke-tests), packages tar.gz + zip with `SHA256SUMS` and
   publishes a GitHub pre-release with `docs/releases/0.1.0-alpha.1.md` (Persian
   install/use notes). After the release the owner uses the product; only problems

@@ -3,10 +3,13 @@ name: Release
 # Pushing a tag vX.Y.Z[-pre] whose version matches VERSION builds the
 # runtime-only release tree (no Node, npm, Composer, tests or dev packages
 # needed on the host) and publishes it as a GitHub release with SHA-256 sums.
+# Running it manually on main does the same and creates the tag v<VERSION>
+# at that commit.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,14 +32,26 @@ jobs:
       - name: Check the tag matches VERSION
         id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
-          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = workflow_dispatch ]; then
+            if [ "${GITHUB_REF}" != refs/heads/main ]; then
+              echo "Manual releases run on main only." >&2
+              exit 1
+            fi
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${version}" > /dev/null 2>&1; then
+              echo "Tag v${version} already exists; bump VERSION first." >&2
+              exit 1
+            fi
+          elif [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match VERSION ${version}." >&2
             exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -104,16 +119,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
           notes="docs/releases/${VERSION}.md"
           test -f "$notes"
           prerelease=()
           case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          # A pushed tag must already exist; a manual run creates it here.
+          if [ "${GITHUB_EVENT_NAME}" = workflow_dispatch ]; then
+            tag_args=(--target "$GITHUB_SHA")
+          else
+            tag_args=(--verify-tag)
+          fi
           cd "$RUNNER_TEMP/dist"
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$TAG" \
             "seo-os-${VERSION}.tar.gz" "seo-os-${VERSION}.zip" SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --title "SEO OS ${VERSION}" \
             --notes-file "$GITHUB_WORKSPACE/$notes" \
-            --verify-tag "${prerelease[@]}"
+            "${tag_args[@]}" "${prerelease[@]}"
