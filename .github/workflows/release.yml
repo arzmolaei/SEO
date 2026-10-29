@@ -1,0 +1,119 @@
+name: Release
+
+# Pushing a tag vX.Y.Z[-pre] whose version matches VERSION builds the
+# runtime-only release tree (no Node, npm, Composer, tests or dev packages
+# needed on the host) and publishes it as a GitHub release with SHA-256 sums.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check the tag matches VERSION
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match VERSION ${version}." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies and build frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --prefer-dist --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate --ansi
+          timeout 180s npm ci --prefer-offline --no-audit
+          bash scripts/fonts/fetch-vazirmatn.sh
+          php artisan wayfinder:generate --with-form
+          npm run build
+
+      - name: Audit runtime dependencies
+        run: |
+          timeout 120s npm audit --omit=dev --audit-level=high
+          timeout 120s composer audit --no-dev
+
+      - name: Build the runtime-only release tree
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
+          RELEASE_ROOT="$RUNNER_TEMP/dist/seo-os-${VERSION}"
+          mkdir -p "$RUNNER_TEMP/dist"
+          php scripts/release/build-release.php "$RELEASE_ROOT"
+          test ! -e "$RELEASE_ROOT/.env"
+          test ! -e "$RELEASE_ROOT/node_modules"
+          test ! -e "$RELEASE_ROOT/tests"
+          test ! -e "$RELEASE_ROOT/vendor/phpunit/phpunit"
+          test ! -e "$RELEASE_ROOT/vendor/phpstan/phpstan"
+          test -f "$RELEASE_ROOT/public/build/manifest.json"
+          test "$(tr -d '[:space:]' < "$RELEASE_ROOT/VERSION")" = "$VERSION"
+
+      - name: Package and checksum
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/dist"
+          name="seo-os-${VERSION}"
+          tar --sort=name --owner=0 --group=0 --numeric-owner -czf "${name}.tar.gz" "$name"
+          zip -qr -X "${name}.zip" "$name"
+          sha256sum "${name}.tar.gz" "${name}.zip" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          notes="docs/releases/${VERSION}.md"
+          test -f "$notes"
+          prerelease=()
+          case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          cd "$RUNNER_TEMP/dist"
+          gh release create "$GITHUB_REF_NAME" \
+            "seo-os-${VERSION}.tar.gz" "seo-os-${VERSION}.zip" SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SEO OS ${VERSION}" \
+            --notes-file "$GITHUB_WORKSPACE/$notes" \
+            --verify-tag "${prerelease[@]}"
